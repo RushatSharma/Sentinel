@@ -4,13 +4,10 @@ from scanner_logic import scan_sql_injection, scan_xss, scan_shadow_apis
 from port_scanner import scan_ports
 
 app = Flask(__name__)
-CORS(app)  # Enable Cross-Origin Resource Sharing (Allows React to talk to Python)
+CORS(app)  # Enable Cross-Origin Resource Sharing
 
-# --- FEATURE: COMPLIANCE MAPPER & AUTO-FIXER ---
+# --- HELPER: COMPLIANCE & FIX DATABASE ---
 def get_compliance_and_fix(vuln_type):
-    """
-    Returns the Legal Standards and Code Fixes for a given bug.
-    """
     db = {
         "SQL Injection": {
             "compliance": {
@@ -18,7 +15,7 @@ def get_compliance_and_fix(vuln_type):
                 "OWASP": "A03:2021 - Injection",
                 "PCI_DSS": "Req 6.5.1: Injection Flaws"
             },
-            "fix": "Use Prepared Statements (Parameterized Queries) in your backend code. Never concatenate user input directly into SQL strings."
+            "fix": "Use Prepared Statements (Parameterized Queries). Never concatenate input directly into SQL."
         },
         "XSS": {
             "compliance": {
@@ -26,7 +23,7 @@ def get_compliance_and_fix(vuln_type):
                 "OWASP": "A03:2021 - Injection",
                 "PCI_DSS": "Req 6.5.7: Cross-Site Scripting"
             },
-            "fix": "Sanitize all user inputs using a library like DOMPurify. Implement Content Security Policy (CSP) headers."
+            "fix": "Sanitize all user inputs with DOMPurify. Enable Content Security Policy (CSP)."
         },
         "Network Exposure": {
             "compliance": {
@@ -34,20 +31,19 @@ def get_compliance_and_fix(vuln_type):
                 "OWASP": "A05:2021 - Security Misconfiguration",
                 "PCI_DSS": "Req 1: Install Firewalls"
             },
-            "fix": "Close unused ports on your server firewall (UFW/IPTables). Only expose ports 80/443 for web traffic."
+            "fix": "Close unused ports using UFW/IPTables. Only expose ports 80/443."
         },
-        "Shadow API": {
+        "Shadow API Detected": {
             "compliance": {
                 "GDPR": "Art. 30: Records of Processing",
                 "OWASP": "A09:2021 - Logging Failures",
                 "PCI_DSS": "Req 2: Remove unnecessary defaults"
             },
-            "fix": "Document all API endpoints in Swagger/OpenAPI. Remove debug endpoints from production JavaScript bundles."
+            "fix": "Remove debug endpoints from production code. Secure all API routes with auth."
         }
     }
     return db.get(vuln_type, {})
 
-# --- API ENDPOINT ---
 @app.route('/api/scan', methods=['POST'])
 def run_scan():
     data = request.json
@@ -58,13 +54,16 @@ def run_scan():
 
     print(f"[*] Starting scan for: {target_url}")
     
-    # Initialize Report
+    # 1. Initialize Report Structure
     report = {
         "target": target_url,
-        "vulnerabilities": []
+        "vulnerabilities": [],
+        "summary": {"high": 0, "medium": 0, "low": 0} # This was missing!
     }
 
-    # 1. Port Scan
+    # 2. RUN SCANS
+    
+    # Port Scan
     ports = scan_ports(target_url)
     for p in ports:
         info = get_compliance_and_fix("Network Exposure")
@@ -76,7 +75,7 @@ def run_scan():
             "fix": info["fix"]
         })
 
-    # 2. SQL Injection
+    # SQL Injection
     sqli = scan_sql_injection(target_url)
     if sqli:
         info = get_compliance_and_fix("SQL Injection")
@@ -88,7 +87,7 @@ def run_scan():
             "fix": info["fix"]
         })
 
-    # 3. XSS
+    # XSS
     xss = scan_xss(target_url)
     if xss:
         info = get_compliance_and_fix("XSS")
@@ -100,10 +99,10 @@ def run_scan():
             "fix": info["fix"]
         })
 
-    # 4. Shadow API
+    # Shadow APIs
     shadows = scan_shadow_apis(target_url)
     for s in shadows:
-        info = get_compliance_and_fix("Shadow API")
+        info = get_compliance_and_fix("Shadow API Detected")
         report["vulnerabilities"].append({
             "type": "Shadow API Detected",
             "details": s,
@@ -112,8 +111,17 @@ def run_scan():
             "fix": info["fix"]
         })
 
+    # 3. CALCULATE SUMMARY (The Fix)
+    for vuln in report["vulnerabilities"]:
+        sev = vuln["severity"]
+        if sev in ["Critical", "High"]:
+            report["summary"]["high"] += 1
+        elif sev == "Medium":
+            report["summary"]["medium"] += 1
+        elif sev == "Low":
+            report["summary"]["low"] += 1
+
     return jsonify(report)
 
 if __name__ == '__main__':
-    # Run on port 5000
     app.run(debug=True, port=5000)

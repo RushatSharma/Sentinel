@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-background text-white font-mono antialiased;
+  /* Custom Scrollbar to match your Nexus project vibe */
+  scrollbar-width: thin;
+  scrollbar-color: #58a6ff #0d1117;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0d1117;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #58a6ff;
+  border-radius: 4px;
+}
