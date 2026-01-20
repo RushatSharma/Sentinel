@@ -1,0 +1,42 @@
+PROJECT VISION: SENTINEL AUDIT - ADVANCED WEB SECURITY SUITE
+
+1. CORE PHILOSOPHY
+   To bridge the gap between "Finding Bugs" and "Fixing Bugs" by combining offensive scanning
+   with defensive compliance and remediation.
+
+2. ARCHITECTURE
+   - Frontend: React.js (User Interface, Dashboards, Reports)
+   - Backend: Python Flask (Scanning Engine, Logic, API)
+   - Hosting: Vercel (Frontend) + Render (Backend)
+
+3. KEY FEATURES
+   A. Shadow API Hunter
+      - Problem: Developers leave hidden API endpoints in JavaScript files.
+      - Solution: Regex-based crawler that extracts hidden paths (e.g., /api/admin) from .js assets.
+   
+   B. Compliance Mapper
+      - Problem: Managers don't understand technical jargon like "SQLi".
+      - Solution: Automatic translation of bugs into legal standards (GDPR, OWASP, PCI-DSS).
+   
+   C. Developer-First Auto-Fixer
+      - Problem: Scanners show the error but not the solution.
+      - Solution: Provides static code templates (Best Practices) for every found vulnerability.
+
+4. FILE STRUCTURE
+   /Sentinel_Backend/
+      ├── server.py           # The API Entry Point
+      ├── scanner_logic.py    # SQLi, XSS, and Shadow API Logic
+      ├── port_scanner.py     # Network Reconnaissance
+      ├── compliance.py       # Legal Mapping Logic
+      └── requirements.txt    # Dependencies
+   
+   /Sentinel_Frontend/
+      ├── src/
+      │   ├── components/     # React Widgets
+      │   └── App.js          # Main Dashboard
+      └── package.json        # Node Dependencies
+
+5. DEPLOYMENT STRATEGY
+   - Phase 1: Local Testing (running localhost:3000 and localhost:5000)
+   - Phase 2: Deploy Backend to Render.com (Free Tier)
+   - Phase 3: Deploy Frontend to Vercel (Free Tier)

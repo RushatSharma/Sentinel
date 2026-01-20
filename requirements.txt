@@ -1,4 +1,4 @@
-requests==2.31.0
-beautifulsoup4==4.12.2
-rich==13.7.0
-fpdf==1.7.2
+flask
+flask-cors
+requests
+beautifulsoup4
