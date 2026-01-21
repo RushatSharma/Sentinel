@@ -2,7 +2,7 @@ import { useState } from "react";
 import axios from "axios";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import { Doughnut } from "react-chartjs-2";
-import { Shield, Search, AlertTriangle, CheckCircle, Lock, Terminal, Activity, FileText } from "lucide-react";
+import { Shield, Search, AlertTriangle, CheckCircle, Lock, Terminal, Activity, FileText, Download } from "lucide-react";
 import type { ScanReport, Vulnerability } from "./types";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -36,6 +36,25 @@ function App() {
       console.error(err);
     }
     setLoading(false);
+
+    const handleDownload = async () => {
+  if (!report) return;
+  try {
+    const response = await axios.post("http://127.0.0.1:5000/api/download-report", report, {
+      responseType: 'blob', // Important: Treat response as a file, not JSON
+    });
+
+    // Create a fake link to trigger download
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Sentinel_Report_${Date.now()}.pdf`);
+    document.body.appendChild(link);
+    link.click();
+  } catch (err) {
+    console.error("Download failed", err);
+  }
+};
   };
 
   // Prepare Chart Data
@@ -160,6 +179,16 @@ function App() {
                     <span className="text-gray-400">Critical / High</span>
                     <span className="text-danger font-bold">{report.summary.high}</span>
                   </div>
+                  <div className="bg-surface border border-border rounded-2xl p-6 shadow-xl space-y-4">
+  <h3 className="text-lg font-bold text-white">Actions</h3>
+  <button 
+    onClick={handleDownload}
+    className="w-full bg-surface border border-primary text-primary hover:bg-primary hover:text-white font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2"
+  >
+    <Download className="h-5 w-5" />
+    Download Detailed Report
+  </button>
+</div>
                 </div>
               </div>
             </div>

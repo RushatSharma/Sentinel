@@ -2,6 +2,8 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from scanner_logic import scan_sql_injection, scan_xss, scan_shadow_apis
 from port_scanner import scan_ports
+from flask import send_file
+from reporter import generate_report
 
 app = Flask(__name__)
 CORS(app)  # Enable Cross-Origin Resource Sharing
@@ -122,6 +124,20 @@ def run_scan():
             report["summary"]["low"] += 1
 
     return jsonify(report)
+
+# --- PDF GENERATION ENDPOINT ---
+@app.route('/api/download-report', methods=['POST'])
+def download_report():
+    data = request.json
+    # Data is passed directly from React, so we just format it
+    if not data or 'vulnerabilities' not in data:
+        return jsonify({"error": "No report data provided"}), 400
+    
+    # Generate PDF
+    pdf_path = generate_report(data)
+    
+    # Send it back to the browser as a download
+    return send_file(pdf_path, as_attachment=True)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
