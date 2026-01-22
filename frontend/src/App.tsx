@@ -1,18 +1,28 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import CyberLandingPage from "./pages/CyberLandingPage";
-// Keep your dashboard import if you want to link to it later, e.g. /dashboard
-// import Home from "./pages/Home"; 
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Index from "./pages/Index";
+import NotFound from "./pages/NotFound";
 
-function App() {
-  return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<CyberLandingPage />} />
-        {/* You can move the old dashboard to a sub-route if you want */}
-        {/* <Route path="/dashboard" element={<Home />} /> */}
-      </Routes>
-    </Router>
-  );
-}
+const queryClient = new QueryClient();
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Index />} />
+          {/* You can keep your old routes here if you want to reference them, e.g.: */}
+          {/* <Route path="/old-home" element={<Home />} /> */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
 
 export default App;

@@ -1,4 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap');
+@import "@fontsource/space-grotesk/400.css";
+@import "@fontsource/space-grotesk/500.css";
+@import "@fontsource/space-grotesk/700.css";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/jetbrains-mono/400.css";
 
 @tailwind base;
 @tailwind components;
@@ -6,53 +12,113 @@
 
 @layer base {
   :root {
-    /* DEFAULT DARK MODE (Sentinel Style) */
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
- 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
- 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
- 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
- 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
- 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
- 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
- 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
- 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    /* Cyber Dark Theme */
+    --background: 0 0% 2%;
+    --foreground: 0 0% 100%;
 
-    /* Status Colors */
-    --success: 142 76% 36%;
-    --warning: 38 92% 50%;
-    
-    --radius: 0.5rem;
+    --card: 0 0% 6%;
+    --card-foreground: 0 0% 100%;
+
+    --popover: 0 0% 6%;
+    --popover-foreground: 0 0% 100%;
+
+    /* Neon Green Primary */
+    --primary: 111 100% 54%;
+    --primary-foreground: 0 0% 0%;
+
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 0 0% 15%;
+    --muted-foreground: 220 9% 60%;
+
+    --accent: 111 100% 54%;
+    --accent-foreground: 0 0% 0%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 0 0% 12%;
+    --input: 0 0% 12%;
+    --ring: 111 100% 54%;
+
+    --radius: 0.75rem;
+
+    /* Custom Cyber Variables */
+    --cyber-green: 111 100% 54%;
+    --cyber-green-glow: 111 100% 54% / 0.15;
+    --cyber-dark: 0 0% 2%;
+    --cyber-card: 0 0% 6%;
+    --cyber-border: 0 0% 12%;
+    --cyber-text-secondary: 220 9% 63%;
+
+    /* Gradients */
+    --gradient-green-glow: radial-gradient(ellipse at center, hsl(111 100% 54% / 0.2), transparent 70%);
+    --gradient-orb: radial-gradient(circle, hsl(111 100% 54% / 0.4) 0%, hsl(111 100% 40% / 0.1) 40%, transparent 70%);
+
+    /* Shadows */
+    --shadow-glow: 0 0 60px 20px hsl(111 100% 54% / 0.15);
+    --shadow-card: 0 4px 24px hsl(0 0% 0% / 0.4);
+
+    --sidebar-background: 0 0% 4%;
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 111 100% 54%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 0 0% 10%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 12%;
+    --sidebar-ring: 111 100% 54%;
   }
 }
- 
+
 @layer base {
   * {
     @apply border-border;
   }
-  body {
-    @apply bg-background text-foreground;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+  html {
+    scroll-behavior: smooth;
   }
-  /* Hacker code blocks */
-  code, pre {
-    font-family: 'Fira Code', monospace;
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-background/60 backdrop-blur-xl border border-border;
+  }
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-md border border-border rounded-xl;
+  }
+  .glow-orb {
+    background: radial-gradient(circle, hsl(var(--cyber-green) / 0.4) 0%, hsl(var(--cyber-green) / 0.1) 40%, transparent 70%);
+  }
+  .glow-orb-ring {
+    background: conic-gradient(from 0deg, hsl(var(--cyber-green) / 0.3), transparent, hsl(var(--cyber-green) / 0.3));
+  }
+  .text-gradient-green {
+    @apply bg-gradient-to-r from-primary to-emerald-400 bg-clip-text text-transparent;
+  }
+  .cyber-tag {
+    @apply inline-flex items-center px-4 py-1.5 rounded-full text-xs font-mono uppercase tracking-[0.2em] border border-border bg-card/50;
+  }
+  .green-glow-soft {
+    box-shadow: 0 0 80px 40px hsl(var(--cyber-green) / 0.08);
+  }
+  .border-glow {
+    box-shadow: inset 0 0 0 1px hsl(var(--cyber-green) / 0.3),
+                0 0 20px hsl(var(--cyber-green) / 0.1);
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+  }
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .font-sans {
+    font-family: 'Inter', system-ui, sans-serif;
   }
 }
