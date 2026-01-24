@@ -30,7 +30,6 @@ export function Navbar() {
   ];
 
   return (
-    // Fixed: Ensure top-0 and z-50 with no top margin/padding
     <header className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-md border-b border-white/10 transition-all duration-300">
       <div className="container mx-auto px-4 md:px-6">
         <div className="relative flex items-center justify-between h-16 lg:h-20">
@@ -54,7 +53,8 @@ export function Navbar() {
                 key={item.name}
                 href={item.href}
                 className={cn(
-                  "font-medium text-sm text-muted-foreground transition-colors hover:text-sentinel-blue py-2 relative",
+                  // UPDATED: Changed text-sm to text-base for larger text
+                  "font-medium text-base text-muted-foreground transition-colors hover:text-sentinel-blue py-2 relative",
                   "after:content-[''] after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-full after:origin-center after:scale-x-0 after:bg-sentinel-blue after:transition-transform after:duration-300 hover:after:scale-x-100"
                 )}
               >
@@ -102,7 +102,8 @@ export function Navbar() {
                 <a
                   key={item.name}
                   href={item.href}
-                  className="px-4 py-3 text-sm font-medium text-foreground hover:text-sentinel-blue hover:bg-secondary/50 rounded-lg transition-colors"
+                  // UPDATED: Changed text-sm to text-base for mobile as well
+                  className="px-4 py-3 text-base font-medium text-foreground hover:text-sentinel-blue hover:bg-secondary/50 rounded-lg transition-colors"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {item.name}
