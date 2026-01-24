@@ -1,21 +1,25 @@
 import { Navbar } from "@/components/Navbar";
 import { HeroSection } from "@/components/HeroSection";
-import { FeaturesSection } from "@/components/FeaturesSection";
 import { ComplianceSection } from "@/components/ComplianceSection";
-import { ReportingSection } from "@/components/ReportingSection";
-import { CtaSection } from "@/components/CtaSection"; // Import the new section
+import { ReportingSection } from "@/components/ReportingSection"; // Import the new section
 import { Footer } from "@/components/Footer";
+import { InteractiveTerminal } from "@/components/InteractiveTerminal";
+import { BentoGrid } from "@/components/BentoGrid";
+import { ComplianceTicker } from "@/components/ComplianceTicker";
+
 
 const LandingPage = () => {
   return (
-    <div className="min-h-screen bg-background">
+    // Added 'grid-background' to apply the texture globally
+    <div className="min-h-screen bg-background grid-background">
       <Navbar />
       <main>
-        <HeroSection />
-        <FeaturesSection />
+         <HeroSection />
+        <BentoGrid />
+        <InteractiveTerminal />
         <ComplianceSection />
         <ReportingSection />
-        <CtaSection /> {/* Add it right here */}
+        <ComplianceTicker />
       </main>
       <Footer />
     </div>

@@ -4,91 +4,157 @@
 
 @layer base {
   :root {
-    --background: 40 30% 96%;
-    --foreground: 220 25% 10%;
-    --card: 40 25% 98%;
-    --card-foreground: 220 25% 10%;
-    --popover: 40 25% 98%;
-    --popover-foreground: 220 25% 10%;
-    --primary: 220 90% 56%;
+    /* --- NEXUS LIGHT THEME (Pearl White) --- */
+    --background: 36 100% 98%;
+    --foreground: 0 0% 0%;
+
+    --card: 36 100% 98%;
+    --card-foreground: 0 0% 0%;
+
+    --popover: 36 100% 98%;
+    --popover-foreground: 0 0% 0%;
+
+    /* --- BRAND COLORS (Updated) --- */
+    
+    /* Neon Blue (rgb(0, 70, 255)) -> HSL 224 100% 50% */
+    --defense-blue: 224 100% 50%;
+    --defense-blue-glow: 224 100% 70%;
+    
+    /* Neon Red (#FF1818) */
+    --offense-red: 0 100% 55%; 
+    --offense-red-glow: 0 100% 75%;
+
+    /* Primary links to the new Blue */
+    --primary: 224 100% 50%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 40 20% 92%;
-    --secondary-foreground: 220 25% 15%;
-    --muted: 40 15% 90%;
-    --muted-foreground: 220 15% 40%;
-    --accent: 40 20% 88%;
-    --accent-foreground: 220 25% 10%;
-    --destructive: 0 72% 51%;
+
+    --secondary: 36 100% 98%;
+    --secondary-foreground: 0 0% 0%;
+
+    --muted: 33 33% 91%;
+    --muted-foreground: 0 0% 25%;
+
+    --accent: 33 33% 91%;
+    --accent-foreground: 0 0% 0%;
+
+    --destructive: 0 100% 55%;
     --destructive-foreground: 0 0% 100%;
-    --border: 40 20% 85%;
-    --input: 40 20% 85%;
-    --ring: 220 90% 56%;
+
+    --border: 33 33% 91%;
+    --input: 33 33% 91%;
+    --ring: 224 100% 50%;
     --radius: 0.75rem;
-    --defense-blue: 217 91% 60%;
-    --defense-blue-glow: 217 100% 70%;
-    --offense-red: 0 84% 60%;
-    --offense-red-glow: 0 100% 70%;
-    --glass-bg: 40 25% 98% / 0.7;
-    --glass-border: 40 20% 80% / 0.5;
-    --grid-color: 220 20% 80% / 0.3;
+
+    /* Glass & Grid */
+    --glass-bg: 36 100% 98% / 0.7; 
+    --glass-border: 0 0% 0% / 0.1;
+    --grid-color: 0 0% 0% / 0.05;
   }
 
   .dark {
-    --background: 222 47% 6%;
-    --foreground: 210 40% 96%;
-    --card: 222 47% 8%;
-    --card-foreground: 210 40% 96%;
-    --popover: 222 47% 8%;
-    --popover-foreground: 210 40% 96%;
-    --primary: 217 91% 60%;
+    /* --- NEXUS DARK THEME (Pure Black) --- */
+    --background: 0 0% 0%;
+    --foreground: 0 0% 98%;
+
+    --card: 0 0% 4%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 0% 4%;
+    --popover-foreground: 0 0% 98%;
+
+    /* Colors Persist in Dark Mode */
+    --primary: 224 100% 50%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 222 40% 14%;
-    --secondary-foreground: 210 40% 96%;
-    --muted: 222 40% 14%;
-    --muted-foreground: 215 20% 60%;
-    --accent: 222 40% 18%;
-    --accent-foreground: 210 40% 96%;
-    --destructive: 0 72% 51%;
+
+    --secondary: 0 0% 8%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 0 0% 8%;
+    --muted-foreground: 0 0% 63%;
+
+    --accent: 0 0% 12%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 100% 55%;
     --destructive-foreground: 0 0% 100%;
-    --border: 222 40% 18%;
-    --input: 222 40% 18%;
-    --ring: 217 91% 60%;
-    --defense-blue: 217 91% 60%;
-    --defense-blue-glow: 217 100% 65%;
-    --offense-red: 0 84% 60%;
+
+    --border: 0 0% 12%;
+    --input: 0 0% 12%;
+    --ring: 224 100% 50%;
+
+    --defense-blue: 224 100% 50%;
+    --defense-blue-glow: 224 100% 65%;
+    --offense-red: 0 100% 55%;
     --offense-red-glow: 0 100% 65%;
-    --glass-bg: 222 47% 10% / 0.8;
-    --glass-border: 222 40% 25% / 0.5;
-    --grid-color: 217 91% 60% / 0.08;
+    
+    --glass-bg: 0 0% 4% / 0.6;
+    --glass-border: 0 0% 100% / 0.1;
+    --grid-color: 224 100% 50% / 0.1; 
   }
 }
 
 @layer base {
   * { @apply border-border; }
-  body { @apply bg-background text-foreground antialiased; font-family: 'Inter', system-ui, sans-serif; }
+  body { 
+    @apply bg-background text-foreground antialiased; 
+    font-family: 'Inter', system-ui, sans-serif; 
+    /* Ensure no default margin creates gaps */
+    margin: 0;
+    padding: 0;
+  }
   h1, h2, h3, h4, h5, h6 { font-family: 'Space Grotesk', system-ui, sans-serif; }
 }
 
 @layer components {
-  .glass { @apply backdrop-blur-xl border; background: hsl(var(--glass-bg)); border-color: hsl(var(--glass-border)); }
+  /* Reduced vertical spacing between sections */
+  section {
+    @apply !py-8 md:!py-10;
+  }
+
+  /* Glass Effect */
+  .glass { 
+    @apply backdrop-blur-xl border; 
+    background: hsl(var(--glass-bg)); 
+    border-color: hsl(var(--glass-border)); 
+  }
+  
   .glass-card { @apply glass rounded-2xl; }
+
   .grid-background {
     background-image: linear-gradient(hsl(var(--grid-color)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--grid-color)) 1px, transparent 1px);
     background-size: 60px 60px;
   }
-  .glow-blue { box-shadow: 0 0 20px hsl(var(--defense-blue) / 0.3), 0 0 60px hsl(var(--defense-blue) / 0.2); }
-  .glow-red { box-shadow: 0 0 20px hsl(var(--offense-red) / 0.3), 0 0 60px hsl(var(--offense-red) / 0.2); }
+
+  /* Glow Effects */
+  .glow-blue { box-shadow: 0 0 20px hsl(var(--defense-blue) / 0.4), 0 0 60px hsl(var(--defense-blue) / 0.2); }
+  .glow-red { box-shadow: 0 0 20px hsl(var(--offense-red) / 0.4), 0 0 60px hsl(var(--offense-red) / 0.2); }
+
+  /* Text Gradients */
+  .text-gradient-hero {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-sentinel-red via-foreground to-sentinel-blue;
+  }
   .text-gradient-blue { @apply bg-clip-text text-transparent; background-image: linear-gradient(135deg, hsl(var(--defense-blue)), hsl(var(--defense-blue-glow))); }
   .text-gradient-red { @apply bg-clip-text text-transparent; background-image: linear-gradient(135deg, hsl(var(--offense-red)), hsl(var(--offense-red-glow))); }
   .text-gradient-dual { @apply bg-clip-text text-transparent; background-image: linear-gradient(135deg, hsl(var(--offense-red)), hsl(var(--primary)), hsl(var(--defense-blue))); }
-.glass {
-    @apply backdrop-blur-xl border border-white/10;
-    background: linear-gradient(
-      135deg, 
-      rgba(255, 255, 255, 0.05) 0%, 
-      rgba(255, 255, 255, 0.01) 100%
-    );
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+
+  /* Terminal & Bento */
+  .terminal-window {
+    @apply bg-[#0f1117] rounded-xl border border-white/10 overflow-hidden font-mono text-sm shadow-2xl;
   }
 
+  .terminal-header {
+    @apply flex items-center gap-2 px-4 py-3 bg-[#1a1d26] border-b border-white/5;
+  }
+
+  .terminal-dot {
+    @apply w-3 h-3 rounded-full;
+  }
+
+  .feature-card-blue {
+    @apply glass-card hover:border-sentinel-blue/50 hover:shadow-[0_0_30px_hsl(var(--defense-blue)/0.15)] transition-all duration-300;
+  }
+
+  .feature-card-red {
+    @apply glass-card hover:border-sentinel-red/50 hover:shadow-[0_0_30px_hsl(var(--offense-red)/0.15)] transition-all duration-300;
+  }
 }

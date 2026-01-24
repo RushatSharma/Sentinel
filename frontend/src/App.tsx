@@ -1,32 +1,29 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Toaster } from "@/components/ui/toaster"; // Keep this if you use the other toaster, or remove if unused
+import { Toaster as Sonner } from "@/components/ui/sonner"; // This was likely the culprit
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { ThemeProvider } from "@/components/ThemeProvider";
-
 import LandingPage from "./pages/LandingPage";
-import Dashboard from "./pages/Home"; // Your existing scanner file!
+import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
 const App = () => (
-  <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
-  </ThemeProvider>
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      {/* REMOVED: <Toaster /> and <Sonner /> to fix the top whitespace issue */}
+      
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/dashboard" element={<Home />} />
+          {/* ADDED: Catch-all route for 404s */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+    </TooltipProvider>
+  </QueryClientProvider>
 );
 
 export default App;

@@ -1,132 +1,137 @@
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Shield } from "lucide-react";
-import { Link } from "react-router-dom";
-import { ThemeToggle } from "./ThemeToggle";
-import { Button } from "./ui/button";
-import { cn } from "@/lib/utils";
-
-const navLinks = [
-  { name: "Features", href: "/#features" },
-  { name: "Compliance", href: "/#compliance" },
-  { name: "Reporting", href: "/#reporting" },
-];
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Menu, X, Sun, Moon, Shield, Terminal } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export function Navbar() {
-  const [isOpen, setIsOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const savedTheme = localStorage.getItem('theme');
+    return savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  });
 
-  // Add scroll listener to intensify glass effect when scrolling
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkMode]);
+
+  const toggleTheme = () => setIsDarkMode(prev => !prev);
+
+  const navLinks = [
+    { name: 'Features', href: '/#features' },
+    { name: 'Compliance', href: '/#compliance' },
+    { name: 'Reporting', href: '/#reporting' },
+  ];
 
   return (
-    <motion.header
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-      transition={{ duration: 0.5, ease: "easeOut" }}
-      className="fixed top-4 left-0 right-0 z-50 flex justify-center px-4"
-    >
-      <nav
-        className={cn(
-          "w-full max-w-5xl transition-all duration-300 ease-in-out",
-          // Base styles for the glass pill
-          "rounded-full border border-white/10 backdrop-blur-md",
-          // Dynamic styles based on scroll or theme
-          scrolled 
-            ? "bg-background/40 shadow-[0_8px_32px_0_rgba(0,0,0,0.36)] border-white/20" 
-            : "bg-background/20 border-transparent shadow-none"
-        )}
-      >
-        <div className="flex h-14 items-center justify-between px-6">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="relative">
-              <Shield className="h-6 w-6 text-sentinel-blue transition-transform group-hover:scale-110" />
-              <div className="absolute inset-0 blur-md bg-sentinel-blue/40" />
-            </div>
-            <span className="font-display text-lg font-bold text-foreground tracking-wide">
-              Sentinel
-            </span>
-          </Link>
+    // Fixed: Ensure top-0 and z-50 with no top margin/padding
+    <header className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-md border-b border-white/10 transition-all duration-300">
+      <div className="container mx-auto px-4 md:px-6">
+        <div className="relative flex items-center justify-between h-16 lg:h-20">
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-8">
-            {navLinks.map((link) => (
-              <a
-                key={link.name}
-                href={link.href}
-                className="text-xs font-medium uppercase tracking-wider text-muted-foreground hover:text-sentinel-blue transition-colors relative group"
-              >
-                {link.name}
-                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-sentinel-blue transition-all group-hover:w-full" />
-              </a>
-            ))}
+          {/* Logo Section */}
+          <div className="flex-1 flex justify-start">
+            <Link to="/" className="flex items-center gap-2 group">
+              <div className="relative flex items-center justify-center w-8 h-8 bg-sentinel-blue/10 rounded-lg group-hover:bg-sentinel-blue/20 transition-colors">
+                <Shield className="h-5 w-5 text-sentinel-blue transition-transform group-hover:scale-110" />
+              </div>
+              <span className="text-xl font-bold font-display tracking-tight text-foreground">
+                SENTINEL
+              </span>
+            </Link>
           </div>
 
-          {/* Desktop Actions */}
-          <div className="hidden md:flex items-center gap-3">
-            <ThemeToggle />
+          {/* Desktop Navigation */}
+          <nav className="hidden lg:flex absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 items-center space-x-8">
+            {navLinks.map((item) => (
+              <a
+                key={item.name}
+                href={item.href}
+                className={cn(
+                  "font-medium text-sm text-muted-foreground transition-colors hover:text-sentinel-blue py-2 relative",
+                  "after:content-[''] after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-full after:origin-center after:scale-x-0 after:bg-sentinel-blue after:transition-transform after:duration-300 hover:after:scale-x-100"
+                )}
+              >
+                {item.name}
+              </a>
+            ))}
+          </nav>
+
+          {/* Right Side Actions */}
+          <div className="hidden lg:flex flex-1 justify-end items-center space-x-4">
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-full bg-secondary/50 hover:bg-secondary transition-colors border border-transparent hover:border-white/10"
+              aria-label="Toggle Theme"
+            >
+              {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
+
             <Link to="/dashboard">
               <Button 
-                variant="sentinel" 
-                size="sm" 
-                className="rounded-full px-6 shadow-[0_0_15px_rgba(59,130,246,0.5)] hover:shadow-[0_0_25px_rgba(59,130,246,0.7)] transition-all"
+                className="bg-sentinel-blue hover:bg-sentinel-blue/90 text-white font-medium px-6 rounded-full shadow-lg shadow-sentinel-blue/20 hover:shadow-sentinel-blue/40 transition-all duration-300"
               >
+                <Terminal className="w-4 h-4 mr-2" />
                 Get Started
               </Button>
             </Link>
           </div>
 
           {/* Mobile Menu Button */}
-          <div className="flex md:hidden items-center gap-3">
-            <ThemeToggle />
+          <div className="lg:hidden">
             <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="p-2 text-foreground hover:bg-white/10 rounded-full transition-colors"
+              className="p-2 rounded-md text-foreground hover:bg-secondary/50"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
             >
-              {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
         </div>
 
-        {/* Mobile Navigation Dropdown (Glass Panel) */}
-        <AnimatePresence>
-          {isOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0, marginTop: 0 }}
-              animate={{ opacity: 1, height: "auto", marginTop: 8 }}
-              exit={{ opacity: 0, height: 0, marginTop: 0 }}
-              className="md:hidden overflow-hidden bg-background/60 backdrop-blur-xl border border-white/10 rounded-2xl mx-2 mb-2"
-            >
-              <div className="flex flex-col p-4 space-y-2">
-                {navLinks.map((link) => (
-                  <a
-                    key={link.name}
-                    href={link.href}
-                    className="block px-4 py-3 text-sm font-medium text-foreground hover:bg-white/5 rounded-xl transition-colors"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    {link.name}
-                  </a>
-                ))}
-                <div className="pt-2">
-                  <Link to="/dashboard" onClick={() => setIsOpen(false)}>
-                    <Button variant="sentinel" size="sm" className="w-full rounded-full">
-                      Get Started
-                    </Button>
-                  </Link>
-                </div>
+        {/* Mobile Menu Panel */}
+        {isMenuOpen && (
+          <div className="absolute left-0 w-full lg:hidden bg-background/95 backdrop-blur-xl border-b border-white/10 shadow-2xl animate-in slide-in-from-top-5">
+            <nav className="flex flex-col p-4 space-y-2">
+              {navLinks.map((item) => (
+                <a
+                  key={item.name}
+                  href={item.href}
+                  className="px-4 py-3 text-sm font-medium text-foreground hover:text-sentinel-blue hover:bg-secondary/50 rounded-lg transition-colors"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  {item.name}
+                </a>
+              ))}
+              
+              <div className="h-px bg-white/10 my-2" />
+              
+              <div className="flex items-center justify-between px-4 py-2">
+                <span className="text-sm font-medium text-muted-foreground">Theme</span>
+                <button
+                  onClick={toggleTheme}
+                  className="p-2 rounded-md bg-secondary hover:bg-secondary/80"
+                >
+                  {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                </button>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </nav>
-    </motion.header>
+
+              <div className="pt-2">
+                <Link to="/dashboard" onClick={() => setIsMenuOpen(false)}>
+                  <Button className="w-full bg-sentinel-blue hover:bg-sentinel-blue/90 text-white rounded-lg">
+                    Get Started
+                  </Button>
+                </Link>
+              </div>
+            </nav>
+          </div>
+        )}
+      </div>
+    </header>
   );
 }
