@@ -4,34 +4,35 @@ import { Shield, Scale, Clock, CheckCircle } from "lucide-react";
 const benefits = [
   {
     icon: Shield,
-    title: "Future-Proof Your Security",
-    description: "Stay ahead of emerging threats with adaptive protection that evolves.",
+    title: "Audit-Ready Reporting",
+    description: "Generate executive PDFs with one click, separating technical details from business risks.",
     size: "large",
   },
   {
     icon: Scale,
-    title: "Scale Without Fear",
-    description: "Grow your infrastructure confidently with security that scales with you.",
+    title: "Legal Mapping",
+    description: "Automatically translate technical bugs into legal liability scores.",
     size: "medium",
     highlight: true,
   },
   {
     icon: Clock,
-    title: "Stay Safe, Even While You Sleep",
-    description: "24/7 automated monitoring and response keeps you protected around the clock.",
+    title: "Zero Setup Scan",
+    description: "Point to a URL and start auditing immediately. No agents required.",
     size: "medium",
   },
   {
     icon: CheckCircle,
-    title: "Compliance Made Simple",
-    description: "Meet regulatory requirements with built-in compliance frameworks.",
+    title: "OWASP Top 10",
+    description: "Full coverage for Injection, XSS, and Security Misconfigurations.",
     size: "small",
   },
 ];
 
 export const BenefitsGrid = () => {
   return (
-    <section className="py-24 px-6 relative">
+    // Added 'overflow-hidden' to fix horizontal scroll
+    <section className="py-24 px-6 relative overflow-hidden">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <motion.div
@@ -42,9 +43,9 @@ export const BenefitsGrid = () => {
           className="mb-16"
         >
           <h2 className="font-display text-4xl md:text-5xl font-bold leading-tight">
-            Protection That Gets
+            Security That Speaks
             <br />
-            <span className="text-muted-foreground">Smarter With You</span>
+            <span className="text-muted-foreground">Business Language</span>
           </h2>
         </motion.div>
 
@@ -62,17 +63,17 @@ export const BenefitsGrid = () => {
               <Shield className="w-7 h-7 text-primary" />
             </div>
             <h3 className="font-display text-2xl font-semibold mb-4">
-              Future-Proof Your Security
+              Audit-Ready Reporting
             </h3>
             <p className="text-muted-foreground flex-grow">
-              Stay ahead of emerging threats with adaptive protection that evolves 
-              alongside the ever-changing cyber landscape. Our AI-driven system 
-              anticipates vulnerabilities before they become exploits.
+              Managers don't speak SQL Injection; they speak Risk. Sentinel translates 
+              technical vulnerabilities into clear, actionable executive summaries 
+              while providing developers with the exact line of code to fix.
             </p>
             <div className="mt-8 pt-6 border-t border-border">
               <div className="flex items-center gap-4">
                 <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-                <span className="text-sm text-muted-foreground">Real-time threat intelligence</span>
+                <span className="text-sm text-muted-foreground">Auto-generated PDF Reports</span>
               </div>
             </div>
           </motion.div>
@@ -89,10 +90,10 @@ export const BenefitsGrid = () => {
               <Scale className="w-7 h-7 text-primary" />
             </div>
             <h3 className="font-display text-xl font-semibold mb-3">
-              Scale Without Fear
+              Legal Mapping
             </h3>
             <p className="text-sm text-muted-foreground">
-              Grow your infrastructure confidently with security that scales seamlessly.
+              Automatically translate technical bugs into GDPR, PCI-DSS, and OWASP violations.
             </p>
           </motion.div>
 
@@ -108,10 +109,10 @@ export const BenefitsGrid = () => {
               <Clock className="w-7 h-7 text-primary" />
             </div>
             <h3 className="font-display text-xl font-semibold mb-3">
-              Stay Safe, Even While You Sleep
+              Zero Setup Scan
             </h3>
             <p className="text-sm text-muted-foreground">
-              24/7 automated monitoring keeps you protected around the clock.
+              Just enter a target URL. No complex agents or installation required.
             </p>
           </motion.div>
 
@@ -128,11 +129,10 @@ export const BenefitsGrid = () => {
             </div>
             <div>
               <h3 className="font-display text-xl font-semibold mb-2">
-                Compliance Made Simple
+                OWASP Top 10 Coverage
               </h3>
               <p className="text-sm text-muted-foreground">
-                Meet regulatory requirements effortlessly with built-in compliance frameworks 
-                for SOC 2, GDPR, HIPAA, and more.
+                Rigorous testing for Injection, XSS, Broken Access Control, and Security Misconfiguration.
               </p>
             </div>
           </motion.div>

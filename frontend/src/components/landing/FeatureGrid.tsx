@@ -18,7 +18,8 @@ const itemVariants = {
 
 export const FeatureGrid = () => {
   return (
-    <section id="services" className="py-24 px-6 relative">
+    // Added 'overflow-hidden' to fix horizontal scroll
+    <section id="services" className="py-24 px-6 relative overflow-hidden">
       {/* Background glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] glow-orb opacity-20 pointer-events-none" />
 
@@ -32,9 +33,9 @@ export const FeatureGrid = () => {
           className="text-center max-w-2xl mx-auto mb-16"
         >
           <h2 className="font-display text-4xl md:text-5xl font-bold leading-tight">
-            Smarter Each Day,
+            Offensive Scanning,
             <br />
-            <span className="text-muted-foreground">Stronger Every Hour</span>
+            <span className="text-muted-foreground">Defensive Reporting</span>
           </h2>
         </motion.div>
 
@@ -46,7 +47,7 @@ export const FeatureGrid = () => {
           viewport={{ once: true }}
           className="grid md:grid-cols-3 gap-6"
         >
-          {/* Card 1 - Real-Time Threat Detection */}
+          {/* Card 1 - Shadow API Hunter */}
           <motion.div
             variants={itemVariants}
             className="glass-card p-6 space-y-4"
@@ -54,19 +55,19 @@ export const FeatureGrid = () => {
             <div className="rounded-lg overflow-hidden border border-border">
               <img
                 src={codeScanImage}
-                alt="Code scanning interface"
+                alt="Shadow API scanning"
                 className="w-full h-40 object-cover"
               />
             </div>
             <h3 className="font-display text-xl font-semibold">
-              Real-Time Threat Detection
+              Shadow API Hunter
             </h3>
             <p className="text-sm text-muted-foreground">
-              Instantly identify and neutralize threats before they impact your systems.
+              Regex-powered crawler that extracts hidden /api/ endpoints and forgotten routes from client-side JavaScript.
             </p>
           </motion.div>
 
-          {/* Card 2 - Self-Learning AI Engine (Center with green accent) */}
+          {/* Card 2 - Compliance Engine (Center) */}
           <motion.div
             variants={itemVariants}
             className="glass-card p-6 flex flex-col items-center justify-center text-center border-glow"
@@ -75,20 +76,20 @@ export const FeatureGrid = () => {
               <div className="w-8 h-8 rounded-full bg-primary animate-pulse-glow" />
             </div>
             <h3 className="font-display text-xl font-semibold mb-4">
-              Self-Learning AI Engine
+              Automated Compliance
             </h3>
             <p className="text-sm text-muted-foreground mb-6">
-              Our AI evolves with every threat, becoming smarter and more effective over time.
+              Don't just find SQLi. Map it directly to GDPR Art. 32 and PCI-DSS Requirement 6.5 violations.
             </p>
             <Button
               variant="outline"
               className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
             >
-              Learn More
+              View Sample Report
             </Button>
           </motion.div>
 
-          {/* Card 3 - Multi-Cloud Protection */}
+          {/* Card 3 - Developer Remediation */}
           <motion.div
             variants={itemVariants}
             className="glass-card p-6 space-y-4"
@@ -96,15 +97,15 @@ export const FeatureGrid = () => {
             <div className="rounded-lg overflow-hidden border border-border">
               <img
                 src={dashboardImage}
-                alt="Server network visualization"
+                alt="Remediation dashboard"
                 className="w-full h-40 object-cover"
               />
             </div>
             <h3 className="font-display text-xl font-semibold">
-              Multi-Cloud Protection
+              Instant Remediation
             </h3>
             <p className="text-sm text-muted-foreground">
-              Seamless security across AWS, Azure, GCP, and hybrid environments.
+              We provide static code templates and best practices to fix vulnerabilities the moment they are found.
             </p>
           </motion.div>
         </motion.div>

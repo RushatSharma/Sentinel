@@ -2,14 +2,15 @@ import { motion } from "framer-motion";
 import hackerImage from "@/assets/hacker-image.jpg";
 
 const stats = [
-  { value: "200+", label: "AI Algorithms" },
-  { value: "1,800+", label: "Systems Secured" },
-  { value: "300+", label: "Partner Networks" },
+  { value: "3", label: "Global Standards (GDPR, PCI, OWASP)" },
+  { value: "100%", label: "Compliance Mapping" },
+  { value: "24/7", label: "Automated Remediation" },
 ];
 
 export const MissionSection = () => {
   return (
-    <section id="about" className="py-24 px-6 relative">
+    // Added 'overflow-hidden' to fix horizontal scroll
+    <section id="about" className="py-24 px-6 relative overflow-hidden">
       <div className="max-w-7xl mx-auto">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
           {/* Left - Image */}
@@ -23,7 +24,7 @@ export const MissionSection = () => {
             <div className="relative rounded-2xl overflow-hidden border border-border">
               <img
                 src={hackerImage}
-                alt="Cybersecurity analyst"
+                alt="Cybersecurity audit"
                 className="w-full h-[400px] lg:h-[500px] object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
@@ -37,7 +38,7 @@ export const MissionSection = () => {
                 className="absolute bottom-6 left-6 right-6"
               >
                 <p className="font-mono text-xs uppercase tracking-[0.2em] text-primary">
-                  Protection That Never Sleeps
+                  Sentinel Audit Suite v2.0
                 </p>
               </motion.div>
             </div>
@@ -56,14 +57,14 @@ export const MissionSection = () => {
           >
             {/* Tag */}
             <div className="cyber-tag text-primary border-primary/30">
-              Who We Are
+              Our Mission
             </div>
 
             {/* Main text */}
             <h2 className="font-display text-2xl md:text-3xl lg:text-4xl font-medium leading-relaxed uppercase">
-              At Oryn, we believe cyber threats don't sleep and neither should your defense. 
+              At Sentinel, we believe finding a bug is only half the battle.
               <span className="text-muted-foreground">
-                {" "}Semi-intelligent, evolving security systems powered by AI and real-time data.
+                {" "}True security means understanding the business impact and fixing it immediately.
               </span>
             </h2>
 

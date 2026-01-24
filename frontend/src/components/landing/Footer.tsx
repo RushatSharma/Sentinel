@@ -30,7 +30,7 @@ export const Footer = () => {
             {/* Logo */}
             <a href="#" className="flex items-center gap-1">
               <span className="font-display text-2xl font-bold tracking-tight text-foreground">
-                oryn
+                Sentinel
               </span>
               <span className="text-primary text-3xl">✳</span>
             </a>
@@ -85,7 +85,7 @@ export const Footer = () => {
         {/* Bottom bar */}
         <div className="pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground">
-            © 2024 Oryn Security. All rights reserved.
+            © 2026 Sentinel Security. All rights reserved.
           </p>
 
           {/* Social links */}

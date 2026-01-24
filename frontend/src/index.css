@@ -12,62 +12,88 @@
 
 @layer base {
   :root {
-    /* Cyber Dark Theme */
-    --background: 0 0% 2%;
-    --foreground: 0 0% 100%;
+    /* ☀️ LIGHT MODE */
+    
+    /* Background: Pure White */
+    --background: 255 255 255;
+    /* Foreground: Dark Navy Text */
+    --foreground: 15 23 42;
 
-    --card: 0 0% 6%;
-    --card-foreground: 0 0% 100%;
+    /* Card: White (with border distinction) */
+    --card: 255 255 255;
+    --card-foreground: 15 23 42;
 
-    --popover: 0 0% 6%;
-    --popover-foreground: 0 0% 100%;
+    --popover: 255 255 255;
+    --popover-foreground: 15 23 42;
 
-    /* Neon Green Primary */
-    --primary: 111 100% 54%;
-    --primary-foreground: 0 0% 0%;
+    /* PRIMARY: Neon Green (RGB: 20, 255, 20) */
+    --primary: 20 255 20;
+    --primary-foreground: 0 0 0; /* Black text on green buttons */
 
-    --secondary: 0 0% 10%;
-    --secondary-foreground: 0 0% 100%;
+    /* Secondary: Light Gray */
+    --secondary: 241 245 249;
+    --secondary-foreground: 15 23 42;
 
-    --muted: 0 0% 15%;
-    --muted-foreground: 220 9% 60%;
+    /* Muted: Gray */
+    --muted: 241 245 249;
+    --muted-foreground: 100 116 139;
 
-    --accent: 111 100% 54%;
-    --accent-foreground: 0 0% 0%;
+    --accent: 241 245 249;
+    --accent-foreground: 15 23 42;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Destructive: Standard Red */
+    --destructive: 239 68 68;
+    --destructive-foreground: 250 250 250;
 
-    --border: 0 0% 12%;
-    --input: 0 0% 12%;
-    --ring: 111 100% 54%;
+    --border: 226 232 240;
+    --input: 226 232 240;
+    --ring: 20 255 20;
 
     --radius: 0.75rem;
 
-    /* Custom Cyber Variables */
-    --cyber-green: 111 100% 54%;
-    --cyber-green-glow: 111 100% 54% / 0.15;
-    --cyber-dark: 0 0% 2%;
-    --cyber-card: 0 0% 6%;
-    --cyber-border: 0 0% 12%;
-    --cyber-text-secondary: 220 9% 63%;
+    /* Custom Variables */
+    --cyber-glow: 20 255 20;
+  }
 
-    /* Gradients */
-    --gradient-green-glow: radial-gradient(ellipse at center, hsl(111 100% 54% / 0.2), transparent 70%);
-    --gradient-orb: radial-gradient(circle, hsl(111 100% 54% / 0.4) 0%, hsl(111 100% 40% / 0.1) 40%, transparent 70%);
+  .dark {
+    /* 🌙 DARK MODE */
+    
+    /* Background: Cyber Black (RGB: 2, 6, 23) */
+    --background: 2 6 23;
+    /* Foreground: White */
+    --foreground: 248 250 252;
 
-    /* Shadows */
-    --shadow-glow: 0 0 60px 20px hsl(111 100% 54% / 0.15);
-    --shadow-card: 0 4px 24px hsl(0 0% 0% / 0.4);
+    /* Card: Darker Black/Navy */
+    --card: 5 11 29;
+    --card-foreground: 248 250 252;
 
-    --sidebar-background: 0 0% 4%;
-    --sidebar-foreground: 0 0% 90%;
-    --sidebar-primary: 111 100% 54%;
-    --sidebar-primary-foreground: 0 0% 0%;
-    --sidebar-accent: 0 0% 10%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 0 0% 12%;
-    --sidebar-ring: 111 100% 54%;
+    --popover: 5 11 29;
+    --popover-foreground: 248 250 252;
+
+    /* PRIMARY: Neon Green */
+    --primary: 20 255 20;
+    --primary-foreground: 0 0 0;
+
+    /* Secondary: Dark Gray */
+    --secondary: 30 41 59;
+    --secondary-foreground: 248 250 252;
+
+    /* Muted: Dark Gray */
+    --muted: 30 41 59;
+    --muted-foreground: 148 163 184;
+
+    --accent: 30 41 59;
+    --accent-foreground: 248 250 252;
+
+    /* Destructive: Red */
+    --destructive: 127 29 29;
+    --destructive-foreground: 248 250 252;
+
+    --border: 30 41 59;
+    --input: 30 41 59;
+    --ring: 20 255 20;
+
+    --cyber-glow: 20 255 20;
   }
 }
 
@@ -79,35 +105,24 @@
     scroll-behavior: smooth;
   }
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-background text-foreground font-sans antialiased transition-colors duration-300;
   }
 }
 
 @layer components {
   .glass {
-    @apply bg-background/60 backdrop-blur-xl border border-border;
+    @apply bg-background/70 backdrop-blur-xl border border-border/50 shadow-sm dark:shadow-none;
   }
   .glass-card {
-    @apply bg-card/80 backdrop-blur-md border border-border rounded-xl;
+    @apply bg-card/50 backdrop-blur-md border border-border/50 rounded-xl shadow-sm dark:shadow-none;
   }
-  .glow-orb {
-    background: radial-gradient(circle, hsl(var(--cyber-green) / 0.4) 0%, hsl(var(--cyber-green) / 0.1) 40%, transparent 70%);
-  }
-  .glow-orb-ring {
-    background: conic-gradient(from 0deg, hsl(var(--cyber-green) / 0.3), transparent, hsl(var(--cyber-green) / 0.3));
-  }
-  .text-gradient-green {
-    @apply bg-gradient-to-r from-primary to-emerald-400 bg-clip-text text-transparent;
-  }
+  
   .cyber-tag {
-    @apply inline-flex items-center px-4 py-1.5 rounded-full text-xs font-mono uppercase tracking-[0.2em] border border-border bg-card/50;
+    @apply inline-flex items-center px-4 py-1.5 rounded-full text-xs font-mono uppercase tracking-[0.2em] border border-border bg-primary/10 text-primary font-bold;
   }
-  .green-glow-soft {
-    box-shadow: 0 0 80px 40px hsl(var(--cyber-green) / 0.08);
-  }
+  
   .border-glow {
-    box-shadow: inset 0 0 0 1px hsl(var(--cyber-green) / 0.3),
-                0 0 20px hsl(var(--cyber-green) / 0.1);
+    @apply dark:shadow-[inset_0_0_0_1px_rgba(20,255,20,0.3),0_0_20px_rgba(20,255,20,0.1)];
   }
 }
 
