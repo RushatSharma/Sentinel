@@ -44,10 +44,12 @@ export function FeatureCard({ icon: Icon, title, description, accentColor, index
         </div>
 
         {/* Content */}
+        {/* STANDARD CARD TITLE SIZE */}
         <h3 className="font-display text-xl font-semibold text-foreground mb-3">
           {title}
         </h3>
-        <p className="text-muted-foreground leading-relaxed">
+        {/* STANDARD CARD BODY SIZE */}
+        <p className="text-base text-muted-foreground leading-relaxed">
           {description}
         </p>
 

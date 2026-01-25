@@ -26,77 +26,87 @@ export function ComplianceSection() {
   return (
     <section id="compliance" className="relative py-24 sm:py-32 overflow-hidden">
       <div className="container relative mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid lg:grid-cols-2 gap-16 items-center">
-          {/* Left Content */}
+        
+        {/* --- HEADER (Updated: Removed max-w-3xl to take full width) --- */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          // UPDATED: Changed 'max-w-3xl' to 'max-w-5xl' to allow text to take more width
+          className="text-center max-w-5xl mx-auto mb-16"
+        >
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-6">
+            <Scale className="w-4 h-4 text-sentinel-blue" />
+            <span className="text-sm font-medium text-muted-foreground">
+              Compliance Automation
+            </span>
+          </div>
+
+          <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-6">
+            From Vulnerability to{" "}
+            <span className="text-gradient-blue">Compliance Violation</span>
+          </h2>
+
+          <p className="text-lg text-muted-foreground">
+            Stop manually mapping findings to compliance frameworks. Sentinel 
+            automatically correlates vulnerabilities to regulatory requirements, 
+            saving hours of audit preparation.
+          </p>
+        </motion.div>
+
+        {/* --- GRID LAYOUT --- */}
+        <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-start">
+          
+          {/* LEFT COLUMN: Stack of 3 Horizontal Cards */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
+            className="space-y-4"
           >
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-6">
-              <Scale className="w-4 h-4 text-sentinel-blue" />
-              <span className="text-sm font-medium text-muted-foreground">
-                Compliance Automation
-              </span>
-            </div>
-
-            <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-6">
-              From Vulnerability to{" "}
-              <span className="text-gradient-blue">Compliance Violation</span>
-            </h2>
-
-            <p className="text-lg text-muted-foreground mb-8">
-              Stop manually mapping findings to compliance frameworks. Sentinel 
-              automatically correlates vulnerabilities to regulatory requirements, 
-              saving hours of audit preparation.
-            </p>
-
-            {/* Compliance Cards */}
-            <div className="space-y-4">
-              {complianceItems.map((item, index) => (
-                <motion.div
-                  key={item.standard}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.1 }}
-                  className="glass-card p-4 flex items-start gap-4"
-                >
-                  <div className="w-10 h-10 rounded-lg bg-sentinel-blue/10 flex items-center justify-center flex-shrink-0">
-                    <CheckCircle2 className="w-5 h-5 text-sentinel-blue" />
+            {complianceItems.map((item, index) => (
+              <motion.div
+                key={item.standard}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+                className="glass-card p-6 flex items-start gap-4"
+              >
+                <div className="w-10 h-10 rounded-lg bg-sentinel-blue/10 flex items-center justify-center flex-shrink-0">
+                  <CheckCircle2 className="w-5 h-5 text-sentinel-blue" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-semibold text-sentinel-blue uppercase tracking-wide">
+                      {item.standard}
+                    </span>
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-semibold text-sentinel-blue uppercase tracking-wide">
-                        {item.standard}
-                      </span>
-                    </div>
-                    <h4 className="font-display font-semibold text-foreground">
-                      {item.title}
-                    </h4>
-                    <p className="text-sm text-muted-foreground">
-                      {item.description}
-                    </p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+                  <h4 className="font-display text-xl font-semibold text-foreground">
+                    {item.title}
+                  </h4>
+                  <p className="text-base text-muted-foreground">
+                    {item.description}
+                  </p>
+                </div>
+              </motion.div>
+            ))}
           </motion.div>
 
-          {/* Right Visual */}
+          {/* RIGHT COLUMN: Compliance Score Only (Updated: Removed Live Audit Log) */}
           <motion.div
             initial={{ opacity: 0, x: 30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="relative"
+            className="space-y-6"
           >
+            {/* Card 1: Compliance Score */}
             <div className="glass-card p-6 sm:p-8">
-              {/* Mock Compliance Dashboard */}
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-display font-semibold text-foreground">
+                  <h3 className="font-display text-xl font-semibold text-foreground">
                     Compliance Score
                   </h3>
                   <span className="text-2xl font-bold text-sentinel-blue">87%</span>
@@ -105,7 +115,7 @@ export function ComplianceSection() {
                 {/* Progress Bars */}
                 <div className="space-y-4">
                   <div>
-                    <div className="flex justify-between text-sm mb-2">
+                    <div className="flex justify-between text-base mb-2">
                       <span className="text-muted-foreground">GDPR Compliance</span>
                       <span className="text-foreground font-medium">92%</span>
                     </div>
@@ -121,7 +131,7 @@ export function ComplianceSection() {
                   </div>
 
                   <div>
-                    <div className="flex justify-between text-sm mb-2">
+                    <div className="flex justify-between text-base mb-2">
                       <span className="text-muted-foreground">PCI-DSS Compliance</span>
                       <span className="text-foreground font-medium">78%</span>
                     </div>
@@ -137,7 +147,7 @@ export function ComplianceSection() {
                   </div>
 
                   <div>
-                    <div className="flex justify-between text-sm mb-2">
+                    <div className="flex justify-between text-base mb-2">
                       <span className="text-muted-foreground">SOC 2 Readiness</span>
                       <span className="text-foreground font-medium">91%</span>
                     </div>
@@ -157,10 +167,10 @@ export function ComplianceSection() {
                 <div className="flex items-start gap-3 p-4 rounded-xl bg-sentinel-red/10 border border-sentinel-red/20">
                   <AlertTriangle className="w-5 h-5 text-sentinel-red flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium text-foreground">
+                    <p className="text-base font-medium text-foreground">
                       3 Critical Violations Detected
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="text-sm text-muted-foreground mt-1">
                       PCI-DSS 6.5.1, 6.5.7, 6.5.10 require immediate attention
                     </p>
                   </div>
@@ -168,6 +178,8 @@ export function ComplianceSection() {
               </div>
             </div>
 
+            {/* DELETED: Live Audit Log Card */}
+            
             {/* Decorative Elements */}
             <div className="absolute -z-10 -top-10 -right-10 w-40 h-40 bg-sentinel-blue/10 rounded-full blur-3xl" />
             <div className="absolute -z-10 -bottom-10 -left-10 w-40 h-40 bg-sentinel-red/10 rounded-full blur-3xl" />

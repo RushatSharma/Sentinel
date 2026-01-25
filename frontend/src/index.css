@@ -14,17 +14,13 @@
     --popover: 36 100% 98%;
     --popover-foreground: 0 0% 0%;
 
-    /* --- BRAND COLORS (Neon Updated) --- */
-    
-    /* Neon Blue (rgb(0, 70, 255)) -> HSL 224 100% 50% */
+    /* --- BRAND COLORS --- */
     --defense-blue: 224 100% 50%;
     --defense-blue-glow: 224 100% 70%;
     
-    /* Neon Red (#FF1818) -> HSL 0 100% 55% */
     --offense-red: 0 100% 55%; 
     --offense-red-glow: 0 100% 75%;
 
-    /* Primary links to the new Blue */
     --primary: 224 100% 50%;
     --primary-foreground: 0 0% 100%;
 
@@ -45,7 +41,7 @@
     --ring: 224 100% 50%;
     --radius: 0.75rem;
 
-    /* Glass & Grid Variables */
+    /* Glass & Grid */
     --glass-bg: 36 100% 98% / 0.7; 
     --glass-border: 0 0% 0% / 0.1;
     --grid-color: 0 0% 0% / 0.05;
@@ -62,7 +58,6 @@
     --popover: 0 0% 4%;
     --popover-foreground: 0 0% 98%;
 
-    /* Colors Persist in Dark Mode */
     --primary: 224 100% 50%;
     --primary-foreground: 0 0% 100%;
 
@@ -89,7 +84,7 @@
     
     --glass-bg: 0 0% 4% / 0.6;
     --glass-border: 0 0% 100% / 0.1;
-    --grid-color: 224 100% 50% / 0.15; /* Slightly visible blue grid in dark mode */
+    --grid-color: 224 100% 50% / 0.15;
   }
 }
 
@@ -105,12 +100,10 @@
 }
 
 @layer components {
-  /* Reduced vertical spacing between sections */
   section {
     @apply !py-8 md:!py-10;
   }
 
-  /* --- GLASS EFFECT --- */
   .glass { 
     @apply backdrop-blur-xl border; 
     background: hsl(var(--glass-bg)); 
@@ -119,22 +112,40 @@
   
   .glass-card { @apply glass rounded-2xl; }
 
-  /* --- GRID BACKGROUND (FIXED) --- */
+  /* --- GRID BACKGROUND WITH ANIMATION --- */
   .grid-background {
-    /* Explicitly set square size */
-    background-size: 60px 60px;
-    /* Use directional gradients to create thin lines */
+    position: relative;
+    /* Base Grid (Static Grey/Dark Blue) */
+    background-size: 40px 40px;
     background-image: 
       linear-gradient(to right, hsl(var(--grid-color)) 1px, transparent 1px),
       linear-gradient(to bottom, hsl(var(--grid-color)) 1px, transparent 1px);
+    background-repeat: repeat;
     background-position: center top;
   }
 
-  /* --- GLOW EFFECTS --- */
+  /* ADDED: Breathing Color Overlay */
+  .grid-background::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    /* Same Grid Pattern but in BRAND BLUE with low opacity */
+    background-size: 40px 40px;
+    background-image: 
+      linear-gradient(to right, hsl(var(--defense-blue) / 0.2) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--defense-blue) / 0.2) 1px, transparent 1px);
+    background-repeat: repeat;
+    background-position: center top;
+    
+    /* Animation: Slow fade in/out */
+    opacity: 0;
+    animation: grid-breath 4s ease-in-out infinite;
+    pointer-events: none;
+  }
+
   .glow-blue { box-shadow: 0 0 20px hsl(var(--defense-blue) / 0.4), 0 0 60px hsl(var(--defense-blue) / 0.2); }
   .glow-red { box-shadow: 0 0 20px hsl(var(--offense-red) / 0.4), 0 0 60px hsl(var(--offense-red) / 0.2); }
 
-  /* --- TEXT GRADIENTS --- */
   .text-gradient-hero {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-sentinel-red via-foreground to-sentinel-blue;
   }
@@ -142,7 +153,6 @@
   .text-gradient-red { @apply bg-clip-text text-transparent; background-image: linear-gradient(135deg, hsl(var(--offense-red)), hsl(var(--offense-red-glow))); }
   .text-gradient-dual { @apply bg-clip-text text-transparent; background-image: linear-gradient(135deg, hsl(var(--offense-red)), hsl(var(--primary)), hsl(var(--defense-blue))); }
 
-  /* --- TERMINAL & BENTO COMPONENTS --- */
   .terminal-window {
     @apply bg-[#0f1117] rounded-xl border border-white/10 overflow-hidden font-mono text-sm shadow-2xl;
   }
@@ -161,5 +171,13 @@
 
   .feature-card-red {
     @apply glass-card hover:border-sentinel-red/50 hover:shadow-[0_0_30px_hsl(var(--offense-red)/0.15)] transition-all duration-300;
+  }
+}
+
+@layer utilities {
+  /* ADDED: Breathing Animation Keyframes */
+  @keyframes grid-breath {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
   }
 }

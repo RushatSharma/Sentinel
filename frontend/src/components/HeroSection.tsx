@@ -6,12 +6,12 @@ import { Button } from "./ui/button";
 export function HeroSection() {
   return (
     <section className="relative pt-20 pb-32 overflow-hidden">
-      {/* Background Effects - Fixed: Added w-full h-full to ensure correct coverage */}
+      {/* Background Effects */}
       <div className="absolute inset-0 w-full h-full grid-background" />
       <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
       
       <div className="container relative z-10 mx-auto px-4">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+        <div className="grid lg:grid-cols-2 gap-20 items-center">
           
           {/* --- LEFT COLUMN: CONTENT --- */}
           <motion.div 
@@ -43,18 +43,14 @@ export function HeroSection() {
               </span>
             </p>
 
-            {/* Buttons - RESTORED */}
+            {/* Buttons */}
             <div className="flex flex-col sm:flex-row gap-4">
               <Link to="/dashboard">
                 <Button variant="sentinel" size="lg" className="group w-full sm:w-auto text-base px-8 py-6">
-                  Start Free Audit <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                 Explore more tools <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                 </Button>
               </Link>
-              <Button variant="ghost" size="lg" className="w-full sm:w-auto justify-start sm:justify-center text-base px-8 py-6"> 
-                <Play className="mr-2 h-5 w-5" /> View Demo 
-              </Button>
             </div>
-            
           </motion.div>
 
           {/* --- RIGHT COLUMN: CONSOLE SCANNER --- */}
@@ -62,7 +58,8 @@ export function HeroSection() {
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2, duration: 0.8 }}
-            className="relative w-full max-w-2xl lg:ml-auto"
+            // UPDATED: Using specific pixel width [480px]. Change this value to adjust slimness.
+            className="relative w-full max-w-[600px]"
           >
             {/* Console Container */}
             <div className="terminal-window border-border/40 dark:border-white/10 bg-background/80 dark:bg-[#0a0a0a]/90 backdrop-blur-md shadow-2xl relative overflow-hidden group">
@@ -86,27 +83,28 @@ export function HeroSection() {
               </div>
 
               {/* Console Content */}
-              <div className="p-8 md:p-10 text-left relative">
-                {/* Background Grid inside console (Fixed square size here too) */}
+              {/* UPDATED: Reduced padding to 'p-6' to suit the slimmer width */}
+              <div className="p-6 text-left relative">
+                {/* Background Grid inside console */}
                 <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:24px_24px]" />
                 
                 {/* Vertical Stack Layout for Side Column */}
-                <div className="relative z-10 flex flex-col gap-8">
+                <div className="relative z-10 flex flex-col gap-6">
                   {/* Info Section */}
-                  <div className="space-y-5">
+                  <div className="space-y-4">
                     <div className="flex items-center gap-4">
-                      <div className="p-2.5 bg-sentinel-blue/10 rounded-xl">
-                        <ShieldCheck className="w-8 h-8 text-sentinel-blue" />
+                      <div className="p-2 bg-sentinel-blue/10 rounded-xl">
+                        <ShieldCheck className="w-6 h-6 text-sentinel-blue" />
                       </div>
-                      <h3 className="text-2xl font-display font-semibold text-foreground">Advanced Intelligence</h3>
+                      <h3 className="text-xl font-display font-semibold text-foreground">Advanced Intelligence</h3>
                     </div>
-                    <p className="text-lg text-muted-foreground leading-relaxed">
+                    <p className="text-base text-muted-foreground leading-relaxed">
                       Deploy heuristic engines to detect <span className="text-sentinel-red font-medium">SQLi</span>, <span className="text-sentinel-red font-medium">XSS</span>, and <span className="text-sentinel-red font-medium">Shadow APIs</span>.
                     </p>
-                    <div className="flex flex-wrap gap-3 text-sm font-mono text-muted-foreground">
-                      <span className="px-3 py-1.5 bg-black/5 dark:bg-white/5 rounded-md border border-black/5 dark:border-white/5">AES-256</span>
-                      <span className="px-3 py-1.5 bg-black/5 dark:bg-white/5 rounded-md border border-black/5 dark:border-white/5">TLS 1.3</span>
-                      <span className="px-3 py-1.5 bg-black/5 dark:bg-white/5 rounded-md border border-black/5 dark:border-white/5">SOC2 Type II</span>
+                    <div className="flex flex-wrap gap-2 text-xs font-mono text-muted-foreground">
+                      <span className="px-2 py-1 bg-black/5 dark:bg-white/5 rounded-md border border-black/5 dark:border-white/5">AES-256</span>
+                      <span className="px-2 py-1 bg-black/5 dark:bg-white/5 rounded-md border border-black/5 dark:border-white/5">TLS 1.3</span>
+                      <span className="px-2 py-1 bg-black/5 dark:bg-white/5 rounded-md border border-black/5 dark:border-white/5">SOC2 Type II</span>
                     </div>
                   </div>
 
@@ -118,7 +116,7 @@ export function HeroSection() {
                         <input 
                           type="text" 
                           placeholder="https://target-app.com"
-                          className="w-full bg-white/50 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-lg py-3 pl-12 pr-4 text-base text-foreground font-mono focus:outline-none focus:border-sentinel-blue/50 focus:bg-sentinel-blue/5 transition-all placeholder:text-muted-foreground/50"
+                          className="w-full bg-white/50 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-lg py-3 pl-12 pr-4 text-sm text-foreground font-mono focus:outline-none focus:border-sentinel-blue/50 focus:bg-sentinel-blue/5 transition-all placeholder:text-muted-foreground/50"
                         />
                       </div>
                       <Button className="w-full bg-sentinel-blue hover:bg-sentinel-blue/90 text-white font-mono text-sm tracking-wider h-12 shadow-[0_0_15px_rgba(0,70,255,0.3)]">

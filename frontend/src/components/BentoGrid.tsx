@@ -44,13 +44,6 @@ fetch('/api/admin/users')
     color: "blue" as const,
     size: "small" as const,
   },
-  {
-    title: "Fast Integration",
-    description: "CI/CD plugins for GitHub, GitLab, and Jenkins. Setup in under 5 minutes.",
-    icon: Zap,
-    color: "red" as const,
-    size: "small" as const,
-  },
 ];
 
 export const BentoGrid = () => {
@@ -68,11 +61,11 @@ export const BentoGrid = () => {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <h2 className="font-display text-4xl md:text-5xl font-bold mb-4">
+          <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
             Offensive Discovery.{" "}
             <span className="text-sentinel-blue">Defensive Action.</span>
           </h2>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             A complete security suite that bridges the gap between red team
             reconnaissance and blue team compliance.
           </p>
@@ -93,34 +86,42 @@ export const BentoGrid = () => {
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
                 className={`
-                  ${isLarge ? "lg:col-span-2 lg:row-span-2" : ""}
+                  ${isLarge ? "lg:col-span-2" : ""} {/* REMOVED: lg:row-span-2 */}
                   ${isBlue ? "feature-card-blue" : "feature-card-red"}
                   group cursor-pointer flex flex-col
                 `}
               >
-                <div className="h-full flex flex-col p-2">
-                  {/* Icon */}
-                  <div
-                    className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-all duration-300 ${
-                      isBlue
-                        ? "bg-sentinel-blue/10 text-sentinel-blue group-hover:bg-sentinel-blue group-hover:text-white"
-                        : "bg-sentinel-red/10 text-sentinel-red group-hover:bg-sentinel-red group-hover:text-white"
-                    }`}
-                  >
-                    <Icon className="w-6 h-6" />
+                {/* Layout Logic:
+                  - If isLarge: 2-column grid (Text Left / Console Right)
+                  - If Normal: Flex Column (Icon -> Title -> Desc)
+                */}
+                <div className={`h-full p-6 ${isLarge ? "grid grid-cols-1 md:grid-cols-2 gap-8 items-center" : "flex flex-col"}`}>
+                  
+                  {/* Left Side: Icon & Text */}
+                  <div className={`flex flex-col ${isLarge ? "justify-center" : "h-full"}`}>
+                    {/* Icon */}
+                    <div
+                      className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-all duration-300 ${
+                        isBlue
+                          ? "bg-sentinel-blue/10 text-sentinel-blue group-hover:bg-sentinel-blue group-hover:text-white"
+                          : "bg-sentinel-red/10 text-sentinel-red group-hover:bg-sentinel-red group-hover:text-white"
+                      }`}
+                    >
+                      <Icon className="w-6 h-6" />
+                    </div>
+
+                    {/* Title */}
+                    <h3 className="font-display text-xl font-semibold mb-2">
+                      {feature.title}
+                    </h3>
+
+                    {/* Description */}
+                    <p className="text-base text-muted-foreground flex-1">{feature.description}</p>
                   </div>
 
-                  {/* Title */}
-                  <h3 className="font-display text-xl font-semibold mb-2">
-                    {feature.title}
-                  </h3>
-
-                  {/* Description */}
-                  <p className="text-muted-foreground flex-1">{feature.description}</p>
-
-                  {/* Code snippet for large card */}
+                  {/* Right Side: Console (Only for Large cards) */}
                   {isLarge && feature.code && (
-                    <div className="mt-6 terminal-window">
+                    <div className="terminal-window w-full h-fit shadow-lg mt-0">
                       <div className="terminal-header">
                         <div className="terminal-dot bg-destructive" />
                         <div className="terminal-dot bg-terminal-yellow" />

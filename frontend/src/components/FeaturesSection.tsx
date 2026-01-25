@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
-import { Radar, ShieldCheck, FileText, Search, Lock, Zap } from "lucide-react";
 import { FeatureCard } from "./FeatureCard";
+import { Radar, ShieldCheck, FileText, Search, Lock, Zap } from "lucide-react";
 
 const features = [
   {
@@ -61,10 +61,12 @@ export function FeaturesSection() {
           viewport={{ once: true }}
           className="text-center max-w-3xl mx-auto mb-16"
         >
+          {/* STANDARD HEADING SIZE */}
           <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-6">
             Unified Security{" "}
             <span className="text-gradient-dual">Intelligence</span>
           </h2>
+          {/* STANDARD DESCRIPTION SIZE */}
           <p className="text-lg text-muted-foreground">
             One platform that speaks both Red Team and Blue Team. From offensive 
             scanning to defensive remediation, Sentinel covers every angle.

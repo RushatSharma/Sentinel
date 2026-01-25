@@ -30,7 +30,12 @@ export function Navbar() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-md border-b border-white/10 transition-all duration-300">
+    <header className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-md transition-all duration-300">
+      
+      {/* UPDATED: Static "Bridge" Gradient (Red -> Blue) */}
+      {/* This is cleaner and reinforces the "Red Team to Blue Team" concept */}
+      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-sentinel-red via-transparent to-sentinel-blue opacity-100 z-50" />
+
       <div className="container mx-auto px-4 md:px-6">
         <div className="relative flex items-center justify-between h-16 lg:h-20">
 
@@ -53,7 +58,6 @@ export function Navbar() {
                 key={item.name}
                 href={item.href}
                 className={cn(
-                  // UPDATED: Changed text-sm to text-base for larger text
                   "font-medium text-base text-muted-foreground transition-colors hover:text-sentinel-blue py-2 relative",
                   "after:content-[''] after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-full after:origin-center after:scale-x-0 after:bg-sentinel-blue after:transition-transform after:duration-300 hover:after:scale-x-100"
                 )}
@@ -102,7 +106,6 @@ export function Navbar() {
                 <a
                   key={item.name}
                   href={item.href}
-                  // UPDATED: Changed text-sm to text-base for mobile as well
                   className="px-4 py-3 text-base font-medium text-foreground hover:text-sentinel-blue hover:bg-secondary/50 rounded-lg transition-colors"
                   onClick={() => setIsMenuOpen(false)}
                 >
