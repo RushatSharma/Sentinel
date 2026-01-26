@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Menu, X, Sun, Moon, Shield, Terminal } from 'lucide-react';
+import { Menu, X, Sun, Moon, Shield, LogIn } from 'lucide-react'; // Changed Terminal to LogIn icon
 import { cn } from '@/lib/utils';
 
 export function Navbar() {
@@ -32,8 +32,7 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-md transition-all duration-300">
       
-      {/* UPDATED: Static "Bridge" Gradient (Red -> Blue) */}
-      {/* This is cleaner and reinforces the "Red Team to Blue Team" concept */}
+      {/* Static "Bridge" Gradient */}
       <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-sentinel-red via-transparent to-sentinel-blue opacity-100 z-50" />
 
       <div className="container mx-auto px-4 md:px-6">
@@ -77,11 +76,12 @@ export function Navbar() {
               {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
 
-            <Link to="/dashboard">
+            {/* UPDATED: Link to /auth instead of /dashboard */}
+            <Link to="/auth">
               <Button 
                 className="bg-sentinel-blue hover:bg-sentinel-blue/90 text-white font-medium px-6 rounded-full shadow-lg shadow-sentinel-blue/20 hover:shadow-sentinel-blue/40 transition-all duration-300"
               >
-                <Terminal className="w-4 h-4 mr-2" />
+                <LogIn className="w-4 h-4 mr-2" />
                 Sign In
               </Button>
             </Link>
@@ -126,9 +126,10 @@ export function Navbar() {
               </div>
 
               <div className="pt-2">
-                <Link to="/dashboard" onClick={() => setIsMenuOpen(false)}>
+                {/* UPDATED: Mobile menu link to /auth */}
+                <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
                   <Button className="w-full bg-sentinel-blue hover:bg-sentinel-blue/90 text-white rounded-lg">
-                    Get Started
+                    Sign In
                   </Button>
                 </Link>
               </div>
