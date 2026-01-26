@@ -4,10 +4,11 @@
 
 @layer base {
   :root {
-    /* --- NEXUS LIGHT THEME (Pearl White) --- */
+    /* --- NEXUS LIGHT THEME (Solid Pearl White) --- */
     --background: 36 100% 98%;
     --foreground: 0 0% 0%;
 
+    /* SOLID: Removed transparency */
     --card: 36 100% 98%;
     --card-foreground: 0 0% 0%;
 
@@ -41,21 +42,22 @@
     --ring: 224 100% 50%;
     --radius: 0.75rem;
 
-    /* Glass & Grid */
-    --glass-bg: 36 100% 98% / 0.7; 
+    /* Glass Vars - FORCED SOLID */
+    --glass-bg: 36 100% 98%; /* Solid Pearl White */
     --glass-border: 0 0% 0% / 0.1;
     --grid-color: 0 0% 0% / 0.05;
   }
 
   .dark {
-    /* --- NEXUS DARK THEME (Pure Black) --- */
+    /* --- NEXUS DARK THEME (Solid True Black) --- */
     --background: 0 0% 0%;
     --foreground: 0 0% 98%;
 
-    --card: 0 0% 4%;
+    /* SOLID: True Black */
+    --card: 0 0% 0%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 0 0% 4%;
+    --popover: 0 0% 0%;
     --popover-foreground: 0 0% 98%;
 
     --primary: 224 100% 50%;
@@ -82,7 +84,7 @@
     --offense-red: 0 100% 55%;
     --offense-red-glow: 0 100% 65%;
     
-    --glass-bg: 0 0% 4% / 0.6;
+    --glass-bg: 0 0% 0%; /* Solid True Black */
     --glass-border: 0 0% 100% / 0.1;
     --grid-color: 224 100% 50% / 0.15;
   }
@@ -104,18 +106,23 @@
     @apply !py-8 md:!py-10;
   }
 
+  /* --- FORCED SOLID CARD STYLES --- */
+  /* Redefine 'glass' to be solid to prevent grid bleed-through */
   .glass { 
-    @apply backdrop-blur-xl border; 
-    background: hsl(var(--glass-bg)); 
+    @apply border shadow-sm;
+    background-color: hsl(var(--card)) !important; /* Force Solid Color */
     border-color: hsl(var(--glass-border)); 
   }
   
-  .glass-card { @apply glass rounded-2xl; }
+  .glass-card { 
+    @apply glass rounded-2xl;
+    /* Extra redundancy to ensure opacity */
+    background-color: hsl(var(--card)) !important;
+  }
 
-  /* --- GRID BACKGROUND WITH ANIMATION --- */
+  /* --- GRID BACKGROUND ANIMATION (Kept as requested) --- */
   .grid-background {
     position: relative;
-    /* Base Grid (Static Grey/Dark Blue) */
     background-size: 40px 40px;
     background-image: 
       linear-gradient(to right, hsl(var(--grid-color)) 1px, transparent 1px),
@@ -124,37 +131,41 @@
     background-position: center top;
   }
 
-  /* ADDED: Breathing Color Overlay */
-  .grid-background::after {
+  .grid-background::before {
     content: "";
     position: absolute;
     inset: 0;
-    /* Same Grid Pattern but in BRAND BLUE with low opacity */
     background-size: 40px 40px;
     background-image: 
       linear-gradient(to right, hsl(var(--defense-blue) / 0.2) 1px, transparent 1px),
       linear-gradient(to bottom, hsl(var(--defense-blue) / 0.2) 1px, transparent 1px);
     background-repeat: repeat;
     background-position: center top;
-    
-    /* Animation: Slow fade in/out */
     opacity: 0;
-    animation: grid-breath 4s ease-in-out infinite;
+    animation: grid-pulse-blue 8s ease-in-out infinite;
     pointer-events: none;
   }
 
-  .glow-blue { box-shadow: 0 0 20px hsl(var(--defense-blue) / 0.4), 0 0 60px hsl(var(--defense-blue) / 0.2); }
-  .glow-red { box-shadow: 0 0 20px hsl(var(--offense-red) / 0.4), 0 0 60px hsl(var(--offense-red) / 0.2); }
-
-  .text-gradient-hero {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-sentinel-red via-foreground to-sentinel-blue;
+  .grid-background::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-size: 40px 40px;
+    background-image: 
+      linear-gradient(to right, hsl(var(--offense-red) / 0.2) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--offense-red) / 0.2) 1px, transparent 1px);
+    background-repeat: repeat;
+    background-position: center top;
+    opacity: 0;
+    animation: grid-pulse-red 8s ease-in-out infinite;
+    pointer-events: none;
   }
-  .text-gradient-blue { @apply bg-clip-text text-transparent; background-image: linear-gradient(135deg, hsl(var(--defense-blue)), hsl(var(--defense-blue-glow))); }
-  .text-gradient-red { @apply bg-clip-text text-transparent; background-image: linear-gradient(135deg, hsl(var(--offense-red)), hsl(var(--offense-red-glow))); }
-  .text-gradient-dual { @apply bg-clip-text text-transparent; background-image: linear-gradient(135deg, hsl(var(--offense-red)), hsl(var(--primary)), hsl(var(--defense-blue))); }
 
+  /* --- TERMINAL & BENTO COMPONENTS --- */
   .terminal-window {
-    @apply bg-[#0f1117] rounded-xl border border-white/10 overflow-hidden font-mono text-sm shadow-2xl;
+    @apply rounded-xl border border-white/10 overflow-hidden font-mono text-sm shadow-2xl;
+    /* Force dark background for terminal console */
+    background-color: #0f1117 !important; 
   }
 
   .terminal-header {
@@ -175,9 +186,17 @@
 }
 
 @layer utilities {
-  /* ADDED: Breathing Animation Keyframes */
-  @keyframes grid-breath {
-    0%, 100% { opacity: 0; }
-    50% { opacity: 1; }
+  @keyframes grid-pulse-blue {
+    0% { opacity: 0; }
+    25% { opacity: 1; }
+    50% { opacity: 0; }
+    100% { opacity: 0; }
+  }
+
+  @keyframes grid-pulse-red {
+    0% { opacity: 0; }
+    50% { opacity: 0; }
+    75% { opacity: 1; }
+    100% { opacity: 0; }
   }
 }

@@ -15,7 +15,8 @@ export function ReportingSection() {
           viewport={{ once: true }}
           className="text-center max-w-3xl mx-auto mb-16"
         >
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass mb-4">
+          {/* Badge: Explicit bg-card */}
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-card border border-border shadow-sm mb-4">
             <FileText className="w-4 h-4 text-sentinel-blue" />
             <span className="text-sm font-medium text-muted-foreground">
               Executive Reporting
@@ -34,7 +35,6 @@ export function ReportingSection() {
         </motion.div>
 
         {/* Report Preview */}
-        {/* UPDATED: Removed 'items-start' so cards stretch to equal height */}
         <div className="grid lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
           
           {/* Executive Report Card */}
@@ -43,10 +43,10 @@ export function ReportingSection() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.1 }}
-            className="h-full" // ADDED: h-full to wrapper
+            className="h-full"
           >
-            {/* ADDED: h-full and flex-col to make card fill space */}
-            <div className="glass-card overflow-hidden h-full flex flex-col">
+            {/* Card: Explicit bg-card */}
+            <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden h-full flex flex-col">
               <div className="p-6 border-b border-border">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-lg bg-sentinel-blue/10 flex items-center justify-center">
@@ -100,8 +100,6 @@ export function ReportingSection() {
                     </li>
                   </ul>
                 </div>
-                
-                {/* Button Removed */}
               </div>
             </div>
           </motion.div>
@@ -112,10 +110,10 @@ export function ReportingSection() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.2 }}
-            className="h-full" // ADDED: h-full to wrapper
+            className="h-full"
           >
-            {/* ADDED: h-full and flex-col to make card fill space */}
-            <div className="glass-card overflow-hidden h-full flex flex-col">
+            {/* Card: Explicit bg-card */}
+            <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden h-full flex flex-col">
               <div className="p-6 border-b border-border">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-lg bg-sentinel-red/10 flex items-center justify-center">
@@ -163,8 +161,6 @@ export function ReportingSection() {
                     <li>Configure CORS policies for production</li>
                   </ol>
                 </div>
-                
-                {/* Button Removed */}
               </div>
             </div>
           </motion.div>

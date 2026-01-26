@@ -27,15 +27,15 @@ export function ComplianceSection() {
     <section id="compliance" className="relative py-24 sm:py-32 overflow-hidden">
       <div className="container relative mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* --- HEADER (Updated: Removed max-w-3xl to take full width) --- */}
+        {/* --- HEADER --- */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          // UPDATED: Changed 'max-w-3xl' to 'max-w-5xl' to allow text to take more width
           className="text-center max-w-5xl mx-auto mb-16"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-6">
+          {/* Badge: Explicit bg-card */}
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-card border border-border shadow-sm mb-6">
             <Scale className="w-4 h-4 text-sentinel-blue" />
             <span className="text-sm font-medium text-muted-foreground">
               Compliance Automation
@@ -72,7 +72,8 @@ export function ComplianceSection() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                className="glass-card p-6 flex items-start gap-4"
+                // Card: Explicit bg-card
+                className="bg-card border border-border rounded-2xl p-6 flex items-start gap-4 shadow-sm"
               >
                 <div className="w-10 h-10 rounded-lg bg-sentinel-blue/10 flex items-center justify-center flex-shrink-0">
                   <CheckCircle2 className="w-5 h-5 text-sentinel-blue" />
@@ -94,7 +95,7 @@ export function ComplianceSection() {
             ))}
           </motion.div>
 
-          {/* RIGHT COLUMN: Compliance Score Only (Updated: Removed Live Audit Log) */}
+          {/* RIGHT COLUMN: Compliance Score Only */}
           <motion.div
             initial={{ opacity: 0, x: 30 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -102,8 +103,8 @@ export function ComplianceSection() {
             transition={{ duration: 0.6 }}
             className="space-y-6"
           >
-            {/* Card 1: Compliance Score */}
-            <div className="glass-card p-6 sm:p-8">
+            {/* Card 1: Compliance Score - Explicit bg-card */}
+            <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-sm">
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <h3 className="font-display text-xl font-semibold text-foreground">
@@ -178,8 +179,6 @@ export function ComplianceSection() {
               </div>
             </div>
 
-            {/* DELETED: Live Audit Log Card */}
-            
             {/* Decorative Elements */}
             <div className="absolute -z-10 -top-10 -right-10 w-40 h-40 bg-sentinel-blue/10 rounded-full blur-3xl" />
             <div className="absolute -z-10 -bottom-10 -left-10 w-40 h-40 bg-sentinel-red/10 rounded-full blur-3xl" />

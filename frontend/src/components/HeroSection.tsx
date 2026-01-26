@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowRight, Play, Terminal, Activity, ShieldCheck, Lock } from "lucide-react";
+import { ArrowRight, Activity, ShieldCheck, Lock, Terminal } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "./ui/button";
 
@@ -62,19 +62,21 @@ export function HeroSection() {
             className="relative w-full max-w-[600px]"
           >
             {/* Console Container */}
-            <div className="terminal-window border-border/40 dark:border-white/10 bg-background/80 dark:bg-[#0a0a0a]/90 backdrop-blur-md shadow-2xl relative overflow-hidden group">
+            {/* Dark Theme Colors */}
+            <div className="terminal-window border-white/10 bg-[#0a0a0a] shadow-2xl relative overflow-hidden group">
               {/* Top Glow Accent */}
               <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-sentinel-blue/50 to-transparent opacity-50" />
               
               {/* Console Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-border/40 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02]">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-white/[0.02]">
                 <div className="flex items-center gap-3">
                   <div className="flex gap-2">
                     <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/50" />
                     <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/50" />
                     <div className="w-3 h-3 rounded-full bg-emerald-500/20 border border-emerald-500/50" />
                   </div>
-                  <span className="text-sm font-mono text-muted-foreground ml-2">sentinel_v2.0_live_env</span>
+                  {/* UPDATED: Changed text-gray-500 to text-gray-300 for better visibility */}
+                  <span className="text-sm font-mono text-gray-300 ml-2">sentinel_v2.0_live_env</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Activity className="w-4 h-4 text-emerald-500 animate-pulse" />
@@ -83,7 +85,6 @@ export function HeroSection() {
               </div>
 
               {/* Console Content */}
-              {/* UPDATED: Reduced padding to 'p-6' to suit the slimmer width */}
               <div className="p-6 text-left relative">
                 {/* Background Grid inside console */}
                 <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:24px_24px]" />
@@ -96,27 +97,31 @@ export function HeroSection() {
                       <div className="p-2 bg-sentinel-blue/10 rounded-xl">
                         <ShieldCheck className="w-6 h-6 text-sentinel-blue" />
                       </div>
-                      <h3 className="text-xl font-display font-semibold text-foreground">Advanced Intelligence</h3>
+                      <h3 className="text-xl font-display font-semibold text-white">Advanced Intelligence</h3>
                     </div>
-                    <p className="text-base text-muted-foreground leading-relaxed">
+                    {/* UPDATED: Changed text-gray-400 to text-gray-300 */}
+                    <p className="text-base text-gray-300 leading-relaxed">
                       Deploy heuristic engines to detect <span className="text-sentinel-red font-medium">SQLi</span>, <span className="text-sentinel-red font-medium">XSS</span>, and <span className="text-sentinel-red font-medium">Shadow APIs</span>.
                     </p>
-                    <div className="flex flex-wrap gap-2 text-xs font-mono text-muted-foreground">
-                      <span className="px-2 py-1 bg-black/5 dark:bg-white/5 rounded-md border border-black/5 dark:border-white/5">AES-256</span>
-                      <span className="px-2 py-1 bg-black/5 dark:bg-white/5 rounded-md border border-black/5 dark:border-white/5">TLS 1.3</span>
-                      <span className="px-2 py-1 bg-black/5 dark:bg-white/5 rounded-md border border-black/5 dark:border-white/5">SOC2 Type II</span>
+                    {/* UPDATED: Changed text-gray-500 to text-gray-300 */}
+                    <div className="flex flex-wrap gap-2 text-xs font-mono text-gray-300">
+                      <span className="px-2 py-1 bg-white/5 rounded-md border border-white/5">AES-256</span>
+                      <span className="px-2 py-1 bg-white/5 rounded-md border border-white/5">TLS 1.3</span>
+                      <span className="px-2 py-1 bg-white/5 rounded-md border border-white/5">SOC2 Type II</span>
                     </div>
                   </div>
 
                   {/* Input Action Section */}
-                  <div className="bg-black/5 dark:bg-black/40 p-2 rounded-xl border border-black/5 dark:border-white/10 mt-2">
+                  <div className="bg-black/40 p-2 rounded-xl border border-white/10 mt-2">
                     <div className="flex flex-col gap-3">
                       <div className="relative">
-                        <Terminal className="absolute left-4 top-3.5 w-5 h-5 text-muted-foreground" />
+                        {/* UPDATED: Changed text-gray-500 to text-gray-300 */}
+                        <Terminal className="absolute left-4 top-3.5 w-5 h-5 text-gray-300" />
+                        {/* UPDATED: Changed placeholder:text-gray-600 to placeholder:text-gray-400 */}
                         <input 
                           type="text" 
                           placeholder="https://target-app.com"
-                          className="w-full bg-white/50 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-lg py-3 pl-12 pr-4 text-sm text-foreground font-mono focus:outline-none focus:border-sentinel-blue/50 focus:bg-sentinel-blue/5 transition-all placeholder:text-muted-foreground/50"
+                          className="w-full bg-white/5 border border-white/5 rounded-lg py-3 pl-12 pr-4 text-sm text-white font-mono focus:outline-none focus:border-sentinel-blue/50 focus:bg-sentinel-blue/5 transition-all placeholder:text-gray-400"
                         />
                       </div>
                       <Button className="w-full bg-sentinel-blue hover:bg-sentinel-blue/90 text-white font-mono text-sm tracking-wider h-12 shadow-[0_0_15px_rgba(0,70,255,0.3)]">
