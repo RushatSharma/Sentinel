@@ -82,7 +82,7 @@ export function Navbar() {
                 className="bg-sentinel-blue hover:bg-sentinel-blue/90 text-white font-medium px-6 rounded-full shadow-lg shadow-sentinel-blue/20 hover:shadow-sentinel-blue/40 transition-all duration-300"
               >
                 <Terminal className="w-4 h-4 mr-2" />
-                Get Started
+                Sign In
               </Button>
             </Link>
           </div>

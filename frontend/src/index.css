@@ -8,7 +8,7 @@
     --background: 36 100% 98%;
     --foreground: 0 0% 0%;
 
-    /* SOLID: Removed transparency */
+    /* SOLID: Pearl White */
     --card: 36 100% 98%;
     --card-foreground: 0 0% 0%;
 
@@ -42,8 +42,8 @@
     --ring: 224 100% 50%;
     --radius: 0.75rem;
 
-    /* Glass Vars - FORCED SOLID */
-    --glass-bg: 36 100% 98%; /* Solid Pearl White */
+    /* Force variables to match card for consistency */
+    --glass-bg: 36 100% 98%; 
     --glass-border: 0 0% 0% / 0.1;
     --grid-color: 0 0% 0% / 0.05;
   }
@@ -84,7 +84,7 @@
     --offense-red: 0 100% 55%;
     --offense-red-glow: 0 100% 65%;
     
-    --glass-bg: 0 0% 0%; /* Solid True Black */
+    --glass-bg: 0 0% 0%; 
     --glass-border: 0 0% 100% / 0.1;
     --grid-color: 224 100% 50% / 0.15;
   }
@@ -99,6 +99,15 @@
     padding: 0;
   }
   h1, h2, h3, h4, h5, h6 { font-family: 'Space Grotesk', system-ui, sans-serif; }
+  
+  /* Strictly enforce footer background */
+  footer {
+    background-color: hsl(var(--card)) !important;
+    border-top: 1px solid hsl(var(--border));
+    /* Lift footer above any potential loose grid lines */
+    position: relative;
+    z-index: 10;
+  }
 }
 
 @layer components {
@@ -107,22 +116,31 @@
   }
 
   /* --- FORCED SOLID CARD STYLES --- */
-  /* Redefine 'glass' to be solid to prevent grid bleed-through */
   .glass { 
     @apply border shadow-sm;
-    background-color: hsl(var(--card)) !important; /* Force Solid Color */
-    border-color: hsl(var(--glass-border)); 
+    background-color: hsl(var(--card)) !important; 
+    border-color: hsl(var(--glass-border));
+    backdrop-filter: none !important;
+    opacity: 1 !important;
+    
+    /* Ensure cards sit above the grid */
+    position: relative; 
+    z-index: 5;
   }
   
   .glass-card { 
     @apply glass rounded-2xl;
-    /* Extra redundancy to ensure opacity */
     background-color: hsl(var(--card)) !important;
+    position: relative;
+    z-index: 5;
   }
 
-  /* --- GRID BACKGROUND ANIMATION (Kept as requested) --- */
+  /* --- GRID BACKGROUND ANIMATION --- */
   .grid-background {
+    /* Create a stacking context so -1 children stay within this container */
     position: relative;
+    z-index: 0;
+    
     background-size: 40px 40px;
     background-image: 
       linear-gradient(to right, hsl(var(--grid-color)) 1px, transparent 1px),
@@ -131,10 +149,16 @@
     background-position: center top;
   }
 
+  /* CRITICAL FIX: 
+     z-index: -1 places the grid lines BEHIND the content (Navbar, Main, Footer),
+     but IN FRONT of the background color of the .grid-background container.
+  */
   .grid-background::before {
     content: "";
     position: absolute;
     inset: 0;
+    z-index: -1; 
+    
     background-size: 40px 40px;
     background-image: 
       linear-gradient(to right, hsl(var(--defense-blue) / 0.2) 1px, transparent 1px),
@@ -150,6 +174,8 @@
     content: "";
     position: absolute;
     inset: 0;
+    z-index: -1; 
+
     background-size: 40px 40px;
     background-image: 
       linear-gradient(to right, hsl(var(--offense-red) / 0.2) 1px, transparent 1px),
@@ -164,8 +190,9 @@
   /* --- TERMINAL & BENTO COMPONENTS --- */
   .terminal-window {
     @apply rounded-xl border border-white/10 overflow-hidden font-mono text-sm shadow-2xl;
-    /* Force dark background for terminal console */
     background-color: #0f1117 !important; 
+    position: relative;
+    z-index: 5;
   }
 
   .terminal-header {
