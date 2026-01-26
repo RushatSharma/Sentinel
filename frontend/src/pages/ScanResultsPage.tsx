@@ -1,16 +1,26 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title } from "chart.js";
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import { Doughnut } from "react-chartjs-2";
-import { Activity, Download, ShieldCheck, FileText, Lock, Terminal, ShieldAlert, Globe } from "lucide-react";
+import { 
+    Activity, Download, ShieldCheck, FileText, Lock, Terminal, 
+    ShieldAlert, Globe, ChevronDown, ChevronRight, AlertTriangle, CheckCircle2, Server, Radio
+} from "lucide-react";
 import type { ScanReport } from "../types"; 
 import { Button } from "../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
 import { Navbar } from "../components/Navbar";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../components/ui/table";
+import { cn } from "../lib/utils";
 
-// Register Chart.js components
-ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title);
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 export default function ScanResultsPage() {
   const [searchParams] = useSearchParams();
@@ -21,8 +31,15 @@ export default function ScanResultsPage() {
   const [report, setReport] = useState<ScanReport | null>(null);
   const [error, setError] = useState<string>("");
   const [scanLogs, setScanLogs] = useState<string[]>([]);
+  
+  const [expandedRows, setExpandedRows] = useState<number[]>([]);
 
-  // Simulated Scanning Effect
+  const toggleRow = (idx: number) => {
+    setExpandedRows(prev => 
+      prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]
+    );
+  };
+
   useEffect(() => {
     if (!url) {
         navigate("/");
@@ -40,7 +57,6 @@ export default function ScanResultsPage() {
       "Generating final report..."
     ];
 
-    // Store timeout IDs for cleanup to prevent duplicate lines
     const timeouts: NodeJS.Timeout[] = [];
     let delay = 0;
 
@@ -49,21 +65,17 @@ export default function ScanResultsPage() {
         setScanLogs(prev => [...prev, `> ${log}`]);
       }, delay);
       timeouts.push(id);
-      delay += 800; // Stagger logs
+      delay += 800; 
     });
 
-    // Actual Backend Call
     const fetchScan = async () => {
       try {
         const response = await axios.post("http://127.0.0.1:5000/api/scan", { url });
-        
-        // Wait for animation to feel "complete" before showing results
         const finalDelay = setTimeout(() => {
             setReport(response.data);
             setLoading(false);
         }, 6500);
         timeouts.push(finalDelay);
-
       } catch (err) {
         setError("Connection Failed. Ensure the Sentinel Backend is running.");
         setLoading(false);
@@ -72,10 +84,7 @@ export default function ScanResultsPage() {
 
     fetchScan();
 
-    // CLEANUP FUNCTION: Clears timers on unmount to fix duplicate lines
-    return () => {
-      timeouts.forEach(clearTimeout);
-    };
+    return () => timeouts.forEach(clearTimeout);
   }, [url, navigate]);
 
   const handleDownload = async () => {
@@ -105,7 +114,7 @@ export default function ScanResultsPage() {
       datasets: [
         {
           data: [high, medium, low],
-          backgroundColor: ["#ef4444", "#f97316", "#22c55e"], // Red, Orange, Green
+          backgroundColor: ["#E11D48", "#F97316", "#10B981"],
           borderColor: "transparent",
           hoverOffset: 4
         },
@@ -113,13 +122,10 @@ export default function ScanResultsPage() {
     };
   };
 
-  // --- RENDERING LOADING STATE (Cyberpunk Terminal) ---
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center relative overflow-hidden p-4">
-        {/* Background Grid - Adapted for Theme */}
         <div className="absolute inset-0 w-full h-full grid-background opacity-50 pointer-events-none" />
-        
         <div className="z-10 w-full max-w-5xl flex flex-col items-center">
           <div className="mb-8 flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
              <div className="relative">
@@ -135,10 +141,7 @@ export default function ScanResultsPage() {
                </p>
              </div>
           </div>
-
-          {/* Expanded Console Window */}
           <div className="w-full bg-[#0f1117] border border-white/10 rounded-xl shadow-2xl overflow-hidden relative group">
-            {/* Terminal Header */}
             <div className="flex items-center justify-between px-4 py-3 bg-[#1a1d26] border-b border-white/5">
                 <div className="flex gap-2">
                     <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/50" />
@@ -147,12 +150,8 @@ export default function ScanResultsPage() {
                 </div>
                 <div className="text-xs font-mono text-gray-400">root@sentinel-node:~/audit</div>
             </div>
-
-            {/* Terminal Content */}
             <div className="p-6 h-[500px] overflow-y-auto font-mono text-sm relative custom-scrollbar">
-                {/* Scanlines Effect */}
                 <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] z-[1] pointer-events-none opacity-20 bg-[length:100%_2px,3px_100%]" />
-                
                 {scanLogs.map((log, i) => (
                 <div key={i} className="mb-2 last:animate-pulse text-green-500">
                     <span className="text-sentinel-blue mr-3 opacity-70">[{new Date().toLocaleTimeString()}]</span>
@@ -167,7 +166,6 @@ export default function ScanResultsPage() {
     );
   }
 
-  // --- RENDERING ERROR STATE ---
   if (error) {
     return (
         <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
@@ -179,24 +177,20 @@ export default function ScanResultsPage() {
     );
   }
 
-  // --- RENDERING DASHBOARD (The Heart) ---
   return (
     <div className="min-h-screen bg-background pb-20">
       <Navbar />
       
-      <div className="container mx-auto px-4 pt-10">
+      <div className="container mx-auto px-4 pt-8">
         
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
+        {/* HEADER */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div>
-                <div className="flex items-center gap-3 mb-2">
-                    <h1 className="text-4xl font-display font-bold">Audit Report</h1>
-                    <span className="px-3 py-1 bg-sentinel-blue/10 text-sentinel-blue border border-sentinel-blue/20 rounded-full text-xs font-mono uppercase tracking-wider">
-                        Completed
-                    </span>
-                </div>
-                <p className="text-muted-foreground flex items-center gap-2">
-                    <Globe className="w-4 h-4" /> Target: <span className="text-foreground font-mono">{url}</span>
+                <h1 className="text-3xl font-display font-bold flex items-center gap-3">
+                    Mission Report <span className="text-muted-foreground text-lg font-normal">#SNT-{Date.now().toString().slice(-6)}</span>
+                </h1>
+                <p className="text-muted-foreground flex items-center gap-2 mt-1 font-mono text-sm">
+                    <Globe className="w-4 h-4" /> {url}
                 </p>
             </div>
             <div className="flex gap-3">
@@ -207,149 +201,236 @@ export default function ScanResultsPage() {
             </div>
         </div>
 
-        {/* Top Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-            {/* Stat 1: Total Vulns */}
-            <Card className="glass-card border-l-4 border-l-sentinel-blue">
-                <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Total Vulnerabilities</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="text-4xl font-bold">{report?.vulnerabilities.length}</div>
-                    <p className="text-xs text-muted-foreground mt-1">Across 4 heuristic engines</p>
-                </CardContent>
-            </Card>
-
-            {/* Stat 2: High Risks */}
-            <Card className="glass-card border-l-4 border-l-destructive">
-                <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Critical Risks</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="text-4xl font-bold text-destructive">
-                        {report?.summary.high}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">Requires immediate attention</p>
-                </CardContent>
-            </Card>
-
-             {/* Stat 3: Server Info */}
-             <Card className="glass-card border-l-4 border-l-emerald-500">
-                <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Server Status</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="text-2xl font-bold text-emerald-500 flex items-center gap-2">
-                        Online <Activity className="w-5 h-5 animate-pulse" />
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">Response time: 42ms</p>
-                </CardContent>
-            </Card>
-
-             {/* Stat 4: Compliance */}
-             <Card className="glass-card border-l-4 border-l-orange-500">
-                <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Compliance Score</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="text-4xl font-bold text-orange-500">
-                        84<span className="text-xl text-muted-foreground">/100</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">GDPR & PCI-DSS check</p>
-                </CardContent>
-            </Card>
+        {/* HUD STATS STRIP */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-0 mb-8 border rounded-xl bg-card/50 backdrop-blur-sm overflow-hidden divide-x divide-y md:divide-y-0">
+            <div className="p-6 flex flex-col items-center justify-center text-center hover:bg-muted/50 transition-colors">
+                <span className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-2">Total Threats</span>
+                <span className="text-4xl font-bold font-display">{report?.vulnerabilities.length}</span>
+            </div>
+            <div className="p-6 flex flex-col items-center justify-center text-center hover:bg-muted/50 transition-colors">
+                <span className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-2">Critical Risks</span>
+                <span className="text-4xl font-bold font-display text-sentinel-red">{report?.summary.high}</span>
+            </div>
+            <div className="p-6 flex flex-col items-center justify-center text-center hover:bg-muted/50 transition-colors">
+                <span className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-2">Server Status</span>
+                <span className="text-xl font-bold font-mono text-emerald-500 flex items-center gap-2">
+                    ONLINE <Activity className="w-4 h-4 animate-pulse" />
+                </span>
+            </div>
+            <div className="p-6 flex flex-col items-center justify-center text-center hover:bg-muted/50 transition-colors">
+                <span className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-2">Compliance</span>
+                <span className="text-4xl font-bold font-display text-orange-500">84%</span>
+            </div>
         </div>
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             
-            {/* Left Column: Charts & Overview */}
-            <div className="space-y-8">
-                <Card className="glass-card h-fit">
-                    <CardHeader>
-                        <CardTitle>Threat Distribution</CardTitle>
-                        <CardDescription>Breakdown by severity</CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex justify-center p-6">
+            {/* LEFT PANEL: INTELLIGENCE */}
+            <div className="lg:col-span-5 space-y-6">
+                
+                {/* 1. Threat Distribution Chart */}
+                <div className="bg-card border rounded-xl p-6 shadow-sm">
+                    <h3 className="font-semibold mb-6 flex items-center gap-2">
+                        <Activity className="w-5 h-5 text-sentinel-blue" /> Threat Distribution
+                    </h3>
+                    <div className="flex justify-center mb-6">
                         <div className="w-48 h-48 relative">
-                             {getDoughnutData() && <Doughnut data={getDoughnutData()!} options={{ cutout: '70%', plugins: { legend: { display: false } } }} />}
+                             {getDoughnutData() && <Doughnut data={getDoughnutData()!} options={{ cutout: '75%', plugins: { legend: { display: false } } }} />}
                              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                <ShieldAlert className="w-8 h-8 text-muted-foreground/50" />
+                                <span className="text-3xl font-bold">{report?.vulnerabilities.length}</span>
+                                <span className="text-xs text-muted-foreground uppercase">Issues</span>
                              </div>
                         </div>
-                    </CardContent>
-                    <CardContent className="pt-0">
-                         <div className="space-y-2">
-                            <div className="flex justify-between items-center text-sm">
-                                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-destructive" /> Critical</div>
-                                <span className="font-bold">{report?.summary.high}</span>
-                            </div>
-                            <div className="flex justify-between items-center text-sm">
-                                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-orange-500" /> Medium</div>
-                                <span className="font-bold">{report?.summary.medium}</span>
-                            </div>
-                            <div className="flex justify-between items-center text-sm">
-                                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-emerald-500" /> Low</div>
-                                <span className="font-bold">{report?.summary.low}</span>
-                            </div>
-                         </div>
-                    </CardContent>
-                </Card>
-
-                {/* Compliance Card */}
-                <Card className="glass-card">
-                    <CardHeader>
-                        <CardTitle>Regulatory Map</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="p-3 border rounded-lg bg-secondary/20">
-                            <div className="flex justify-between mb-1">
-                                <span className="text-sm font-semibold">GDPR (EU)</span>
-                                <span className="text-sm text-destructive">2 Violations</span>
-                            </div>
-                            <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
-                                <div className="h-full bg-destructive w-[70%]" />
-                            </div>
+                    </div>
+                    <div className="space-y-3">
+                        <div className="flex justify-between text-sm p-2 bg-muted/30 rounded">
+                            <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-sentinel-red" /> Critical / High</span>
+                            <span className="font-mono font-bold">{report?.summary.high}</span>
                         </div>
-                        <div className="p-3 border rounded-lg bg-secondary/20">
-                            <div className="flex justify-between mb-1">
-                                <span className="text-sm font-semibold">OWASP Top 10</span>
-                                <span className="text-sm text-orange-500">4 Warnings</span>
-                            </div>
-                            <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
-                                <div className="h-full bg-orange-500 w-[50%]" />
-                            </div>
+                        <div className="flex justify-between text-sm p-2 bg-muted/30 rounded">
+                            <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-orange-500" /> Medium</span>
+                            <span className="font-mono font-bold">{report?.summary.medium}</span>
                         </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Right Column: Vulnerability Ledger (The Feed) */}
-            <div className="lg:col-span-2 space-y-6">
-                <div className="flex items-center gap-2 pb-2 border-b">
-                    <FileText className="w-5 h-5 text-sentinel-blue" />
-                    <h2 className="text-xl font-bold">Vulnerability Ledger</h2>
+                        <div className="flex justify-between text-sm p-2 bg-muted/30 rounded">
+                            <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500" /> Low</span>
+                            <span className="font-mono font-bold">{report?.summary.low}</span>
+                        </div>
+                    </div>
                 </div>
 
-                {report?.vulnerabilities.length === 0 ? (
-                    <Card className="border-emerald-500/20 bg-emerald-500/5">
-                        <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-                            <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mb-4">
-                                <ShieldCheck className="h-8 w-8 text-emerald-500" />
+                {/* 2. Side-by-Side Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    
+                    {/* Compliance Card */}
+                    <div className="bg-card border rounded-xl p-6 shadow-sm flex flex-col h-full">
+                        <h3 className="font-semibold mb-4 flex items-center gap-2">
+                            <ShieldCheck className="w-5 h-5 text-emerald-500" /> Compliance
+                        </h3>
+                        <div className="space-y-4 flex-1">
+                            <div>
+                                <div className="flex justify-between mb-1 text-xs font-medium">
+                                    <span>GDPR (EU)</span>
+                                    <span className="text-orange-500">Review</span>
+                                </div>
+                                <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
+                                    <div className="h-full bg-orange-500 w-[70%]" />
+                                </div>
                             </div>
-                            <h3 className="text-2xl font-bold text-emerald-500">System Secure</h3>
-                            <p className="text-muted-foreground mt-2 max-w-md">
-                                No active vulnerabilities detected in this scan. Your perimeter appears secure against standard heuristic vectors.
-                            </p>
-                        </CardContent>
-                    </Card>
-                ) : (
-                    <div className="space-y-4">
-                        {report?.vulnerabilities.map((vuln: any, idx: number) => (
-                            <VulnerabilityCard key={idx} data={vuln} />
-                        ))}
+                            <div>
+                                <div className="flex justify-between mb-1 text-xs font-medium">
+                                    <span>PCI-DSS</span>
+                                    <span className="text-emerald-500">Passing</span>
+                                </div>
+                                <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
+                                    <div className="h-full bg-emerald-500 w-[92%]" />
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                )}
+
+                    {/* Network Analysis Card */}
+                    <div className="bg-card border rounded-xl p-6 shadow-sm flex flex-col h-full">
+                        <h3 className="font-semibold mb-4 flex items-center gap-2">
+                            <Server className="w-5 h-5 text-blue-500" /> Network
+                        </h3>
+                        <div className="space-y-3 flex-1">
+                            <div className="flex justify-between items-center text-sm border-b border-border/50 pb-2">
+                                <span className="text-muted-foreground flex items-center gap-2">
+                                    <Globe className="w-3 h-3" /> Port 443
+                                </span>
+                                <span className="text-emerald-500 font-mono text-xs bg-emerald-500/10 px-1.5 py-0.5 rounded">SECURE</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm border-b border-border/50 pb-2">
+                                <span className="text-muted-foreground flex items-center gap-2">
+                                    <Radio className="w-3 h-3" /> Port 80
+                                </span>
+                                <span className="text-orange-500 font-mono text-xs bg-orange-500/10 px-1.5 py-0.5 rounded">OPEN</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-muted-foreground flex items-center gap-2">
+                                    <Terminal className="w-3 h-3" /> SSH
+                                </span>
+                                <span className="text-muted-foreground font-mono text-xs">FILTERED</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            {/* RIGHT PANEL: THREAT MATRIX (FIXED HEIGHT + SCROLL) */}
+            <div className="lg:col-span-7">
+                {/* UPDATED: Increased fixed height to lg:h-[700px] */}
+                <div className="bg-card border rounded-xl shadow-sm overflow-hidden lg:h-[659px] flex flex-col">
+                    <div className="px-6 py-4 border-b flex justify-between items-center bg-muted/20 shrink-0">
+                        <h2 className="font-bold flex items-center gap-2">
+                            <FileText className="w-5 h-5 text-sentinel-blue" /> Vulnerability Matrix
+                        </h2>
+                        <span className="text-xs font-mono text-muted-foreground px-2 py-1 bg-background border rounded">
+                            {report?.vulnerabilities.length} RECORDS FOUND
+                        </span>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow className="hover:bg-transparent">
+                                    <TableHead className="w-[100px]">Severity</TableHead>
+                                    <TableHead>Vulnerability Type</TableHead>
+                                    <TableHead className="hidden md:table-cell">Compliance</TableHead>
+                                    <TableHead className="text-right">Action</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {report?.vulnerabilities.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                                            No vulnerabilities detected. System is secure.
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    report?.vulnerabilities.map((vuln: any, idx: number) => (
+                                        <>
+                                            <TableRow 
+                                                key={idx} 
+                                                className={cn(
+                                                    "cursor-pointer hover:bg-muted/50 transition-colors",
+                                                    expandedRows.includes(idx) && "bg-muted/30"
+                                                )}
+                                                onClick={() => toggleRow(idx)}
+                                            >
+                                                <TableCell>
+                                                    <BadgeSeverity severity={vuln.severity} />
+                                                </TableCell>
+                                                <TableCell className="font-medium">
+                                                    {vuln.type}
+                                                    <div className="text-xs text-muted-foreground md:hidden mt-1 line-clamp-1">{vuln.details}</div>
+                                                </TableCell>
+                                                <TableCell className="hidden md:table-cell">
+                                                    {vuln.compliance && Object.keys(vuln.compliance).length > 0 ? (
+                                                        <div className="flex gap-2">
+                                                            {Object.keys(vuln.compliance).map(k => (
+                                                                <span key={k} className="text-[10px] border px-1.5 py-0.5 rounded bg-background uppercase text-muted-foreground">{k}</span>
+                                                            ))}
+                                                        </div>
+                                                    ) : <span className="text-muted-foreground">-</span>}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                                        {expandedRows.includes(idx) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                            
+                                            {/* EXPANDED ROW CONTENT */}
+                                            {expandedRows.includes(idx) && (
+                                                <TableRow className="bg-muted/10 hover:bg-muted/10">
+                                                    <TableCell colSpan={4} className="p-0">
+                                                        <div className="p-6 border-b space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                                <div className="space-y-2">
+                                                                    <h4 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground">
+                                                                        <AlertTriangle className="w-4 h-4" /> Detection Details
+                                                                    </h4>
+                                                                    <p className="text-sm">{vuln.details}</p>
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <h4 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground">
+                                                                        <CheckCircle2 className="w-4 h-4" /> Impact Analysis
+                                                                    </h4>
+                                                                    <p className="text-sm">
+                                                                        {vuln.severity === 'Critical' ? 'Immediate exploitation possible. Data loss imminent.' : 
+                                                                         vuln.severity === 'High' ? 'Significant risk to integrity and availability.' :
+                                                                         'Moderate risk. Remediation required in next sprint.'}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Terminal Code Block */}
+                                                            <div className="mt-4">
+                                                                <div className="flex items-center justify-between bg-[#1a1d26] px-4 py-2 rounded-t-lg border border-b-0 border-white/10">
+                                                                    <span className="text-xs font-mono text-gray-400 flex items-center gap-2">
+                                                                        <Terminal className="w-3 h-3" /> REMEDIATION_PROTOCOL.sh
+                                                                    </span>
+                                                                    <span className="text-[10px] text-gray-500">BASH</span>
+                                                                </div>
+                                                                <div className="bg-[#0f1117] p-4 rounded-b-lg border border-white/10 overflow-x-auto">
+                                                                    <code className="text-sm font-mono text-emerald-400 whitespace-pre-wrap">
+                                                                        {vuln.fix}
+                                                                    </code>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            )}
+                                        </>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </div>
             </div>
         </div>
       </div>
@@ -357,60 +438,18 @@ export default function ScanResultsPage() {
   );
 }
 
-// Sub-component for individual cards
-const VulnerabilityCard = ({ data }: { data: any }) => {
-  const severityStyles: any = {
-    Critical: "border-l-destructive bg-destructive/5",
-    High: "border-l-destructive bg-destructive/5",
-    Medium: "border-l-orange-500 bg-orange-500/5",
-    Low: "border-l-emerald-500 bg-emerald-500/5"
-  };
+// Helper for Severity Badges
+const BadgeSeverity = ({ severity }: { severity: string }) => {
+    const styles: any = {
+        Critical: "bg-red-500/15 text-red-600 border-red-500/20",
+        High: "bg-orange-500/15 text-orange-600 border-orange-500/20",
+        Medium: "bg-yellow-500/15 text-yellow-600 border-yellow-500/20",
+        Low: "bg-emerald-500/15 text-emerald-600 border-emerald-500/20"
+    };
 
-  const badgeStyles: any = {
-    Critical: "bg-destructive text-destructive-foreground",
-    High: "bg-destructive text-destructive-foreground",
-    Medium: "bg-orange-500 text-white",
-    Low: "bg-emerald-500 text-white"
-  };
-
-  return (
-    <Card className={`glass-card border-l-4 shadow-sm hover:shadow-md transition-all duration-300 ${severityStyles[data.severity] || "border-l-gray-500"}`}>
-        <CardContent className="p-6">
-            <div className="flex justify-between items-start gap-4 mb-3">
-                <div>
-                    <h3 className="font-bold text-lg text-foreground">{data.type}</h3>
-                    <p className="text-sm text-muted-foreground mt-1">{data.details}</p>
-                </div>
-                <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${badgeStyles[data.severity] || "bg-gray-500"}`}>
-                    {data.severity}
-                </span>
-            </div>
-
-            {/* Compliance Tags */}
-            {data.compliance && Object.keys(data.compliance).length > 0 && (
-                 <div className="flex flex-wrap gap-2 mb-4 mt-3">
-                    {Object.entries(data.compliance).map(([std, code]) => (
-                        <div key={std} className="flex items-center gap-1.5 px-2 py-1 bg-background border rounded text-[10px] font-mono text-muted-foreground">
-                            <Lock className="w-3 h-3" />
-                            <span className="font-semibold">{std}:</span> {String(code)}
-                        </div>
-                    ))}
-                 </div>
-            )}
-
-            {/* Terminal Fix Section */}
-            <div className="mt-4 bg-[#0f1117] rounded-md border border-white/10 overflow-hidden">
-                <div className="px-3 py-1.5 bg-white/5 border-b border-white/5 flex items-center gap-2">
-                    <Terminal className="w-3 h-3 text-sentinel-blue" />
-                    <span className="text-[10px] font-mono text-muted-foreground uppercase">Remediation Protocol</span>
-                </div>
-                <div className="p-3 overflow-x-auto">
-                    <code className="text-sm font-mono text-emerald-400 block whitespace-pre-wrap">
-                        {data.fix}
-                    </code>
-                </div>
-            </div>
-        </CardContent>
-    </Card>
-  );
+    return (
+        <span className={cn("px-2.5 py-0.5 rounded-full text-xs font-bold border uppercase", styles[severity] || "bg-gray-500/15 text-gray-600 border-gray-500/20")}>
+            {severity}
+        </span>
+    );
 };
