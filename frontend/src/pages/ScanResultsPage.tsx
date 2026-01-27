@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import { Doughnut } from "react-chartjs-2";
 import { 
     Activity, Download, ShieldCheck, FileText, Lock, Terminal, 
-    ShieldAlert, Globe, ChevronDown, ChevronRight, AlertTriangle, CheckCircle2, Server, Radio
+    ShieldAlert, Globe, ChevronDown, ChevronRight, AlertTriangle, CheckCircle2, Server, Radio, Briefcase, DollarSign, Clock, TrendingUp
 } from "lucide-react";
 import type { ScanReport } from "../types"; 
 import { Button } from "../components/ui/button";
@@ -122,6 +122,94 @@ export default function ScanResultsPage() {
     };
   };
 
+  const getRiskAssessment = (summary: { high: number; medium: number; low: number }) => {
+    if (summary.high > 0) {
+        return {
+            grade: "F",
+            color: "text-destructive",
+            bgColor: "bg-destructive/10",
+            borderColor: "border-destructive/30",
+            title: "Critical Security Risk Detected",
+            description: "This application contains severe security flaws that could lead to immediate data theft, financial loss, or total system compromise. It is unsafe for production deployment.",
+            action: "IMMEDIATE ACTION REQUIRED"
+        };
+    } else if (summary.medium > 2) {
+        return {
+            grade: "C",
+            color: "text-orange-500",
+            bgColor: "bg-orange-500/10",
+            borderColor: "border-orange-500/30",
+            title: "Moderate Risk Level",
+            description: "Several security gaps were found. While not immediately catastrophic, these issues could be exploited by determined attackers to gain unauthorized access.",
+            action: "SCHEDULE REMEDIATION"
+        };
+    } else if (summary.medium > 0 || summary.low > 0) {
+        return {
+            grade: "B",
+            color: "text-yellow-500",
+            bgColor: "bg-yellow-500/10",
+            borderColor: "border-yellow-500/30",
+            title: "Low Risk - Review Needed",
+            description: "The system is generally secure but contains minor configuration issues. These should be fixed during the next maintenance cycle to ensure best practices.",
+            action: "MONITOR & FIX"
+        };
+    } else {
+        return {
+            grade: "A",
+            color: "text-emerald-500",
+            bgColor: "bg-emerald-500/10",
+            borderColor: "border-emerald-500/30",
+            title: "System Secure",
+            description: "No significant vulnerabilities were detected. The application security posture is strong and adheres to current safety standards.",
+            action: "APPROVED FOR DEPLOYMENT"
+        };
+    }
+  };
+
+  const calculateBusinessMetrics = (summary: { high: number; medium: number; low: number }) => {
+    const financialRisk = (summary.high * 50000) + (summary.medium * 10000) + (summary.low * 1000);
+    const hours = (summary.high * 8) + (summary.medium * 4) + (summary.low * 1);
+    const devDays = Math.max(1, Math.ceil(hours / 8)); 
+
+    let probability = 5; 
+    if (summary.high > 0) probability = 95;
+    else if (summary.medium > 2) probability = 65;
+    else if (summary.medium > 0) probability = 35;
+    else if (summary.low > 0) probability = 15;
+
+    return {
+        financialRisk: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumSignificantDigits: 3 }).format(financialRisk),
+        devDays: devDays,
+        probability: probability
+    };
+  };
+
+  // --- LOGIC: Group duplicate vulnerabilities ---
+  const groupedVulnerabilities = useMemo(() => {
+    if (!report?.vulnerabilities) return [];
+
+    const groups: { [key: string]: any } = {};
+
+    report.vulnerabilities.forEach((vuln: any) => {
+        // Group by Type, Severity, and Remediation (Ignore 'details' for grouping key)
+        const key = `${vuln.type}|${vuln.severity}|${vuln.fix}`;
+
+        if (!groups[key]) {
+            groups[key] = {
+                ...vuln,
+                groupedDetails: [vuln.details] // Start array of specific instances
+            };
+        } else {
+            // Add specific detail if not already present
+            if (!groups[key].groupedDetails.includes(vuln.details)) {
+                groups[key].groupedDetails.push(vuln.details);
+            }
+        }
+    });
+
+    return Object.values(groups);
+  }, [report]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center relative overflow-hidden p-4">
@@ -223,6 +311,73 @@ export default function ScanResultsPage() {
             </div>
         </div>
 
+        {/* EXECUTIVE SUMMARY & BUSINESS IMPACT */}
+        {report && (
+            <div className="mb-8 space-y-6">
+                <div className={cn("border-2 rounded-xl p-6 shadow-sm relative overflow-hidden flex flex-col md:flex-row gap-6 items-center", 
+                    getRiskAssessment(report.summary).bgColor, 
+                    getRiskAssessment(report.summary).borderColor
+                )}>
+                    <div className={cn("w-24 h-24 rounded-full border-4 flex items-center justify-center bg-background shrink-0 shadow-lg", 
+                        getRiskAssessment(report.summary).color,
+                        getRiskAssessment(report.summary).borderColor
+                    )}>
+                        <span className="text-5xl font-display font-bold">{getRiskAssessment(report.summary).grade}</span>
+                    </div>
+                    <div className="flex-1 text-center md:text-left">
+                        <div className="flex items-center gap-2 justify-center md:justify-start mb-2">
+                            <Briefcase className={cn("w-5 h-5", getRiskAssessment(report.summary).color)} />
+                            <h3 className={cn("text-xl font-bold uppercase tracking-wide", getRiskAssessment(report.summary).color)}>
+                                {getRiskAssessment(report.summary).title}
+                            </h3>
+                        </div>
+                        <p className="text-muted-foreground text-lg leading-relaxed max-w-4xl">
+                            {getRiskAssessment(report.summary).description}
+                        </p>
+                    </div>
+                    <div className={cn("px-4 py-2 rounded-lg border-2 font-bold uppercase tracking-wider text-sm whitespace-nowrap bg-background shadow-sm", 
+                         getRiskAssessment(report.summary).color,
+                         getRiskAssessment(report.summary).borderColor
+                    )}>
+                        {getRiskAssessment(report.summary).action}
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="bg-card border rounded-xl p-5 flex items-center gap-4 shadow-sm hover:border-sentinel-blue/50 transition-colors">
+                        <div className="p-3 bg-destructive/10 rounded-full">
+                            <DollarSign className="w-6 h-6 text-destructive" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Est. Financial Exposure</p>
+                            <p className="text-2xl font-bold font-display">{calculateBusinessMetrics(report.summary).financialRisk}</p>
+                            <p className="text-xs text-muted-foreground">Potential loss value</p>
+                        </div>
+                    </div>
+                    <div className="bg-card border rounded-xl p-5 flex items-center gap-4 shadow-sm hover:border-sentinel-blue/50 transition-colors">
+                        <div className="p-3 bg-orange-500/10 rounded-full">
+                            <Clock className="w-6 h-6 text-orange-500" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Remediation Effort</p>
+                            <p className="text-2xl font-bold font-display">{calculateBusinessMetrics(report.summary).devDays} Days</p>
+                            <p className="text-xs text-muted-foreground">Estimated dev time to fix</p>
+                        </div>
+                    </div>
+                    <div className="bg-card border rounded-xl p-5 flex items-center gap-4 shadow-sm hover:border-sentinel-blue/50 transition-colors">
+                        <div className="p-3 bg-sentinel-blue/10 rounded-full">
+                            <TrendingUp className="w-6 h-6 text-sentinel-blue" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Breach Probability</p>
+                            <p className="text-2xl font-bold font-display">{calculateBusinessMetrics(report.summary).probability}%</p>
+                            <p className="text-xs text-muted-foreground">Based on severity vectors</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             
             {/* LEFT PANEL: INTELLIGENCE */}
@@ -260,8 +415,6 @@ export default function ScanResultsPage() {
 
                 {/* 2. Side-by-Side Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    
-                    {/* Compliance Card */}
                     <div className="bg-card border rounded-xl p-6 shadow-sm flex flex-col h-full">
                         <h3 className="font-semibold mb-4 flex items-center gap-2">
                             <ShieldCheck className="w-5 h-5 text-emerald-500" /> Compliance
@@ -288,7 +441,6 @@ export default function ScanResultsPage() {
                         </div>
                     </div>
 
-                    {/* Network Analysis Card */}
                     <div className="bg-card border rounded-xl p-6 shadow-sm flex flex-col h-full">
                         <h3 className="font-semibold mb-4 flex items-center gap-2">
                             <Server className="w-5 h-5 text-blue-500" /> Network
@@ -314,20 +466,18 @@ export default function ScanResultsPage() {
                             </div>
                         </div>
                     </div>
-
                 </div>
             </div>
 
-            {/* RIGHT PANEL: THREAT MATRIX (FIXED HEIGHT + SCROLL) */}
+            {/* RIGHT PANEL: THREAT MATRIX (GROUPED & CLEANER) */}
             <div className="lg:col-span-7">
-                {/* UPDATED: Increased fixed height to lg:h-[700px] */}
-                <div className="bg-card border rounded-xl shadow-sm overflow-hidden lg:h-[659px] flex flex-col">
+                <div className="bg-card border rounded-xl shadow-sm overflow-hidden lg:h-[700px] flex flex-col">
                     <div className="px-6 py-4 border-b flex justify-between items-center bg-muted/20 shrink-0">
                         <h2 className="font-bold flex items-center gap-2">
                             <FileText className="w-5 h-5 text-sentinel-blue" /> Vulnerability Matrix
                         </h2>
                         <span className="text-xs font-mono text-muted-foreground px-2 py-1 bg-background border rounded">
-                            {report?.vulnerabilities.length} RECORDS FOUND
+                            {groupedVulnerabilities.length} UNIQUE THREATS
                         </span>
                     </div>
 
@@ -342,14 +492,14 @@ export default function ScanResultsPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {report?.vulnerabilities.length === 0 ? (
+                                {groupedVulnerabilities.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
                                             No vulnerabilities detected. System is secure.
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    report?.vulnerabilities.map((vuln: any, idx: number) => (
+                                    groupedVulnerabilities.map((vuln: any, idx: number) => (
                                         <>
                                             <TableRow 
                                                 key={idx} 
@@ -364,7 +514,11 @@ export default function ScanResultsPage() {
                                                 </TableCell>
                                                 <TableCell className="font-medium">
                                                     {vuln.type}
-                                                    <div className="text-xs text-muted-foreground md:hidden mt-1 line-clamp-1">{vuln.details}</div>
+                                                    <div className="text-xs text-muted-foreground md:hidden mt-1 line-clamp-1">
+                                                        {vuln.groupedDetails.length > 1 
+                                                            ? `${vuln.groupedDetails.length} instances detected (Expand to view)` 
+                                                            : vuln.groupedDetails[0]}
+                                                    </div>
                                                 </TableCell>
                                                 <TableCell className="hidden md:table-cell">
                                                     {vuln.compliance && Object.keys(vuln.compliance).length > 0 ? (
@@ -390,18 +544,28 @@ export default function ScanResultsPage() {
                                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                                 <div className="space-y-2">
                                                                     <h4 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground">
-                                                                        <AlertTriangle className="w-4 h-4" /> Detection Details
+                                                                        <AlertTriangle className="w-4 h-4" /> Affected Targets
                                                                     </h4>
-                                                                    <p className="text-sm">{vuln.details}</p>
+                                                                    <div className="text-sm max-h-32 overflow-y-auto bg-background/50 p-2 rounded border">
+                                                                        {vuln.groupedDetails.length > 1 ? (
+                                                                            <ul className="list-disc pl-4 space-y-1">
+                                                                                {vuln.groupedDetails.map((d: string, i: number) => (
+                                                                                    <li key={i}>{d}</li>
+                                                                                ))}
+                                                                            </ul>
+                                                                        ) : (
+                                                                            <p>{vuln.groupedDetails[0]}</p>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
                                                                 <div className="space-y-2">
                                                                     <h4 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground">
                                                                         <CheckCircle2 className="w-4 h-4" /> Impact Analysis
                                                                     </h4>
-                                                                    <p className="text-sm">
-                                                                        {vuln.severity === 'Critical' ? 'Immediate exploitation possible. Data loss imminent.' : 
-                                                                         vuln.severity === 'High' ? 'Significant risk to integrity and availability.' :
-                                                                         'Moderate risk. Remediation required in next sprint.'}
+                                                                    <p className="text-sm leading-relaxed">
+                                                                        {vuln.severity === 'Critical' ? 'Immediate exploitation possible. Data loss imminent. This vulnerability enables remote code execution or direct database access.' : 
+                                                                         vuln.severity === 'High' ? 'Significant risk to integrity and availability. Attackers could manipulate data or deny service to legitimate users.' :
+                                                                         'Moderate risk. While not immediately exploitable without other factors, it violates security best practices and should be remediated in the next sprint.'}
                                                                     </p>
                                                                 </div>
                                                             </div>
