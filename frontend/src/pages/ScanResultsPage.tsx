@@ -4,7 +4,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import { Doughnut } from "react-chartjs-2";
 import { 
-    Activity, Download, ShieldCheck, FileText, Lock, Terminal, 
+    Activity, ShieldCheck, FileText, Lock, Terminal, 
     ShieldAlert, Globe, ChevronDown, ChevronRight, AlertTriangle, CheckCircle2, Server, Radio, Briefcase, DollarSign, Clock, TrendingUp
 } from "lucide-react";
 import type { ScanReport } from "../types"; 
@@ -87,15 +87,27 @@ export default function ScanResultsPage() {
     return () => timeouts.forEach(clearTimeout);
   }, [url, navigate]);
 
-  const handleDownload = async () => {
+  // UPDATED: Handle Download accepts a type
+  const handleDownload = async (type: 'technical' | 'executive') => {
     if (!report) return;
     try {
-      const response = await axios.post("http://127.0.0.1:5000/api/download-report", report, {
+      // Pass report_type in the body
+      const response = await axios.post("http://127.0.0.1:5000/api/download-report", {
+        ...report, 
+        report_type: type 
+      }, {
         responseType: 'blob',
       });
+      
       const link = document.createElement('a');
       link.href = window.URL.createObjectURL(new Blob([response.data]));
-      link.setAttribute('download', `Sentinel_Report_${Date.now()}.pdf`);
+      
+      // Distinct file names
+      const filename = type === 'executive' 
+        ? `Sentinel_Executive_Summary_${Date.now()}.pdf`
+        : `Sentinel_Technical_Report_${Date.now()}.pdf`;
+        
+      link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
     } catch (err) {
@@ -184,29 +196,23 @@ export default function ScanResultsPage() {
     };
   };
 
-  // --- LOGIC: Group duplicate vulnerabilities ---
+  // Group duplicate vulnerabilities
   const groupedVulnerabilities = useMemo(() => {
     if (!report?.vulnerabilities) return [];
-
     const groups: { [key: string]: any } = {};
-
     report.vulnerabilities.forEach((vuln: any) => {
-        // Group by Type, Severity, and Remediation (Ignore 'details' for grouping key)
         const key = `${vuln.type}|${vuln.severity}|${vuln.fix}`;
-
         if (!groups[key]) {
             groups[key] = {
                 ...vuln,
-                groupedDetails: [vuln.details] // Start array of specific instances
+                groupedDetails: [vuln.details] 
             };
         } else {
-            // Add specific detail if not already present
             if (!groups[key].groupedDetails.includes(vuln.details)) {
                 groups[key].groupedDetails.push(vuln.details);
             }
         }
     });
-
     return Object.values(groups);
   }, [report]);
 
@@ -281,10 +287,23 @@ export default function ScanResultsPage() {
                     <Globe className="w-4 h-4" /> {url}
                 </p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
                 <Button variant="outline" onClick={() => navigate("/")}>New Scan</Button>
-                <Button onClick={handleDownload} className="bg-sentinel-blue hover:bg-sentinel-blue/90 text-white shadow-lg shadow-sentinel-blue/20">
-                    <Download className="w-4 h-4 mr-2" /> Download PDF
+                
+                {/* Technical Report Button */}
+                <Button 
+                    onClick={() => handleDownload('technical')} 
+                    className="bg-sentinel-blue hover:bg-sentinel-blue/90 text-white shadow-lg shadow-sentinel-blue/20"
+                >
+                    <Terminal className="w-4 h-4 mr-2" /> Technical Report
+                </Button>
+
+                {/* Executive Report Button */}
+                <Button 
+                    onClick={() => handleDownload('executive')} 
+                    className="bg-orange-600 hover:bg-orange-700 text-white shadow-lg shadow-orange-500/20"
+                >
+                    <Briefcase className="w-4 h-4 mr-2" /> Executive Summary
                 </Button>
             </div>
         </div>
