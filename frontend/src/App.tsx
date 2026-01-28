@@ -7,6 +7,7 @@ import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/AuthPage"; 
 import ScanResultsPage from "./pages/ScanResultsPage"; // IMPORT THIS
+import DeepScanPage from "./pages/DeepScanPage";
 
 const queryClient = new QueryClient();
 
@@ -20,6 +21,7 @@ const App = () => (
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/scan-results" element={<ScanResultsPage />} /> {/* NEW ROUTE */}
           <Route path="*" element={<NotFound />} />
+          <Route path="/deep-scan" element={<DeepScanPage />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>

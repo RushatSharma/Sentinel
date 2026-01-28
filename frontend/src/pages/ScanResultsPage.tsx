@@ -5,7 +5,8 @@ import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import { Doughnut } from "react-chartjs-2";
 import { 
     Activity, ShieldCheck, FileText, Lock, Terminal, 
-    ShieldAlert, Globe, ChevronDown, ChevronRight, AlertTriangle, CheckCircle2, Server, Radio, Briefcase, DollarSign, Clock, TrendingUp
+    ShieldAlert, Globe, ChevronDown, ChevronRight, AlertTriangle, CheckCircle2, 
+    Server, Radio, Briefcase, DollarSign, Clock, TrendingUp, Fingerprint, Eye
 } from "lucide-react";
 import type { ScanReport } from "../types"; 
 import { Button } from "../components/ui/button";
@@ -26,6 +27,7 @@ export default function ScanResultsPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const url = searchParams.get("url");
+  const mode = searchParams.get("mode") || "quick"; 
 
   const [loading, setLoading] = useState<boolean>(true);
   const [report, setReport] = useState<ScanReport | null>(null);
@@ -46,15 +48,26 @@ export default function ScanResultsPage() {
         return;
     }
 
-    const logs = [
-      "Initializing heuristic engines...",
-      `Resolving host: ${url}`,
-      "Checking SSL/TLS configuration...",
-      "Injecting SQL payloads (Test Mode)...",
-      "Analyzing XSS vectors...",
-      "Mapping Shadow APIs...",
-      "Verifying GDPR compliance...",
-      "Generating final report..."
+    const logs = mode === 'deep' ? [
+        "Initializing Deep Scan protocols...",
+        `Target: ${url}`,
+        "Launching headless browser engine...",
+        "Intercepting background network traffic...",
+        "Connecting to OWASP ZAP Daemon...",
+        "Fuzzing input vectors (Active Scan)...",
+        "Analyzing response anomalies...",
+        "Compiling deep analysis report..."
+    ] : [
+        "Initializing heuristic engines...",
+        `Resolving host: ${url}`,
+        "Scanning page content for PII...",
+        "Checking SSL/TLS configuration...",
+        "Injecting SQL payloads (Test Mode)...",
+        "Analyzing XSS vectors...",
+        "Mapping Shadow APIs...",
+        "Verifying GDPR compliance...",
+        "Calculating financial risk exposure...",
+        "Generating final report..."
     ];
 
     const timeouts: NodeJS.Timeout[] = [];
@@ -70,12 +83,20 @@ export default function ScanResultsPage() {
 
     const fetchScan = async () => {
       try {
-        const response = await axios.post("http://127.0.0.1:5000/api/scan", { url });
+        const endpoint = mode === 'deep' 
+            ? "http://127.0.0.1:5000/api/deep-scan" 
+            : "http://127.0.0.1:5000/api/scan";
+
+        const response = await axios.post(endpoint, { url });
+        
+        const waitTime = mode === 'deep' ? 1000 : 7500; 
+        
         const finalDelay = setTimeout(() => {
             setReport(response.data);
             setLoading(false);
-        }, 6500);
+        }, waitTime);
         timeouts.push(finalDelay);
+
       } catch (err) {
         setError("Connection Failed. Ensure the Sentinel Backend is running.");
         setLoading(false);
@@ -85,13 +106,11 @@ export default function ScanResultsPage() {
     fetchScan();
 
     return () => timeouts.forEach(clearTimeout);
-  }, [url, navigate]);
+  }, [url, navigate, mode]);
 
-  // UPDATED: Handle Download accepts a type
   const handleDownload = async (type: 'technical' | 'executive') => {
     if (!report) return;
     try {
-      // Pass report_type in the body
       const response = await axios.post("http://127.0.0.1:5000/api/download-report", {
         ...report, 
         report_type: type 
@@ -102,7 +121,6 @@ export default function ScanResultsPage() {
       const link = document.createElement('a');
       link.href = window.URL.createObjectURL(new Blob([response.data]));
       
-      // Distinct file names
       const filename = type === 'executive' 
         ? `Sentinel_Executive_Summary_${Date.now()}.pdf`
         : `Sentinel_Technical_Report_${Date.now()}.pdf`;
@@ -178,8 +196,12 @@ export default function ScanResultsPage() {
     }
   };
 
-  const calculateBusinessMetrics = (summary: { high: number; medium: number; low: number }) => {
-    const financialRisk = (summary.high * 50000) + (summary.medium * 10000) + (summary.low * 1000);
+  const calculateBusinessMetrics = (reportData: any) => {
+    const summary = reportData.summary;
+    
+    const financialRisk = reportData.financial_risk_total || 
+        ((summary.high * 50000) + (summary.medium * 10000) + (summary.low * 1000));
+    
     const hours = (summary.high * 8) + (summary.medium * 4) + (summary.low * 1);
     const devDays = Math.max(1, Math.ceil(hours / 8)); 
 
@@ -190,26 +212,31 @@ export default function ScanResultsPage() {
     else if (summary.low > 0) probability = 15;
 
     return {
-        financialRisk: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumSignificantDigits: 3 }).format(financialRisk),
+        // FIXED LINE BELOW: Changed maximumSignificantDigits to maximumFractionDigits
+        financialRisk: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(financialRisk),
         devDays: devDays,
         probability: probability
     };
   };
 
-  // Group duplicate vulnerabilities
   const groupedVulnerabilities = useMemo(() => {
     if (!report?.vulnerabilities) return [];
     const groups: { [key: string]: any } = {};
+    
     report.vulnerabilities.forEach((vuln: any) => {
         const key = `${vuln.type}|${vuln.severity}|${vuln.fix}`;
         if (!groups[key]) {
             groups[key] = {
                 ...vuln,
-                groupedDetails: [vuln.details] 
+                groupedDetails: [vuln.details],
+                maxCvss: vuln.cvss || 0 
             };
         } else {
             if (!groups[key].groupedDetails.includes(vuln.details)) {
                 groups[key].groupedDetails.push(vuln.details);
+            }
+            if (vuln.cvss > groups[key].maxCvss) {
+                groups[key].maxCvss = vuln.cvss;
             }
         }
     });
@@ -231,7 +258,7 @@ export default function ScanResultsPage() {
                  SENTINEL<span className="text-sentinel-blue">scan</span>
                </h2>
                <p className="text-sm text-muted-foreground uppercase tracking-[0.2em] mt-1">
-                 Heuristic Audit in Progress
+                 {mode === 'deep' ? "Deep Analysis in Progress" : "Heuristic Audit in Progress"}
                </p>
              </div>
           </div>
@@ -284,13 +311,15 @@ export default function ScanResultsPage() {
                     Mission Report <span className="text-muted-foreground text-lg font-normal">#SNT-{Date.now().toString().slice(-6)}</span>
                 </h1>
                 <p className="text-muted-foreground flex items-center gap-2 mt-1 font-mono text-sm">
-                    <Globe className="w-4 h-4" /> {url}
+                    <Globe className="w-4 h-4" /> {url} 
+                    <span className="ml-2 px-2 py-0.5 rounded-full bg-secondary text-[10px] uppercase border">
+                        {mode} Mode
+                    </span>
                 </p>
             </div>
             <div className="flex flex-wrap gap-3">
                 <Button variant="outline" onClick={() => navigate("/")}>New Scan</Button>
                 
-                {/* Technical Report Button */}
                 <Button 
                     onClick={() => handleDownload('technical')} 
                     className="bg-sentinel-blue hover:bg-sentinel-blue/90 text-white shadow-lg shadow-sentinel-blue/20"
@@ -298,7 +327,6 @@ export default function ScanResultsPage() {
                     <Terminal className="w-4 h-4 mr-2" /> Technical Report
                 </Button>
 
-                {/* Executive Report Button */}
                 <Button 
                     onClick={() => handleDownload('executive')} 
                     className="bg-orange-600 hover:bg-orange-700 text-white shadow-lg shadow-orange-500/20"
@@ -369,8 +397,8 @@ export default function ScanResultsPage() {
                         </div>
                         <div>
                             <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Est. Financial Exposure</p>
-                            <p className="text-2xl font-bold font-display">{calculateBusinessMetrics(report.summary).financialRisk}</p>
-                            <p className="text-xs text-muted-foreground">Potential loss value</p>
+                            <p className="text-2xl font-bold font-display">{calculateBusinessMetrics(report).financialRisk}</p>
+                            <p className="text-xs text-muted-foreground">Real-time CVSS Valuation</p>
                         </div>
                     </div>
                     <div className="bg-card border rounded-xl p-5 flex items-center gap-4 shadow-sm hover:border-sentinel-blue/50 transition-colors">
@@ -379,7 +407,7 @@ export default function ScanResultsPage() {
                         </div>
                         <div>
                             <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Remediation Effort</p>
-                            <p className="text-2xl font-bold font-display">{calculateBusinessMetrics(report.summary).devDays} Days</p>
+                            <p className="text-2xl font-bold font-display">{calculateBusinessMetrics(report).devDays} Days</p>
                             <p className="text-xs text-muted-foreground">Estimated dev time to fix</p>
                         </div>
                     </div>
@@ -389,7 +417,7 @@ export default function ScanResultsPage() {
                         </div>
                         <div>
                             <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Breach Probability</p>
-                            <p className="text-2xl font-bold font-display">{calculateBusinessMetrics(report.summary).probability}%</p>
+                            <p className="text-2xl font-bold font-display">{calculateBusinessMetrics(report).probability}%</p>
                             <p className="text-xs text-muted-foreground">Based on severity vectors</p>
                         </div>
                     </div>
@@ -532,10 +560,14 @@ export default function ScanResultsPage() {
                                                     <BadgeSeverity severity={vuln.severity} />
                                                 </TableCell>
                                                 <TableCell className="font-medium">
-                                                    {vuln.type}
+                                                    <div className="flex items-center gap-2">
+                                                        {vuln.type === "PII Exposure" && <Fingerprint className="w-4 h-4 text-purple-500" />}
+                                                        {vuln.type === "Network Exposure" && <Globe className="w-4 h-4 text-blue-500" />}
+                                                        <span>{vuln.type}</span>
+                                                    </div>
                                                     <div className="text-xs text-muted-foreground md:hidden mt-1 line-clamp-1">
                                                         {vuln.groupedDetails.length > 1 
-                                                            ? `${vuln.groupedDetails.length} instances detected (Expand to view)` 
+                                                            ? `${vuln.groupedDetails.length} instances detected` 
                                                             : vuln.groupedDetails[0]}
                                                     </div>
                                                 </TableCell>
@@ -577,10 +609,19 @@ export default function ScanResultsPage() {
                                                                         )}
                                                                     </div>
                                                                 </div>
-                                                                <div className="space-y-2">
+                                                                <div className="space-y-3">
                                                                     <h4 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground">
                                                                         <CheckCircle2 className="w-4 h-4" /> Impact Analysis
                                                                     </h4>
+                                                                    {/* CVSS Badge */}
+                                                                    {vuln.maxCvss > 0 && (
+                                                                        <div className="flex items-center gap-2 mb-2">
+                                                                            <span className="text-xs font-mono font-bold bg-slate-800 text-white px-2 py-1 rounded">
+                                                                                CVSS {vuln.maxCvss}
+                                                                            </span>
+                                                                            <span className="text-xs text-muted-foreground">Severity Score</span>
+                                                                        </div>
+                                                                    )}
                                                                     <p className="text-sm leading-relaxed">
                                                                         {vuln.severity === 'Critical' ? 'Immediate exploitation possible. Data loss imminent. This vulnerability enables remote code execution or direct database access.' : 
                                                                          vuln.severity === 'High' ? 'Significant risk to integrity and availability. Attackers could manipulate data or deny service to legitimate users.' :

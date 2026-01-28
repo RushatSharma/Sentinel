@@ -1,18 +1,18 @@
-import { useState } from "react"; // Added useState
-import { useNavigate } from "react-router-dom"; // Added useNavigate
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, Activity, ShieldCheck, Lock, Terminal } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "./ui/button";
 
 export function HeroSection() {
-  const [targetUrl, setTargetUrl] = useState(""); // State for input
-  const navigate = useNavigate(); // Hook for navigation
+  const [targetUrl, setTargetUrl] = useState("");
+  const navigate = useNavigate();
 
   const handleStartAudit = () => {
     if (targetUrl.trim()) {
-        // Redirect to the results page with URL as a query param
-        navigate(`/scan-results?url=${encodeURIComponent(targetUrl)}`);
+      // Redirect triggers Quick Scan automatically
+      navigate(`/scan-results?url=${encodeURIComponent(targetUrl)}`);
     }
   };
 
@@ -21,18 +21,17 @@ export function HeroSection() {
       {/* Background Effects */}
       <div className="absolute inset-0 w-full h-full grid-background" />
       <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
-      
+
       <div className="container relative z-10 mx-auto px-4">
         <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 items-center">
-          
-          {/* ... LEFT COLUMN (No Changes Needed Here) ... */}
-          <motion.div 
-            initial={{ opacity: 0, x: -30 }} 
-            animate={{ opacity: 1, x: 0 }} 
+
+          {/* --- LEFT COLUMN --- */}
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8 }}
             className="lg:col-span-7 text-center lg:text-left mx-auto lg:mx-0 max-w-xl lg:max-w-none lg:pl-14"
           >
-            {/* ... (Existing Left Column Content) ... */}
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-8">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sentinel-blue opacity-75" />
@@ -50,7 +49,7 @@ export function HeroSection() {
               <p className="mb-6 leading-relaxed">
                 The compliance-first security platform designed to unify offensive discovery with defensive protocols:
               </p>
-              
+
               <ul className="space-y-4 text-left inline-block w-full">
                 <li className="flex items-start gap-3">
                   <div className="mt-2.5 h-2 w-2 rounded-full bg-sentinel-red shadow-[0_0_8px_hsl(var(--offense-red))] flex-shrink-0" />
@@ -80,16 +79,17 @@ export function HeroSection() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <Link to="/dashboard">
+              {/* MAPPED LINK TO DEEP SCAN PAGE */}
+              <Link to="/deep-scan">
                 <Button variant="sentinel" size="lg" className="group w-full sm:w-auto text-base px-8 py-6">
-                 Explore more tools <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                  Advanced Deep Scan Tools <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                 </Button>
               </Link>
             </div>
           </motion.div>
 
           {/* --- RIGHT COLUMN: CONSOLE SCANNER --- */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2, duration: 0.8 }}
@@ -99,7 +99,7 @@ export function HeroSection() {
             <div className="terminal-window border-white/10 bg-[#0a0a0a] shadow-2xl relative overflow-hidden group">
               {/* ... (Existing Terminal Header) ... */}
               <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-sentinel-blue/50 to-transparent opacity-50" />
-              
+
               <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-white/[0.02]">
                 <div className="flex items-center gap-3">
                   <div className="flex gap-2">
@@ -118,7 +118,7 @@ export function HeroSection() {
               {/* Console Content */}
               <div className="p-6 text-left relative">
                 <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:24px_24px]" />
-                
+
                 <div className="relative z-10 flex flex-col gap-6">
                   {/* ... (Existing Info Section) ... */}
                   <div className="space-y-4">
@@ -143,8 +143,8 @@ export function HeroSection() {
                     <div className="flex flex-col gap-3">
                       <div className="relative">
                         <Terminal className="absolute left-4 top-3.5 w-5 h-5 text-gray-300" />
-                        <input 
-                          type="text" 
+                        <input
+                          type="text"
                           placeholder="https://target-app.com"
                           className="w-full bg-white/5 border border-white/5 rounded-lg py-3 pl-12 pr-4 text-sm text-white font-mono focus:outline-none focus:border-sentinel-blue/50 focus:bg-sentinel-blue/5 transition-all placeholder:text-gray-400"
                           value={targetUrl}
@@ -152,7 +152,7 @@ export function HeroSection() {
                           onKeyDown={(e) => e.key === 'Enter' && handleStartAudit()}
                         />
                       </div>
-                      <Button 
+                      <Button
                         onClick={handleStartAudit}
                         className="w-full bg-sentinel-red hover:bg-sentinel-red/90 text-white font-mono text-sm tracking-wider h-12 shadow-[0_0_15px_hsl(var(--offense-red)/0.3)]"
                       >
