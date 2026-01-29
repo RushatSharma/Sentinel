@@ -27,7 +27,6 @@ import { supabase } from "@/lib/supabase";
 const AuthHeader = ({ isDarkMode, toggleTheme }: { isDarkMode: boolean; toggleTheme: () => void }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     
-    // UPDATED: Removed 'Dashboard' from navigation
     const navigation = [
         { name: "Home", href: "/" },
     ];
@@ -36,23 +35,18 @@ const AuthHeader = ({ isDarkMode, toggleTheme }: { isDarkMode: boolean; toggleTh
         <header className="absolute top-0 left-0 right-0 p-4 bg-transparent z-20">
             <div className="container mx-auto flex justify-between items-center">
                 <Link to="/" className="flex items-center space-x-2">
-                    
-                    {/* UPDATED: Theme Responsive Logo Logic */}
                     <div className="relative w-10 h-10">
-                        {/* Black Logo: Visible in Light Mode */}
                         <img 
                             src="/LogoBlack.png" 
                             alt="Sentinel Logo" 
                             className="absolute inset-0 w-full h-full object-contain block dark:hidden" 
                         />
-                        {/* White Logo: Visible in Dark Mode */}
                         <img 
                             src="/LogoWhite.png" 
                             alt="Sentinel Logo" 
                             className="absolute inset-0 w-full h-full object-contain hidden dark:block" 
                         />
                     </div>
-
                     <span className="text-xl font-bold font-display text-foreground">SENTINEL</span>
                 </Link>
 
@@ -151,14 +145,12 @@ export default function AuthPage() {
     const [isDarkMode, setIsDarkMode] = useState(
         document.documentElement.classList.contains("dark")
     );
-    // Form States
     const [signupName, setSignupName] = useState("");
     const [signupEmail, setSignupEmail] = useState("");
     const [signupPassword, setSignupPassword] = useState("");
     const [loginEmail, setLoginEmail] = useState("");
     const [loginPassword, setLoginPassword] = useState("");
     
-    // UI States
     const [loading, setLoading] = useState(false);
     const [showLoginPassword, setShowLoginPassword] = useState(false);
     const [showSignupPassword, setShowSignupPassword] = useState(false);
@@ -169,7 +161,6 @@ export default function AuthPage() {
         message: string;
     } | null>(null);
 
-    // Theme Toggle Logic
     const toggleTheme = () => {
         setIsDarkMode((prevMode) => {
             const newMode = !prevMode;
@@ -182,7 +173,6 @@ export default function AuthPage() {
         });
     };
 
-    // Theme Observer
     useEffect(() => {
         setIsDarkMode(document.documentElement.classList.contains("dark"));
         const observer = new MutationObserver((mutations) => {
@@ -211,26 +201,23 @@ export default function AuthPage() {
         setLoading(true);
 
         try {
-            // 1. Create User in Supabase Auth
             const { data, error } = await supabase.auth.signUp({
                 email: signupEmail,
                 password: signupPassword,
                 options: {
                     data: {
-                        full_name: signupName, // Storing name in metadata
+                        full_name: signupName,
                     }
                 }
             });
 
             if (error) throw error;
 
-            // 2. Handle Success
             if (data.session) {
-                // User is signed in immediately (if email confirm is off)
                 showAlert("success", "Account created successfully! Redirecting...");
-                setTimeout(() => navigate('/dashboard'), 1500);
+                // UPDATED: Redirect to Home '/' instead of '/dashboard'
+                setTimeout(() => navigate('/'), 1500);
             } else if (data.user) {
-                // User created but needs email confirmation
                 showAlert("success", "Account created! Please check your email to confirm.");
             }
 
@@ -251,7 +238,6 @@ export default function AuthPage() {
         setLoading(true);
 
         try {
-            // 1. Authenticate with Supabase
             const { data, error } = await supabase.auth.signInWithPassword({
                 email: loginEmail,
                 password: loginPassword,
@@ -259,12 +245,11 @@ export default function AuthPage() {
 
             if (error) throw error;
 
-            // 2. Handle Success
             showAlert("success", "Welcome back! Redirecting...");
-            setTimeout(() => navigate('/dashboard'), 1000);
+            // UPDATED: Redirect to Home '/' instead of '/dashboard'
+            setTimeout(() => navigate('/'), 1000);
 
         } catch (error: any) {
-             // Handle specific error codes if needed, or just show message
             showAlert("destructive", error.message || "Invalid credentials.");
         } finally {
             setLoading(false);
@@ -344,7 +329,7 @@ export default function AuthPage() {
                                 Access Sentinel
                             </h2>
                             <p className="mt-2 text-muted-foreground">
-                                Authenticate to access the dashboard.
+                                Authenticate to access your profile.
                             </p>
                         </div>
 

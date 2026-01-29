@@ -3,25 +3,29 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import LandingPage from "./pages/LandingPage";
-import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/AuthPage"; 
-import ScanResultsPage from "./pages/ScanResultsPage"; // IMPORT THIS
+import ScanResultsPage from "./pages/ScanResultsPage"; 
 import DeepScanPage from "./pages/DeepScanPage";
+import ProfilePage from "./pages/ProfilePage"; // 1. IMPORT PROFILE PAGE
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
+      <Toaster /> {/* Added Toaster for notifications */}
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          <Route path="/dashboard" element={<Home />} />
           <Route path="/auth" element={<AuthPage />} />
-          <Route path="/scan-results" element={<ScanResultsPage />} /> {/* NEW ROUTE */}
-          <Route path="*" element={<NotFound />} />
+          <Route path="/scan-results" element={<ScanResultsPage />} />
           <Route path="/deep-scan" element={<DeepScanPage />} />
+          
+          {/* 2. ADD THE PROFILE ROUTE */}
+          <Route path="/profile" element={<ProfilePage />} />
+          
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>

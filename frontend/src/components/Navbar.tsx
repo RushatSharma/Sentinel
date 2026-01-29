@@ -1,17 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Menu, X, Sun, Moon, LogIn, User, LayoutDashboard, LogOut, Settings } from 'lucide-react'; 
+import { Menu, X, Sun, Moon, LogIn, User, LogOut } from 'lucide-react'; 
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false); // State for Profile Card
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const navigate = useNavigate();
-  const profileRef = useRef<HTMLDivElement>(null); // Ref to close dropdown on click outside
+  const profileRef = useRef<HTMLDivElement>(null);
   
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const savedTheme = localStorage.getItem('theme');
@@ -45,7 +45,8 @@ export function Navbar() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setIsProfileOpen(false);
-    navigate('/');
+    // UPDATED: Redirect to Auth page instead of Home
+    navigate('/auth');
   };
 
   // --- THEME LOGIC ---
@@ -147,22 +148,11 @@ export function Navbar() {
                             <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
                         </div>
                         <div className="p-1 space-y-1">
+                            {/* UPDATED: Only Profile Option Remaining */}
                             <Link to="/profile" onClick={() => setIsProfileOpen(false)}>
                                 <Button variant="ghost" className="w-full justify-start h-9 px-2 text-sm font-normal">
                                     <User className="mr-2 h-4 w-4" />
                                     Profile
-                                </Button>
-                            </Link>
-                            <Link to="/dashboard" onClick={() => setIsProfileOpen(false)}>
-                                <Button variant="ghost" className="w-full justify-start h-9 px-2 text-sm font-normal">
-                                    <LayoutDashboard className="mr-2 h-4 w-4" />
-                                    Dashboard
-                                </Button>
-                            </Link>
-                            <Link to="/settings" onClick={() => setIsProfileOpen(false)}>
-                                <Button variant="ghost" className="w-full justify-start h-9 px-2 text-sm font-normal">
-                                    <Settings className="mr-2 h-4 w-4" />
-                                    Settings
                                 </Button>
                             </Link>
                         </div>
@@ -217,7 +207,6 @@ export function Navbar() {
               
               <div className="h-px bg-white/10 my-2" />
               
-              {/* CENTERED THEME BUTTON (Nexus Style) */}
               <div className="flex items-center justify-center py-4">
                 <button
                   onClick={toggleTheme}
@@ -228,7 +217,6 @@ export function Navbar() {
                 </button>
               </div>
 
-              {/* Mobile Auth Buttons */}
               <div className="pt-2">
                 {user ? (
                     <div className="flex flex-col gap-2">
@@ -245,12 +233,6 @@ export function Navbar() {
                              </div>
                         </Link>
                         
-                        <Link to="/dashboard" onClick={() => setIsMenuOpen(false)}>
-                            <Button variant="outline" className="w-full justify-start">
-                                <LayoutDashboard className="w-4 h-4 mr-2" />
-                                Dashboard
-                            </Button>
-                        </Link>
                         <Button 
                             onClick={() => { handleLogout(); setIsMenuOpen(false); }} 
                             className="w-full bg-destructive/80 hover:bg-destructive text-white"
