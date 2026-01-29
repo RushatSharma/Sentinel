@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Search, Scale, Wrench, FileCheck, Shield, Zap } from "lucide-react";
+import { Search, Scale, Wrench, FileCheck, Shield,} from "lucide-react";
 
 const features = [
   {
