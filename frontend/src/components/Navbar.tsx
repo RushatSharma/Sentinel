@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Menu, X, Sun, Moon, Shield, LogIn } from 'lucide-react'; // Changed Terminal to LogIn icon
+import { Menu, X, Sun, Moon, LogIn } from 'lucide-react'; // Removed Shield from imports
 import { cn } from '@/lib/utils';
 
 export function Navbar() {
@@ -40,10 +40,24 @@ export function Navbar() {
 
           {/* Logo Section */}
           <div className="flex-1 flex justify-start">
-            <Link to="/" className="flex items-center gap-2 group">
-              <div className="relative flex items-center justify-center w-8 h-8 bg-sentinel-blue/10 rounded-lg group-hover:bg-sentinel-blue/20 transition-colors">
-                <Shield className="h-5 w-5 text-sentinel-blue transition-transform group-hover:scale-110" />
+            <Link to="/" className="flex items-center gap-3 group">
+              {/* LOGO IMAGE: Theme Responsive */}
+              <div className="relative w-12 h-12"> 
+                {/* Black Logo: Visible in Light Mode, Hidden in Dark Mode */}
+                <img 
+                    src="/LogoBlack.png" 
+                    alt="Sentinel Logo" 
+                    className="absolute inset-0 w-full h-full object-contain block dark:hidden transition-transform duration-300 group-hover:scale-110" 
+                />
+                
+                {/* White Logo: Hidden in Light Mode, Visible in Dark Mode */}
+                <img 
+                    src="/LogoWhite.png" 
+                    alt="Sentinel Logo" 
+                    className="absolute inset-0 w-full h-full object-contain hidden dark:block transition-transform duration-300 group-hover:scale-110" 
+                />
               </div>
+              
               <span className="text-xl font-bold font-display tracking-tight text-foreground">
                 SENTINEL
               </span>

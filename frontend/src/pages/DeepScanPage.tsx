@@ -31,7 +31,8 @@ export default function DeepScanPage() {
       <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background pointer-events-none" />
 
       {/* Main Container */}
-      <div className="container relative z-10 mx-auto px-4 pt-20 pb-32 flex-grow flex items-center justify-center">
+      {/* FIXED: Reduced pb-32 to pb-8 to remove excess bottom gap */}
+      <div className="container relative z-10 mx-auto px-4 pt-20 pb-6 flex-grow flex items-center justify-center">
         <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 items-start w-full"> 
           
          {/* --- LEFT COLUMN: INFORMATION & WARNINGS --- */}
@@ -163,7 +164,7 @@ export default function DeepScanPage() {
                       <Button 
                         onClick={handleDeepScan}
                         disabled={loading || !url}
-                        className="w-full bg-sentinel-red hover:bg-red-700 text-white font-mono text-sm tracking-wider h-12 shadow-[0_0_20px_hsl(var(--offense-red)/0.4)]"
+                        className="w-full bg-red-600 hover:bg-red-500 text-white font-mono text-sm tracking-wider h-12 shadow-[0_0_20px_rgba(220,38,38,0.9)] transition-all"
                       >
                         <Zap className="w-4 h-4 mr-2 fill-current" />
                         LAUNCH_DEEP_ANALYSIS
