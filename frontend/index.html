@@ -4,30 +4,44 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
-    <link rel="icon" type="image/png" href="/LogoWhite.png" media="(prefers-color-scheme: dark)" />
-    <link rel="icon" type="image/png" href="/LogoBlack.png" media="(prefers-color-scheme: light)" />
-    
-    <link rel="icon" type="image/png" href="/LogoBlack.png" />
-
-    <title>Sentinel | Active Heuristic Warfare Engine</title>
-    <meta name="description" content="Secure your digital perimeter with Sentinel. The compliance-first security platform designed to unify offensive discovery with defensive protocols." />
+    <title>Sentinel - Advanced Web Vulnerability Scanner</title>
+    <meta name="description" content="Secure your web applications with Sentinel. Automated vulnerability scanning, real-time threat detection, and comprehensive security reporting." />
+    <meta name="author" content="Rushat Sharma" />
+    <meta name="keywords" content="cybersecurity, vulnerability scanner, web security, owasp zap, penetration testing, ethical hacking, automated scanning" />
 
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://nexus-nu-livid.vercel.app/" />
-    <meta property="og:title" content="Sentinel - Bridge the Gap Between Finding and Fixing" />
-    <meta property="og:description" content="Automated Red Teaming & Compliance Auditing. Discovers Shadow APIs and detects logic flaws in real-time." />
+    <meta property="og:url" content="https://sentinel-8csk0v0o3-rushat-sharmas-projects.vercel.app/" />
+    <meta property="og:title" content="Sentinel - Advanced Web Vulnerability Scanner" />
+    <meta property="og:description" content="Secure your web applications with Sentinel. Automated vulnerability scanning, real-time threat detection, and comprehensive security reporting." />
     
-    <meta property="og:image" content="https://nexus-nu-livid.vercel.app/LogoBlack.png" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
+    <meta property="og:image" content="https://sentinel-8csk0v0o3-rushat-sharmas-projects.vercel.app/LogoBlack.png" />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:url" content="https://nexus-nu-livid.vercel.app/" />
-    <meta name="twitter:title" content="Sentinel | Active Heuristic Warfare Engine" />
-    <meta name="twitter:description" content="Automated Red Teaming & Compliance Auditing. Secure your entire SDLC without slowing down innovation." />
-    <meta name="twitter:image" content="https://nexus-nu-livid.vercel.app/LogoBlack.png" />
+    <meta name="twitter:title" content="Sentinel - Web Vulnerability Scanner" />
+    <meta name="twitter:description" content="Automated vulnerability scanning and security reporting for modern web apps." />
+    <meta name="twitter:image" content="https://sentinel-8csk0v0o3-rushat-sharmas-projects.vercel.app/LogoBlack.png" />
+
+    <link rel="canonical" href="https://sentinel-8csk0v0o3-rushat-sharmas-projects.vercel.app/" />
+    <link rel="icon" href="/favicon.ico" />
+
+    <script>
+      (function() {
+        try {
+          var theme = localStorage.getItem('theme');
+          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (theme === 'dark' || (!theme && prefersDark)) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {
+          console.error("Error applying initial theme:", e);
+        }
+      })();
+    </script>
 
   </head>
+
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
