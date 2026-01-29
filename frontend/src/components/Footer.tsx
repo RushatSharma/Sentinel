@@ -1,117 +1,97 @@
-import { Shield } from "lucide-react";
-
-const footerLinks = {
-  product: [
-    { name: "Features", href: "#features" },
-    { name: "Compliance", href: "#compliance" },
-    { name: "Reporting", href: "#reporting" },
-    { name: "Pricing", href: "#pricing" },
-  ],
-  company: [
-    { name: "About", href: "#" },
-    { name: "Mission", href: "#" },
-    { name: "Careers", href: "#" },
-    { name: "Contact", href: "#" },
-  ],
-  legal: [
-    { name: "Privacy Policy", href: "#" },
-    { name: "Terms of Service", href: "#" },
-    { name: "Security", href: "#" },
-    { name: "GDPR", href: "#" },
-  ],
-};
+import { Link } from "react-router-dom";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Github, Twitter, Linkedin, Send } from "lucide-react";
 
 export function Footer() {
   return (
-    // Explicitly bg-card with relative positioning to block grid
-    <footer className="relative z-10 border-t border-border bg-card">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-          {/* Brand */}
-          <div className="col-span-2 md:col-span-1">
-            <a href="/" className="flex items-center gap-2 mb-4">
-              <div className="relative">
-                <Shield className="h-7 w-7 text-sentinel-blue" />
-                <div className="absolute inset-0 blur-lg bg-sentinel-blue/30" />
+    <footer className="bg-background border-t border-white/10 pt-16 pb-12">
+      <div className="container mx-auto px-4 md:px-6">
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+          
+          {/* COLUMN 1: BRANDING */}
+          <div className="space-y-6">
+            <Link to="/" className="flex items-center gap-3 group">
+              {/* Theme Responsive Logo */}
+              <div className="relative w-10 h-10"> 
+                <img src="/LogoBlack.png" alt="Sentinel Logo" className="absolute inset-0 w-full h-full object-contain block dark:hidden" />
+                <img src="/LogoWhite.png" alt="Sentinel Logo" className="absolute inset-0 w-full h-full object-contain hidden dark:block" />
               </div>
-              <span className="font-display text-lg font-bold text-foreground">
-                Sentinel
+              <span className="text-2xl font-bold font-display tracking-tight text-foreground">
+                SENTINEL
               </span>
-            </a>
-            <p className="text-sm text-muted-foreground max-w-xs">
-              Compliance-first security that bridges offensive scanning with 
-              defensive remediation.
+            </Link>
+            {/* INCREASED TEXT SIZE: text-lg */}
+            <p className="text-muted-foreground text-lg leading-relaxed max-w-xs">
+              The active heuristic warfare engine. Bridging the gap between offensive discovery and defensive remediation for modern DevSecOps.
             </p>
+            <div className="flex items-center gap-5 pt-2">
+              <a href="#" className="text-muted-foreground hover:text-sentinel-blue transition-colors">
+                <Github className="w-6 h-6" />
+              </a>
+              <a href="#" className="text-muted-foreground hover:text-sentinel-blue transition-colors">
+                <Twitter className="w-6 h-6" />
+              </a>
+              <a href="#" className="text-muted-foreground hover:text-sentinel-blue transition-colors">
+                <Linkedin className="w-6 h-6" />
+              </a>
+            </div>
           </div>
 
-          {/* Product Links */}
+          {/* COLUMN 2: PRODUCT */}
           <div>
-            <h4 className="font-display font-semibold text-foreground mb-4">
-              Product
-            </h4>
-            <ul className="space-y-3">
-              {footerLinks.product.map((link) => (
-                <li key={link.name}>
-                  <a
-                    href={link.href}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {link.name}
-                  </a>
-                </li>
-              ))}
+            {/* INCREASED HEADING SIZE */}
+            <h3 className="text-lg font-bold text-foreground mb-6">Platform</h3>
+            {/* INCREASED LIST TEXT SIZE: text-base */}
+            <ul className="space-y-4 text-base text-muted-foreground">
+              <li><Link to="/features" className="hover:text-sentinel-blue transition-colors">Warfare Engine</Link></li>
+              <li><Link to="/compliance" className="hover:text-sentinel-blue transition-colors">Compliance Mapping</Link></li>
+              <li><Link to="/reporting" className="hover:text-sentinel-blue transition-colors">Risk Reporting</Link></li>
+              <li><Link to="#" className="hover:text-sentinel-blue transition-colors">Shadow API Discovery</Link></li>
             </ul>
           </div>
 
-          {/* Company Links */}
+          {/* COLUMN 3: RESOURCES */}
           <div>
-            <h4 className="font-display font-semibold text-foreground mb-4">
-              Company
-            </h4>
-            <ul className="space-y-3">
-              {footerLinks.company.map((link) => (
-                <li key={link.name}>
-                  <a
-                    href={link.href}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {link.name}
-                  </a>
-                </li>
-              ))}
+            <h3 className="text-lg font-bold text-foreground mb-6">Resources</h3>
+            <ul className="space-y-4 text-base text-muted-foreground">
+              <li><Link to="#" className="hover:text-sentinel-blue transition-colors">Documentation</Link></li>
+              <li><Link to="#" className="hover:text-sentinel-blue transition-colors">API Reference</Link></li>
+              <li><Link to="#" className="hover:text-sentinel-blue transition-colors">Security Guide</Link></li>
+              <li><Link to="#" className="hover:text-sentinel-blue transition-colors">System Status</Link></li>
             </ul>
           </div>
 
-          {/* Legal Links */}
+          {/* COLUMN 4: NEWSLETTER */}
           <div>
-            <h4 className="font-display font-semibold text-foreground mb-4">
-              Legal
-            </h4>
-            <ul className="space-y-3">
-              {footerLinks.legal.map((link) => (
-                <li key={link.name}>
-                  <a
-                    href={link.href}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {link.name}
-                  </a>
-                </li>
-              ))}
-            </ul>
+            <h3 className="text-lg font-bold text-foreground mb-6">Threat Intelligence</h3>
+            <p className="text-base text-muted-foreground mb-6">
+              Subscribe to our feed for the latest CVEs and zero-day alerts.
+            </p>
+            <div className="flex gap-3">
+              <Input 
+                type="email" 
+                placeholder="sec-admin@company.com" 
+                className="bg-secondary/50 border-red-500 text-lg h-12 focus-visible:ring-sentinel-blue placeholder:text-muted-foreground/70"
+              />
+              <Button size="icon" className="h-12 w-12 bg-sentinel-blue hover:bg-sentinel-blue/90 text-white shrink-0">
+                <Send className="w-6 h-6" />
+              </Button>
+            </div>
           </div>
         </div>
 
-        {/* Bottom Bar */}
-        <div className="mt-12 pt-8 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Sentinel Security. All rights reserved.
+        {/* BOTTOM BAR */}
+        <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+          {/* INCREASED COPYRIGHT TEXT SIZE: text-sm */}
+          <p className="text-sm text-muted-foreground text-center md:text-left">
+            &copy; {new Date().getFullYear()} Sentinel Security Inc. All rights reserved.
           </p>
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-full bg-green-500" />
-              All systems operational
-            </span>
+          <div className="flex gap-8 text-sm text-muted-foreground">
+            <Link to="#" className="hover:text-foreground transition-colors">Privacy Policy</Link>
+            <Link to="#" className="hover:text-foreground transition-colors">Terms of Service</Link>
+            <Link to="#" className="hover:text-foreground transition-colors">Cookie Settings</Link>
           </div>
         </div>
       </div>

@@ -87,8 +87,7 @@ export function HeroSection() {
               </Link>
             </div>
           </motion.div>
-
-          {/* --- RIGHT COLUMN: CONSOLE SCANNER --- */}
+{/* --- RIGHT COLUMN: CONSOLE SCANNER --- */}
           <motion.div
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
@@ -107,11 +106,11 @@ export function HeroSection() {
                     <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/50" />
                     <div className="w-3 h-3 rounded-full bg-emerald-500/20 border border-emerald-500/50" />
                   </div>
-                  <span className="text-sm font-mono text-gray-300 ml-2">sentinel_v2.0_live_env</span>
+                  <span className="text-sm font-mono text-gray-300 ml-2">sentinel_quick_scan_module</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Activity className="w-4 h-4 text-emerald-500 animate-pulse" />
-                  <span className="text-xs font-mono text-emerald-500 uppercase tracking-wider">System Online</span>
+                  <span className="text-xs font-mono text-emerald-500 uppercase tracking-wider">Engine Ready</span>
                 </div>
               </div>
 
@@ -120,21 +119,21 @@ export function HeroSection() {
                 <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:24px_24px]" />
 
                 <div className="relative z-10 flex flex-col gap-6">
-                  {/* ... (Existing Info Section) ... */}
+                  {/* ... (Info Section) ... */}
                   <div className="space-y-4">
                     <div className="flex items-center gap-4">
                       <div className="p-2 bg-sentinel-blue/10 rounded-xl">
                         <ShieldCheck className="w-6 h-6 text-sentinel-blue" />
                       </div>
-                      <h3 className="text-xl font-display font-semibold text-white">Advanced Intelligence</h3>
+                      <h3 className="text-xl font-display font-semibold text-white">Rapid Reconnaissance</h3>
                     </div>
                     <p className="text-base text-gray-300 leading-relaxed">
-                      Deploy heuristic engines to detect <span className="text-sentinel-red font-medium">SQLi</span>, <span className="text-sentinel-red font-medium">XSS</span>, and <span className="text-sentinel-red font-medium">Shadow APIs</span>.
+                      Execute a lightning-fast surface audit to map <span className="text-sentinel-red font-medium">Open Ports</span>, <span className="text-sentinel-red font-medium">Exposed PII</span>, and <span className="text-sentinel-red font-medium">Header Risks</span> in seconds.
                     </p>
                     <div className="flex flex-wrap gap-2 text-xs font-mono text-gray-300">
-                      <span className="px-2 py-1 bg-white/5 rounded-md border border-white/5">AES-256</span>
-                      <span className="px-2 py-1 bg-white/5 rounded-md border border-white/5">TLS 1.3</span>
-                      <span className="px-2 py-1 bg-white/5 rounded-md border border-white/5">SOC2 Type II</span>
+                      <span className="px-2 py-1 bg-white/5 rounded-md border border-white/5">Passive Mode</span>
+                      <span className="px-2 py-1 bg-white/5 rounded-md border border-white/5">&lt; 5 Seconds</span>
+                      <span className="px-2 py-1 bg-white/5 rounded-md border border-white/5">Non-Intrusive</span>
                     </div>
                   </div>
 
@@ -157,7 +156,7 @@ export function HeroSection() {
                         className="w-full bg-sentinel-red hover:bg-sentinel-red/90 text-white font-mono text-sm tracking-wider h-12 shadow-[0_0_15px_hsl(var(--offense-red)/0.3)]"
                       >
                         <Lock className="w-4 h-4 mr-2" />
-                        START_AUDIT
+                        INITIATE_QUICK_SCAN
                       </Button>
                     </div>
                   </div>

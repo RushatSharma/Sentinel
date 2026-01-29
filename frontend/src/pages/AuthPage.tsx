@@ -15,31 +15,47 @@ import {
     Moon,
     Sun,
     X,
-    Shield, 
     Lock
 } from "lucide-react";
 import AuthWhiteImg from "@/assets/AuthWhite.webp"; 
 import AuthBlackImg from "@/assets/AuthBlack.webp"; 
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 
 // --- Header Component ---
 const AuthHeader = ({ isDarkMode, toggleTheme }: { isDarkMode: boolean; toggleTheme: () => void }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    
+    // UPDATED: Removed 'Dashboard' from navigation
     const navigation = [
         { name: "Home", href: "/" },
-        { name: "Dashboard", href: "/dashboard" },
     ];
 
     return (
         <header className="absolute top-0 left-0 right-0 p-4 bg-transparent z-20">
             <div className="container mx-auto flex justify-between items-center">
                 <Link to="/" className="flex items-center space-x-2">
-                    <div className="relative flex items-center justify-center w-8 h-8 rounded-lg bg-sentinel-blue/10">
-                         <Shield className="w-5 h-5 text-sentinel-blue" />
+                    
+                    {/* UPDATED: Theme Responsive Logo Logic */}
+                    <div className="relative w-10 h-10">
+                        {/* Black Logo: Visible in Light Mode */}
+                        <img 
+                            src="/LogoBlack.png" 
+                            alt="Sentinel Logo" 
+                            className="absolute inset-0 w-full h-full object-contain block dark:hidden" 
+                        />
+                        {/* White Logo: Visible in Dark Mode */}
+                        <img 
+                            src="/LogoWhite.png" 
+                            alt="Sentinel Logo" 
+                            className="absolute inset-0 w-full h-full object-contain hidden dark:block" 
+                        />
                     </div>
+
                     <span className="text-xl font-bold font-display text-foreground">SENTINEL</span>
                 </Link>
+
                 <nav className="hidden lg:flex absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 items-center space-x-8">
                     {navigation.map((item) => (
                         <NavLink
@@ -135,11 +151,14 @@ export default function AuthPage() {
     const [isDarkMode, setIsDarkMode] = useState(
         document.documentElement.classList.contains("dark")
     );
+    // Form States
     const [signupName, setSignupName] = useState("");
     const [signupEmail, setSignupEmail] = useState("");
     const [signupPassword, setSignupPassword] = useState("");
     const [loginEmail, setLoginEmail] = useState("");
     const [loginPassword, setLoginPassword] = useState("");
+    
+    // UI States
     const [loading, setLoading] = useState(false);
     const [showLoginPassword, setShowLoginPassword] = useState(false);
     const [showSignupPassword, setShowSignupPassword] = useState(false);
@@ -150,6 +169,7 @@ export default function AuthPage() {
         message: string;
     } | null>(null);
 
+    // Theme Toggle Logic
     const toggleTheme = () => {
         setIsDarkMode((prevMode) => {
             const newMode = !prevMode;
@@ -162,6 +182,7 @@ export default function AuthPage() {
         });
     };
 
+    // Theme Observer
     useEffect(() => {
         setIsDarkMode(document.documentElement.classList.contains("dark"));
         const observer = new MutationObserver((mutations) => {
@@ -177,33 +198,77 @@ export default function AuthPage() {
 
     const showAlert = (type: "success" | "destructive", message: string) => {
         setAlert({ type, message });
-        setTimeout(() => setAlert(null), 4000);
+        setTimeout(() => setAlert(null), 5000);
     };
 
+    // --- SUPABASE SIGN UP LOGIC ---
     const handleSignup = async () => {
         if (!signupEmail || !signupPassword || !signupName) {
             showAlert("destructive", "Please fill in Name, Email, and Password.");
             return;
         }
+        
         setLoading(true);
-        setTimeout(() => {
+
+        try {
+            // 1. Create User in Supabase Auth
+            const { data, error } = await supabase.auth.signUp({
+                email: signupEmail,
+                password: signupPassword,
+                options: {
+                    data: {
+                        full_name: signupName, // Storing name in metadata
+                    }
+                }
+            });
+
+            if (error) throw error;
+
+            // 2. Handle Success
+            if (data.session) {
+                // User is signed in immediately (if email confirm is off)
+                showAlert("success", "Account created successfully! Redirecting...");
+                setTimeout(() => navigate('/dashboard'), 1500);
+            } else if (data.user) {
+                // User created but needs email confirmation
+                showAlert("success", "Account created! Please check your email to confirm.");
+            }
+
+        } catch (error: any) {
+            showAlert("destructive", error.message || "An error occurred during sign up.");
+        } finally {
             setLoading(false);
-            showAlert("success", "Account created! Redirecting to Dashboard...");
-            setTimeout(() => navigate('/dashboard'), 1500);
-        }, 1500);
+        }
     };
 
+    // --- SUPABASE LOGIN LOGIC ---
     const handleLogin = async () => {
         if (!loginEmail || !loginPassword) {
             showAlert("destructive", "Please enter both email and password.");
             return;
         }
+        
         setLoading(true);
-        setTimeout(() => {
-            setLoading(false);
+
+        try {
+            // 1. Authenticate with Supabase
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email: loginEmail,
+                password: loginPassword,
+            });
+
+            if (error) throw error;
+
+            // 2. Handle Success
             showAlert("success", "Welcome back! Redirecting...");
             setTimeout(() => navigate('/dashboard'), 1000);
-        }, 1500);
+
+        } catch (error: any) {
+             // Handle specific error codes if needed, or just show message
+            showAlert("destructive", error.message || "Invalid credentials.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -233,11 +298,9 @@ export default function AuthPage() {
 
             <div className="w-full min-h-screen lg:grid lg:grid-cols-2">
                 {/* --- Left Column (Illustration) --- */}
-                {/* MODIFIED: Reduced padding from p-12 to p-6 to tighten vertical space */}
                 <div className="hidden lg:flex flex-col items-center justify-center p-6 relative overflow-hidden">
                    <div className="absolute inset-0 bg-grid-white/5 bg-[size:20px_20px] pointer-events-none opacity-30" />
                    
-                    {/* MODIFIED: Reduced space-y-6 to space-y-4 */}
                     <div className="text-center space-y-4 relative z-10 max-w-3xl">
                         
                         <div className="relative rounded-2xl overflow-hidden max-w-md mx-auto">
@@ -271,10 +334,8 @@ export default function AuthPage() {
                 </div>
 
                 {/* --- Right Column (Auth Forms) --- */}
-                {/* MODIFIED: Reduced padding from pt-24 pb-12 to pt-16 pb-8 to remove scrollbar */}
                 <div className="flex flex-col items-center justify-center pt-16 pb-8 px-4 sm:px-6 lg:p-8 bg-background">
                     <div className="w-full max-w-md">
-                         {/* MODIFIED: Reduced margin-bottom from mb-8 to mb-6 */}
                          <div className="text-center mb-6">
                             <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-sentinel-blue/10 mb-4">
                                 <Lock className="w-6 h-6 text-sentinel-blue" />

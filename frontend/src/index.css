@@ -88,6 +88,42 @@
     --glass-border: 0 0% 100% / 0.1;
     --grid-color: 224 100% 50% / 0.15;
   }
+
+  /* --- GLOBAL RED SCROLLBAR --- */
+
+  /* 1. Firefox Support */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #dc2626 hsl(var(--background));
+  }
+
+  /* 2. WebKit Browsers (Chrome, Edge, Safari) */
+  
+  /* Width of the scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px; /* Height for horizontal scrollbars */
+  }
+
+  /* The Track (Background) - Dynamic Theme Color */
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--background)); /* Automatically turns Black in Dark Mode, White in Light Mode */
+  }
+
+  /* The Thumb (The moving red part) */
+  ::-webkit-scrollbar-thumb {
+    background-color: #dc2626; /* Vibrant Sentinel Red */
+    border-radius: 9999px; /* Pill shape */
+    
+    /* This border creates a "floating" effect by masking the edges with the background color */
+    border: 2px solid hsl(var(--background)); 
+  }
+
+  /* Hover State - Slightly darker red */
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: #b91c1c; 
+  }
+
 }
 
 @layer base {

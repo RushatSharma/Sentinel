@@ -1,6 +1,74 @@
 import time
+import json
 from playwright.sync_api import sync_playwright
 from zapv2 import ZAPv2
+# Import the save function to enable history logging
+from database import save_scan_result
+
+# --- MAIN ORCHESTRATOR FUNCTION ---
+def run_deep_scan(target_url, user_id=None):
+    """
+    Orchestrates the entire Deep Scan process:
+    1. Launches Playwright for Shadow API discovery.
+    2. Connects to ZAP for active vulnerability scanning.
+    3. Aggregates results.
+    4. Saves to Supabase if a user_id is provided.
+    """
+    print(f"[*] Starting Deep Scan for {target_url}...")
+    
+    # 1. Run Shadow API Scan
+    real_shadows = scan_shadow_apis_real(target_url)
+    
+    # 2. Run Active ZAP Scan
+    zap_alerts = scan_active_zap(target_url)
+    
+    # 3. Aggregate Report Structure (to match frontend expectation)
+    # Note: server.py reconstructs this, but we build a local object for DB saving
+    vuln_list = []
+    
+    for api in real_shadows:
+        vuln_list.append({
+            "type": "Shadow API Detected", 
+            "details": api, 
+            "severity": "Medium",
+            "fix": "Secure API Endpoint"
+        })
+        
+    for alert in zap_alerts:
+        vuln_list.append(alert)
+        
+    final_report_object = {
+        "target": target_url,
+        "vulnerabilities": vuln_list,
+        "summary": {
+            "high": sum(1 for v in vuln_list if v['severity'] in ['High', 'Critical']),
+            "medium": sum(1 for v in vuln_list if v['severity'] == 'Medium'),
+            "low": sum(1 for v in vuln_list if v['severity'] == 'Low')
+        }
+    }
+    
+    # 4. Save to Supabase (if user is logged in)
+    if user_id:
+        print(f"[*] Saving report for user {user_id}...")
+        
+        # Calculate a simple weighted risk score
+        high = final_report_object['summary']['high']
+        med = final_report_object['summary']['medium']
+        low = final_report_object['summary']['low']
+        risk_score = min(100, (high * 25) + (med * 10) + (low * 2))
+
+        save_scan_result(
+            user_id=user_id,
+            target_url=target_url,
+            mode="Deep",
+            risk_score=risk_score, 
+            vulns_found=len(vuln_list), 
+            report_json=final_report_object 
+        )
+    else:
+        print("[!] No User ID provided. Skipping database save.")
+
+    return final_report_object
 
 # --- 1. SHADOW API DISCOVERY (Lightweight Chromium) ---
 def scan_shadow_apis_real(target_url):
