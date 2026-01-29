@@ -14,6 +14,8 @@ import math
 app = Flask(__name__)
 CORS(app)
 
+def health_check():
+    return "Sentinel Active", 200
 # --- HELPER FUNCTIONS (Risk & Compliance) ---
 def calculate_dynamic_risk(vuln_type, severity):
     cvss_map = {
