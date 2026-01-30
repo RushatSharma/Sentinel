@@ -11,19 +11,20 @@ export function HeroSection() {
 
   const handleStartAudit = () => {
     if (targetUrl.trim()) {
-      // Redirect triggers Quick Scan automatically
       navigate(`/scan-results?url=${encodeURIComponent(targetUrl)}`);
     }
   };
 
   return (
-    <section className="relative pt-20 pb-32 overflow-hidden">
+    // FIXED: Reduced bottom padding on mobile (pb-16 vs pb-32)
+    <section className="relative pt-20 pb-16 lg:pb-32 overflow-hidden">
       {/* Background Effects */}
       <div className="absolute inset-0 w-full h-full grid-background" />
       <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
 
-      <div className="container relative z-10 mx-auto px-4">
-        <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+      <div className="container relative z-10 mx-auto px-4 sm:px-6">
+        {/* FIXED: Added grid-cols-1 for mobile explicitly */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
 
           {/* --- LEFT COLUMN --- */}
           <motion.div
@@ -40,8 +41,9 @@ export function HeroSection() {
               <span className="text-sm font-medium text-muted-foreground">Red Team × Blue Team Integration</span>
             </div>
 
-            <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6 leading-tight">
-              <span className="text-foreground">Bridge the Gap Between</span><br />
+            {/* FIXED: Smaller font size on mobile (text-3xl) to prevent overflow */}
+            <h1 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6 leading-tight">
+              <span className="text-foreground">Bridge the Gap Between </span><br className="hidden sm:block" />
               <span className="text-sentinel-red">Finding</span> <span className="text-foreground">and</span> <span className="text-sentinel-blue">Fixing</span>
             </h1>
 
@@ -50,7 +52,8 @@ export function HeroSection() {
                 The compliance-first security platform designed to unify offensive discovery with defensive protocols:
               </p>
 
-              <ul className="space-y-4 text-left inline-block w-full">
+              {/* FIXED: List items align better on small screens */}
+              <ul className="space-y-4 text-left inline-block w-full max-w-md lg:max-w-full">
                 <li className="flex items-start gap-3">
                   <div className="mt-2.5 h-2 w-2 rounded-full bg-sentinel-red shadow-[0_0_8px_hsl(var(--offense-red))] flex-shrink-0" />
                   <span>
@@ -79,61 +82,65 @@ export function HeroSection() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              {/* MAPPED LINK TO DEEP SCAN PAGE */}
-              <Link to="/deep-scan">
-                <Button variant="sentinel" size="lg" className="group w-full sm:w-auto text-base px-8 py-6">
+              <Link to="/deep-scan" className="w-full sm:w-auto">
+                <Button variant="sentinel" size="lg" className="group w-full text-base px-8 py-6">
                   Advanced Deep Scan Tools <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                 </Button>
               </Link>
             </div>
           </motion.div>
-{/* --- RIGHT COLUMN: CONSOLE SCANNER --- */}
+
+          {/* --- RIGHT COLUMN: CONSOLE SCANNER --- */}
           <motion.div
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2, duration: 0.8 }}
-            className="lg:col-span-5 relative w-full max-w-[600px] mx-auto lg:mr-0 lg:ml-auto"
+            className="lg:col-span-5 relative w-full max-w-md lg:max-w-[600px] mx-auto lg:mr-0 lg:ml-auto"
           >
             {/* Console Container */}
-            <div className="terminal-window border-white/10 bg-[#0a0a0a] shadow-2xl relative overflow-hidden group">
-              {/* ... (Existing Terminal Header) ... */}
+            <div className="terminal-window border border-white/10 bg-[#0a0a0a] shadow-2xl relative overflow-hidden rounded-xl group">
               <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-sentinel-blue/50 to-transparent opacity-50" />
 
-              <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-white/[0.02]">
+              {/* FIXED: Added flex-wrap and gap adjustments for small screens */}
+              <div className="flex flex-wrap items-center justify-between px-4 py-3 sm:px-6 sm:py-4 border-b border-white/5 bg-white/[0.02] gap-y-2">
                 <div className="flex items-center gap-3">
                   <div className="flex gap-2">
-                    <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/50" />
-                    <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/50" />
-                    <div className="w-3 h-3 rounded-full bg-emerald-500/20 border border-emerald-500/50" />
+                    <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-red-500/20 border border-red-500/50" />
+                    <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-yellow-500/20 border border-yellow-500/50" />
+                    <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-emerald-500/20 border border-emerald-500/50" />
                   </div>
-                  <span className="text-sm font-mono text-gray-300 ml-2">sentinel_quick_scan_module</span>
+                  {/* HIDDEN on very small screens to prevent overflow */}
+                  <span className="text-xs sm:text-sm font-mono text-gray-300 ml-2 truncate max-w-[120px] sm:max-w-none">
+                    sentinel_quick_scan_module
+                  </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-emerald-500 animate-pulse" />
-                  <span className="text-xs font-mono text-emerald-500 uppercase tracking-wider">Engine Ready</span>
+                <div className="flex items-center gap-2 ml-auto sm:ml-0">
+                  <Activity className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-500 animate-pulse" />
+                  <span className="text-[10px] sm:text-xs font-mono text-emerald-500 uppercase tracking-wider">Engine Ready</span>
                 </div>
               </div>
 
               {/* Console Content */}
-              <div className="p-6 text-left relative">
+              {/* FIXED: Reduced padding to p-4 on mobile */}
+              <div className="p-4 sm:p-6 text-left relative">
                 <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:24px_24px]" />
 
-                <div className="relative z-10 flex flex-col gap-6">
-                  {/* ... (Info Section) ... */}
+                <div className="relative z-10 flex flex-col gap-4 sm:gap-6">
+                  {/* Info Section */}
                   <div className="space-y-4">
                     <div className="flex items-center gap-4">
-                      <div className="p-2 bg-sentinel-blue/10 rounded-xl">
-                        <ShieldCheck className="w-6 h-6 text-sentinel-blue" />
+                      <div className="p-2 bg-sentinel-blue/10 rounded-xl flex-shrink-0">
+                        <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6 text-sentinel-blue" />
                       </div>
-                      <h3 className="text-xl font-display font-semibold text-white">Rapid Reconnaissance</h3>
+                      <h3 className="text-lg sm:text-xl font-display font-semibold text-white">Rapid Reconnaissance</h3>
                     </div>
-                    <p className="text-base text-gray-300 leading-relaxed">
+                    <p className="text-sm sm:text-base text-gray-300 leading-relaxed">
                       Execute a lightning-fast surface audit to map <span className="text-sentinel-red font-medium">Open Ports</span>, <span className="text-sentinel-red font-medium">Exposed PII</span>, and <span className="text-sentinel-red font-medium">Header Risks</span> in seconds.
                     </p>
-                    <div className="flex flex-wrap gap-2 text-xs font-mono text-gray-300">
-                      <span className="px-2 py-1 bg-white/5 rounded-md border border-white/5">Passive Mode</span>
-                      <span className="px-2 py-1 bg-white/5 rounded-md border border-white/5">&lt; 5 Seconds</span>
-                      <span className="px-2 py-1 bg-white/5 rounded-md border border-white/5">Non-Intrusive</span>
+                    <div className="flex flex-wrap gap-2 text-[10px] sm:text-xs font-mono text-gray-300">
+                      <span className="px-2 py-1 bg-white/5 rounded-md border border-white/5 whitespace-nowrap">Passive Mode</span>
+                      <span className="px-2 py-1 bg-white/5 rounded-md border border-white/5 whitespace-nowrap">&lt; 5 Seconds</span>
+                      <span className="px-2 py-1 bg-white/5 rounded-md border border-white/5 whitespace-nowrap">Non-Intrusive</span>
                     </div>
                   </div>
 
@@ -145,7 +152,7 @@ export function HeroSection() {
                         <input
                           type="text"
                           placeholder="https://target-app.com"
-                          className="w-full bg-white/5 border border-white/5 rounded-lg py-3 pl-12 pr-4 text-sm text-white font-mono focus:outline-none focus:border-sentinel-blue/50 focus:bg-sentinel-blue/5 transition-all placeholder:text-gray-400"
+                          className="w-full bg-white/5 border border-white/5 rounded-lg py-3 pl-12 pr-4 text-xs sm:text-sm text-white font-mono focus:outline-none focus:border-sentinel-blue/50 focus:bg-sentinel-blue/5 transition-all placeholder:text-gray-400"
                           value={targetUrl}
                           onChange={(e) => setTargetUrl(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && handleStartAudit()}
@@ -153,9 +160,9 @@ export function HeroSection() {
                       </div>
                       <Button
                         onClick={handleStartAudit}
-                        className="w-full bg-sentinel-red hover:bg-sentinel-red/90 text-white font-mono text-sm tracking-wider h-12 shadow-[0_0_15px_hsl(var(--offense-red)/0.3)]"
+                        className="w-full bg-sentinel-red hover:bg-sentinel-red/90 text-white font-mono text-xs sm:text-sm tracking-wider h-10 sm:h-12 shadow-[0_0_15px_hsl(var(--offense-red)/0.3)]"
                       >
-                        <Lock className="w-4 h-4 mr-2" />
+                        <Lock className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
                         INITIATE_QUICK_SCAN
                       </Button>
                     </div>
