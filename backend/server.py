@@ -1,11 +1,12 @@
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
-# Import existing logic
+# Import standard scanners for Quick Mode
 from scanner_logic import scan_sql_injection, scan_xss, scan_shadow_apis
 from port_scanner import scan_ports
 from reporter import generate_report
-# Import NEW Deep Scanner logic
-from deep_scanner import scan_shadow_apis_real, scan_active_zap
+
+# IMPORT THE NEW PLAYWRIGHT DEEP SCANNER
+from deep_scanner import run_deep_scan
 
 import requests
 import re
@@ -16,11 +17,15 @@ CORS(app)
 
 def health_check():
     return "Sentinel Active", 200
+
 # --- HELPER FUNCTIONS (Risk & Compliance) ---
 def calculate_dynamic_risk(vuln_type, severity):
     cvss_map = {
         "SQL Injection": 9.8, "XSS": 6.1, "Network Exposure": 5.3,
-        "Shadow API Detected": 7.5, "PII Exposure": 8.2, "Simulated: SQL Injection (Deep)": 9.8
+        "Shadow API Detected": 7.5, "PII Exposure": 8.2, 
+        "Missing CSP Header": 4.3, "Missing HSTS Header": 3.1,
+        "Clickjacking Risk": 4.3, "Insecure Cookie": 5.0,
+        "Sensitive File Exposure": 8.5, "Insecure Secret Storage": 7.2
     }
     score = cvss_map.get(vuln_type, 5.0)
     base_asset_value = 1000 
@@ -30,12 +35,14 @@ def calculate_dynamic_risk(vuln_type, severity):
 def scan_page_content(url):
     findings = []
     try:
-        response = requests.get(url, timeout=5) # Increased timeout for stability
+        response = requests.get(url, timeout=5)
         content = response.text
         
+        # Simple Regex to find exposed emails (PII)
         emails = set(re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', content))
         if emails:
-            valid_emails = [e for e in emails if "example.com" not in e and "uilib" not in e]
+            # Filter out dummy/library emails to reduce noise
+            valid_emails = [e for e in emails if "example.com" not in e and "uilib" not in e and "node_modules" not in e]
             if valid_emails:
                 findings.append({
                     "type": "PII Exposure",
@@ -47,133 +54,46 @@ def scan_page_content(url):
         pass
     return findings
 
-def get_compliance_and_fix(vuln_type):
-    db = {
-        "SQL Injection": {"fix": "Use Prepared Statements."},
-        "XSS": {"fix": "Sanitize inputs with DOMPurify."},
-        "Network Exposure": {"fix": "Close unused ports."},
-        "Shadow API Detected": {"fix": "Secure API routes."},
-        "PII Exposure": {"fix": "Redact PII from responses."},
-        "Active Scan Engine Offline": {"fix": "Start ZAP Daemon."},
-        "Simulated: SQL Injection (Deep)": {"fix": "Use Parameterized Queries."}
-    }
-    return db.get(vuln_type, {"fix": "See OWASP Guidelines."})
-
 # --- ROUTES ---
 
 @app.route('/api/scan', methods=['POST'])
 def run_quick_scan():
-    """Lightweight scan (~5 seconds)"""
+    """
+    Lightweight scan (~5 seconds).
+    Uses Regex and Port Scanning. Safe for all targets.
+    """
     data = request.json
     target_url = data.get('url')
     if not target_url: return jsonify({"error": "No URL provided"}), 400
     if not target_url.startswith('http'): target_url = 'https://' + target_url
 
-    return jsonify(perform_scan(target_url, mode='quick'))
+    return jsonify(perform_quick_scan(target_url))
 
 @app.route('/api/deep-scan', methods=['POST'])
-def run_deep_scan():
-    """Heavyweight scan (~30-60 seconds)"""
+def handle_deep_scan():
+    """
+    Heavyweight scan (Playwright).
+    Uses Headless Browser Fuzzing, Header Audit, and Storage Checks.
+    """
     data = request.json
     target_url = data.get('url')
     if not target_url: return jsonify({"error": "No URL provided"}), 400
     if not target_url.startswith('http'): target_url = 'https://' + target_url
 
-    return jsonify(perform_scan(target_url, mode='deep'))
-
-def perform_scan(target_url, mode):
-    report = {
-        "target": target_url,
-        "vulnerabilities": [],
-        "summary": {"high": 0, "medium": 0, "low": 0},
-        "financial_risk_total": 0
-    }
-
-    # 1. LIVE PII SCAN (Always run)
-    pii_findings = scan_page_content(target_url)
-    for pii in pii_findings:
-        cvss, cost = calculate_dynamic_risk("PII Exposure", pii['severity'])
-        report["vulnerabilities"].append({
-            "type": "PII Exposure", "details": pii['details'], "severity": pii['severity'],
-            "fix": pii['fix'], "cvss": cvss, "est_cost": cost
-        })
-
-    # 2. MODE SPECIFIC SCANS
-    if mode == 'deep':
-        # --- DEEP MODE (Playwright + ZAP) ---
-        print("Running Deep Scan...")
-        real_shadows = scan_shadow_apis_real(target_url)
-        for api in real_shadows:
-            cvss, cost = calculate_dynamic_risk("Shadow API Detected", "Medium")
-            report["vulnerabilities"].append({
-                "type": "Shadow API Detected", "details": api, "severity": "Medium",
-                "fix": "Secure API Endpoint", "cvss": cvss, "est_cost": cost
-            })
-            
-        zap_alerts = scan_active_zap(target_url)
-        for alert in zap_alerts:
-            cvss, cost = calculate_dynamic_risk(alert['type'], alert['severity'])
-            report["vulnerabilities"].append({
-                "type": alert['type'], "details": alert['details'], "severity": alert['severity'],
-                "fix": alert['fix'], "cvss": cvss, "est_cost": cost
-            })
-    else:
-        # --- QUICK MODE (Simulated/Lightweight) ---
-        # This was missing in the previous version!
-        print("Running Quick Scan...")
-        
-        # A. Port Scan
-        try:
-            ports = scan_ports(target_url)
-            for p in ports:
-                cvss, cost = calculate_dynamic_risk("Network Exposure", "Low")
-                report["vulnerabilities"].append({
-                    "type": "Network Exposure", "details": f"Port {p} Open", "severity": "Low",
-                    "fix": "Close Port", "cvss": cvss, "est_cost": cost
-                })
-        except: pass
-
-        # B. Regex SQLi Scan
-        sqli = scan_sql_injection(target_url)
-        if sqli:
-            cvss, cost = calculate_dynamic_risk("SQL Injection", "Critical")
-            report["vulnerabilities"].append({
-                "type": "SQL Injection", "details": sqli, "severity": "Critical",
-                "fix": "Use Prepared Statements", "cvss": cvss, "est_cost": cost
-            })
-
-        # C. Regex XSS Scan
-        xss = scan_xss(target_url)
-        if xss:
-            cvss, cost = calculate_dynamic_risk("XSS", "High")
-            report["vulnerabilities"].append({
-                "type": "XSS", "details": xss, "severity": "High",
-                "fix": "Sanitize Inputs", "cvss": cvss, "est_cost": cost
-            })
-
-        # D. Regex Shadow API
-        shadows = scan_shadow_apis(target_url)
-        for s in shadows:
-            cvss, cost = calculate_dynamic_risk("Shadow API Detected", "Medium")
-            report["vulnerabilities"].append({
-                "type": "Shadow API Detected", "details": s, "severity": "Medium",
-                "fix": "Secure API", "cvss": cvss, "est_cost": cost
-            })
-
-    # 3. CALCULATE TOTALS
-    for vuln in report["vulnerabilities"]:
-        report["financial_risk_total"] += vuln.get("est_cost", 0)
-        sev = vuln["severity"]
-        if sev in ["Critical", "High"]: report["summary"]["high"] += 1
-        elif sev == "Medium": report["summary"]["medium"] += 1
-        elif sev == "Low": report["summary"]["low"] += 1
-
-    return report
+    # Call the new Playwright Orchestrator
+    # Pass user_id=None unless you have auth logic setup
+    try:
+        report = run_deep_scan(target_url, user_id=None)
+        return jsonify(report)
+    except Exception as e:
+        print(f"Deep Scan Error: {e}")
+        return jsonify({"error": "Deep scan failed to initialize"}), 500
 
 @app.route('/api/download-report', methods=['POST'])
 def download_report():
     data = request.json
     report_type = data.get('report_type', 'technical')
+    # Remove metadata keys if present
     report_data = {k:v for k,v in data.items() if k != 'report_type'}
     
     if not report_data or 'vulnerabilities' not in report_data:
@@ -185,6 +105,74 @@ def download_report():
     except Exception as e:
         print(f"Report error: {e}")
         return jsonify({"error": "Failed"}), 500
+
+# --- LOGIC FOR QUICK SCAN ONLY ---
+def perform_quick_scan(target_url):
+    report = {
+        "target": target_url,
+        "vulnerabilities": [],
+        "summary": {"high": 0, "medium": 0, "low": 0},
+        "financial_risk_total": 0
+    }
+
+    print(f"[*] Running Quick Scan for {target_url}...")
+
+    # 1. LIVE PII SCAN
+    pii_findings = scan_page_content(target_url)
+    for pii in pii_findings:
+        cvss, cost = calculate_dynamic_risk("PII Exposure", pii['severity'])
+        report["vulnerabilities"].append({
+            "type": "PII Exposure", "details": pii['details'], "severity": pii['severity'],
+            "fix": pii['fix'], "cvss": cvss, "est_cost": cost
+        })
+
+    # 2. PORT SCAN
+    try:
+        ports = scan_ports(target_url)
+        for p in ports:
+            cvss, cost = calculate_dynamic_risk("Network Exposure", "Low")
+            report["vulnerabilities"].append({
+                "type": "Network Exposure", "details": f"Port {p} Open", "severity": "Low",
+                "fix": "Close Port", "cvss": cvss, "est_cost": cost
+            })
+    except: pass
+
+    # 3. REGEX SQLi SCAN
+    sqli = scan_sql_injection(target_url)
+    if sqli:
+        cvss, cost = calculate_dynamic_risk("SQL Injection", "Critical")
+        report["vulnerabilities"].append({
+            "type": "SQL Injection", "details": sqli, "severity": "Critical",
+            "fix": "Use Prepared Statements", "cvss": cvss, "est_cost": cost
+        })
+
+    # 4. REGEX XSS SCAN
+    xss = scan_xss(target_url)
+    if xss:
+        cvss, cost = calculate_dynamic_risk("XSS", "High")
+        report["vulnerabilities"].append({
+            "type": "XSS", "details": xss, "severity": "High",
+            "fix": "Sanitize Inputs", "cvss": cvss, "est_cost": cost
+        })
+
+    # 5. REGEX SHADOW API SCAN
+    shadows = scan_shadow_apis(target_url)
+    for s in shadows:
+        cvss, cost = calculate_dynamic_risk("Shadow API Detected", "Medium")
+        report["vulnerabilities"].append({
+            "type": "Shadow API Detected", "details": s, "severity": "Medium",
+            "fix": "Secure API", "cvss": cvss, "est_cost": cost
+        })
+
+    # CALCULATE TOTALS
+    for vuln in report["vulnerabilities"]:
+        report["financial_risk_total"] += vuln.get("est_cost", 0)
+        sev = vuln["severity"]
+        if sev in ["Critical", "High"]: report["summary"]["high"] += 1
+        elif sev == "Medium": report["summary"]["medium"] += 1
+        elif sev == "Low": report["summary"]["low"] += 1
+
+    return report
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

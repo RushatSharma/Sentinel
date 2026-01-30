@@ -23,7 +23,7 @@ import { cn } from "../lib/utils";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-// ✅ DEFINING THE API URL DYNAMICALLY
+// API URL Dynamic Definition
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
 
 export default function ScanResultsPage() {
@@ -86,7 +86,6 @@ export default function ScanResultsPage() {
 
     const fetchScan = async () => {
       try {
-        // ✅ FIXED: Using API_BASE_URL instead of localhost
         const endpoint = mode === 'deep' 
             ? `${API_BASE_URL}/api/deep-scan`
             : `${API_BASE_URL}/api/scan`;
@@ -116,7 +115,6 @@ export default function ScanResultsPage() {
   const handleDownload = async (type: 'technical' | 'executive') => {
     if (!report) return;
     try {
-      // ✅ FIXED: Using API_BASE_URL here too
       const response = await axios.post(`${API_BASE_URL}/api/download-report`, {
         ...report, 
         report_type: type 
@@ -157,6 +155,72 @@ export default function ScanResultsPage() {
       ],
     };
   };
+
+  // --- UPDATED: STRICT COMPLIANCE LOGIC ---
+  const calculateCompliance = () => {
+    if (!report) return { score: 0, gdpr: "Unknown", pci: "Unknown" };
+
+    const vulns = report.vulnerabilities;
+    const highSeverityCount = report.summary.high; // Critical + High
+
+    // 1. Strict Fail Conditions
+    // If ANY Critical/High vulnerability exists, Compliance MUST fail.
+    const isCriticalFail = highSeverityCount > 0;
+
+    const hasPII = vulns.some((v:any) => v.type.includes("PII") || v.type.includes("Data"));
+    const hasInjection = vulns.some((v:any) => v.type.includes("SQL") || v.type.includes("XSS"));
+    const hasAuthIssues = vulns.some((v:any) => v.type.includes("Auth") || v.type.includes("Cookie") || v.type.includes("Secret") || v.type.includes("File"));
+
+    // Base score calculation
+    let score = 100;
+    score -= (report.summary.high * 20); // Higher penalty for critical
+    score -= (report.summary.medium * 5);
+    score -= (report.summary.low * 1);
+    score = Math.max(0, score);
+
+    // GDPR Logic: Fails if PII found OR if system is critically compromised
+    const gdprStatus = (hasPII || isCriticalFail) ? "Failing" : "Passing";
+    
+    // PCI Logic: Fails if Injection/Auth found OR if system is critically compromised
+    const pciStatus = (hasInjection || hasAuthIssues || isCriticalFail) ? "Review" : "Passing";
+
+    return {
+        score: score,
+        
+        gdpr: gdprStatus,
+        gdprColor: gdprStatus === "Failing" ? "text-red-500" : "text-emerald-500",
+        gdprWidth: gdprStatus === "Failing" ? "30%" : "95%",
+        gdprBg: gdprStatus === "Failing" ? "bg-red-500" : "bg-emerald-500",
+        
+        pci: pciStatus,
+        pciColor: pciStatus === "Review" ? "text-red-500" : "text-emerald-500", // Changed orange to red for critical
+        pciWidth: pciStatus === "Review" ? "40%" : "98%",
+        pciBg: pciStatus === "Review" ? "bg-red-500" : "bg-emerald-500",
+    };
+  };
+
+  // --- NEW: DYNAMIC NETWORK LOGIC ---
+  const getNetworkStatus = () => {
+    if (!report) return { port80: "Unknown", port443: "Unknown", ssh: "Unknown" };
+    
+    const networkVulns = report.vulnerabilities.filter((v:any) => v.type === "Network Exposure");
+    const openPorts = networkVulns.map((v:any) => v.details);
+
+    const checkPort = (port: string) => {
+        const isOpen = openPorts.some((p: string) => p.includes(port));
+        if (isOpen) return { status: "OPEN", color: "text-red-500", bg: "bg-red-500/10" };
+        return { status: "SECURE", color: "text-emerald-500", bg: "bg-emerald-500/10" };
+    };
+
+    return {
+        port80: checkPort("80"),
+        port443: checkPort("443"),
+        ssh: checkPort("22")
+    };
+  };
+
+  const compliance = calculateCompliance();
+  const network = getNetworkStatus();
 
   const getRiskAssessment = (summary: { high: number; medium: number; low: number }) => {
     if (summary.high > 0) {
@@ -358,8 +422,10 @@ export default function ScanResultsPage() {
                 </span>
             </div>
             <div className="p-6 flex flex-col items-center justify-center text-center hover:bg-muted/50 transition-colors">
-                <span className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-2">Compliance</span>
-                <span className="text-4xl font-bold font-display text-orange-500">84%</span>
+                <span className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-2">Compliance Score</span>
+                <span className={cn("text-4xl font-bold font-display", compliance.score < 70 ? "text-red-500" : "text-emerald-500")}>
+                    {compliance.score}%
+                </span>
             </div>
         </div>
 
@@ -467,6 +533,7 @@ export default function ScanResultsPage() {
 
                 {/* 2. Side-by-Side Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* DYNAMIC COMPLIANCE CARD */}
                     <div className="bg-card border rounded-xl p-6 shadow-sm flex flex-col h-full">
                         <h3 className="font-semibold mb-4 flex items-center gap-2">
                             <ShieldCheck className="w-5 h-5 text-emerald-500" /> Compliance
@@ -475,24 +542,25 @@ export default function ScanResultsPage() {
                             <div>
                                 <div className="flex justify-between mb-1 text-xs font-medium">
                                     <span>GDPR (EU)</span>
-                                    <span className="text-orange-500">Review</span>
+                                    <span className={compliance.gdprColor}>{compliance.gdpr}</span>
                                 </div>
                                 <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
-                                    <div className="h-full bg-orange-500 w-[70%]" />
+                                    <div className={cn("h-full", compliance.gdprBg)} style={{ width: compliance.gdprWidth }} />
                                 </div>
                             </div>
                             <div>
                                 <div className="flex justify-between mb-1 text-xs font-medium">
                                     <span>PCI-DSS</span>
-                                    <span className="text-emerald-500">Passing</span>
+                                    <span className={compliance.pciColor}>{compliance.pci}</span>
                                 </div>
                                 <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
-                                    <div className="h-full bg-emerald-500 w-[92%]" />
+                                    <div className={cn("h-full", compliance.pciBg)} style={{ width: compliance.pciWidth }} />
                                 </div>
                             </div>
                         </div>
                     </div>
 
+                    {/* DYNAMIC NETWORK CARD */}
                     <div className="bg-card border rounded-xl p-6 shadow-sm flex flex-col h-full">
                         <h3 className="font-semibold mb-4 flex items-center gap-2">
                             <Server className="w-5 h-5 text-blue-500" /> Network
@@ -502,19 +570,25 @@ export default function ScanResultsPage() {
                                 <span className="text-muted-foreground flex items-center gap-2">
                                     <Globe className="w-3 h-3" /> Port 443
                                 </span>
-                                <span className="text-emerald-500 font-mono text-xs bg-emerald-500/10 px-1.5 py-0.5 rounded">SECURE</span>
+                                <span className={cn("font-mono text-xs px-1.5 py-0.5 rounded", network.port443.color, network.port443.bg)}>
+                                    {network.port443.status}
+                                </span>
                             </div>
                             <div className="flex justify-between items-center text-sm border-b border-border/50 pb-2">
                                 <span className="text-muted-foreground flex items-center gap-2">
                                     <Radio className="w-3 h-3" /> Port 80
                                 </span>
-                                <span className="text-orange-500 font-mono text-xs bg-orange-500/10 px-1.5 py-0.5 rounded">OPEN</span>
+                                <span className={cn("font-mono text-xs px-1.5 py-0.5 rounded", network.port80.color, network.port80.bg)}>
+                                    {network.port80.status}
+                                </span>
                             </div>
                             <div className="flex justify-between items-center text-sm">
                                 <span className="text-muted-foreground flex items-center gap-2">
-                                    <Terminal className="w-3 h-3" /> SSH
+                                    <Terminal className="w-3 h-3" /> SSH (22)
                                 </span>
-                                <span className="text-muted-foreground font-mono text-xs">FILTERED</span>
+                                <span className={cn("font-mono text-xs px-1.5 py-0.5 rounded", network.ssh.color, network.ssh.bg)}>
+                                    {network.ssh.status}
+                                </span>
                             </div>
                         </div>
                     </div>

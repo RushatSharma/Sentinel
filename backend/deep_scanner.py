@@ -1,186 +1,266 @@
 import time
-import json
+import requests
+import re
 from playwright.sync_api import sync_playwright
-from zapv2 import ZAPv2
-# Import the save function to enable history logging
+# Import database save function (Ensure this matches your database.py)
 from database import save_scan_result
 
-# --- MAIN ORCHESTRATOR FUNCTION ---
+# --- CONFIGURATION: SENSITIVE FILES TO HUNT ---
+SENSITIVE_PATHS = [
+    "/.env", "/.git/config", "/.vscode/sftp.json", "/backup.sql", 
+    "/ds_store", "/phpinfo.php", "/config.php.bak", "/admin", 
+    "/dashboard", "/api-docs", "/swagger.json", "/web.config"
+]
+
+# --- MAIN ORCHESTRATOR ---
 def run_deep_scan(target_url, user_id=None):
-    """
-    Orchestrates the entire Deep Scan process:
-    1. Launches Playwright for Shadow API discovery.
-    2. Connects to ZAP for active vulnerability scanning.
-    3. Aggregates results.
-    4. Saves to Supabase if a user_id is provided.
-    """
-    print(f"[*] Starting Deep Scan for {target_url}...")
+    print(f"[*] Starting MAXED-OUT Deep Scan for {target_url}...")
     
-    # 1. Run Shadow API Scan
-    real_shadows = scan_shadow_apis_real(target_url)
-    
-    # 2. Run Active ZAP Scan
-    zap_alerts = scan_active_zap(target_url)
-    
-    # 3. Aggregate Report Structure (to match frontend expectation)
-    # Note: server.py reconstructs this, but we build a local object for DB saving
-    vuln_list = []
-    
-    for api in real_shadows:
-        vuln_list.append({
-            "type": "Shadow API Detected", 
-            "details": api, 
-            "severity": "Medium",
-            "fix": "Secure API Endpoint"
-        })
-        
-    for alert in zap_alerts:
-        vuln_list.append(alert)
-        
-    final_report_object = {
+    all_vulns = []
+
+    # PHASE 1: HEADER & COOKIE AUDIT
+    print("[*] Phase 1: Security Headers & Cookies...")
+    all_vulns.extend(scan_headers_and_cookies(target_url))
+
+    # PHASE 2: SENSITIVE FILE ENUMERATION
+    print("[*] Phase 2: Sensitive File Enumeration...")
+    all_vulns.extend(scan_sensitive_files(target_url))
+
+    # PHASE 3: ACTIVE BROWSER FUZZING (The "Zap Replacement")
+    print("[*] Phase 3: Active Browser Fuzzing (SQLi/XSS)...")
+    all_vulns.extend(scan_active_playwright(target_url))
+
+    # AGGREGATE REPORT
+    final_report = {
         "target": target_url,
-        "vulnerabilities": vuln_list,
+        "vulnerabilities": all_vulns,
         "summary": {
-            "high": sum(1 for v in vuln_list if v['severity'] in ['High', 'Critical']),
-            "medium": sum(1 for v in vuln_list if v['severity'] == 'Medium'),
-            "low": sum(1 for v in vuln_list if v['severity'] == 'Low')
+            "high": sum(1 for v in all_vulns if v['severity'] in ['High', 'Critical']),
+            "medium": sum(1 for v in all_vulns if v['severity'] == 'Medium'),
+            "low": sum(1 for v in all_vulns if v['severity'] == 'Low')
         }
     }
     
-    # 4. Save to Supabase (if user is logged in)
+    # SAVE TO DB (If User ID provided)
     if user_id:
-        print(f"[*] Saving report for user {user_id}...")
-        
-        # Calculate a simple weighted risk score
-        high = final_report_object['summary']['high']
-        med = final_report_object['summary']['medium']
-        low = final_report_object['summary']['low']
-        risk_score = min(100, (high * 25) + (med * 10) + (low * 2))
+        try:
+            high = final_report['summary']['high']
+            med = final_report['summary']['medium']
+            low = final_report['summary']['low']
+            risk_score = min(100, (high * 25) + (med * 10) + (low * 2))
 
-        save_scan_result(
-            user_id=user_id,
-            target_url=target_url,
-            mode="Deep",
-            risk_score=risk_score, 
-            vulns_found=len(vuln_list), 
-            report_json=final_report_object 
-        )
-    else:
-        print("[!] No User ID provided. Skipping database save.")
+            save_scan_result(
+                user_id=user_id,
+                target_url=target_url,
+                mode="Deep",
+                risk_score=risk_score, 
+                vulns_found=len(all_vulns), 
+                report_json=final_report 
+            )
+            print(f"[*] Report saved for user {user_id}")
+        except Exception as e:
+            print(f"[!] DB Save Error: {e}")
 
-    return final_report_object
+    return final_report
 
-# --- 1. SHADOW API DISCOVERY (Lightweight Chromium) ---
-def scan_shadow_apis_real(target_url):
-    """
-    Launches a headless Chromium browser to intercept background API calls.
-    Optimized to use only Chromium to save disk space.
-    """
-    detected_apis = []
-    print(f"[*] Starting Deep Shadow API Scan for {target_url}...")
-    
+# --- MODULE 1: HEADERS & COOKIES ---
+def scan_headers_and_cookies(url):
+    vulns = []
     try:
-        # We explicitly use 'chromium' to avoid needing firefox/webkit
-        with sync_playwright() as p:
-            # Headless=True means no UI pops up (faster, less RAM)
-            browser = p.chromium.launch(headless=True)
-            context = browser.new_context(user_agent="Sentinel/3.0 SecurityBot")
-            page = context.new_page()
+        res = requests.get(url, timeout=10)
+        headers = {k.lower(): v for k, v in res.headers.items()}
+        
+        # A. Header Checks
+        if 'content-security-policy' not in headers:
+            vulns.append({
+                "type": "Missing CSP Header",
+                "details": "Content-Security-Policy is missing. This makes the site vulnerable to XSS.",
+                "severity": "Medium",
+                "fix": "Define a strict CSP (e.g., default-src 'self')."
+            })
+        
+        if 'strict-transport-security' not in headers and url.startswith("https"):
+            vulns.append({
+                "type": "Missing HSTS Header",
+                "details": "HTTP Strict Transport Security is not enabled.",
+                "severity": "Low",
+                "fix": "Add 'Strict-Transport-Security: max-age=31536000'."
+            })
 
-            # Subscribe to network events to sniff traffic
-            page.on("request", lambda request: check_request(request, detected_apis))
+        if 'x-frame-options' not in headers:
+            vulns.append({
+                "type": "Clickjacking Risk",
+                "details": "Site can be framed by attackers (missing X-Frame-Options).",
+                "severity": "Low",
+                "fix": "Set X-Frame-Options to DENY or SAMEORIGIN."
+            })
 
-            try:
-                # Timeout set to 15s to prevent long hangs during demos
-                page.goto(target_url, timeout=15000, wait_until="domcontentloaded")
-                
-                # Scroll to bottom to trigger any lazy-loaded API calls
-                page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-                time.sleep(1.5) # Brief wait for network activity
-            except Exception as e:
-                print(f"[!] Page load warning: {e}")
-
-            browser.close()
-            
+        # B. Cookie Checks
+        for cookie in res.cookies:
+            if not cookie.secure and url.startswith("https"):
+                vulns.append({
+                    "type": "Insecure Cookie",
+                    "details": f"Cookie '{cookie.name}' is missing the 'Secure' flag.",
+                    "severity": "Medium",
+                    "fix": "Set the Secure flag for all cookies."
+                })
+            if not cookie.has_nonstandard_attr('HttpOnly'):
+                vulns.append({
+                    "type": "Cookie Theft Risk",
+                    "details": f"Cookie '{cookie.name}' is missing 'HttpOnly' flag (accessible via JS).",
+                    "severity": "High",
+                    "fix": "Set the HttpOnly flag to prevent XSS theft."
+                })
     except Exception as e:
-        print(f"[!] Browser engine failed. Ensure 'playwright install chromium' is run. Error: {e}")
-        return []
-
-    return list(set(detected_apis)) # Return unique APIs found
-
-def check_request(request, list_ref):
-    """Filter network traffic to find potential hidden API endpoints"""
-    url = request.url
-    method = request.method
+        print(f"[!] Header scan failed: {e}")
     
-    # We are looking for XHR/Fetch requests that usually carry data
-    keywords = ["api", "v1", "v2", "graphql", "query", "users", "data", "admin"]
-    is_potential_api = any(k in url.lower() for k in keywords)
-    
-    # Exclude static assets to reduce noise
-    is_static = any(url.lower().endswith(ext) for ext in ['.js', '.css', '.png', '.jpg', '.svg', '.woff', '.ico'])
-    
-    if is_potential_api and not is_static:
-        print(f"   -> Intercepted Shadow Endpoint: [{method}] {url}")
-        list_ref.append(f"[{method}] {url}")
+    return vulns
 
+# --- MODULE 2: SENSITIVE FILE FUZZER ---
+def scan_sensitive_files(base_url):
+    vulns = []
+    base_url = base_url.rstrip("/")
+    
+    for path in SENSITIVE_PATHS:
+        target = base_url + path
+        try:
+            # We use allow_redirects=False to avoid custom 404 pages masking as 200
+            res = requests.get(target, timeout=3, allow_redirects=False)
+            
+            if res.status_code == 200:
+                # Basic false positive check: content length > 10 bytes
+                if len(res.text) > 10: 
+                    vulns.append({
+                        "type": "Sensitive File Exposure",
+                        "details": f"Publicly accessible sensitive file found: {path}",
+                        "severity": "Critical",
+                        "fix": f"Immediately delete or restrict access to {path}."
+                    })
+        except:
+            continue
+    return vulns
 
-# --- 2. ACTIVE SCANNING (Hybrid ZAP Wrapper) ---
-def scan_active_zap(target_url, api_key=''):
-    """
-    Attempts to connect to a local ZAP instance. 
-    If ZAP is NOT running, it falls back to a simulated 'Deep Scan'.
-    """
-    # Connect to localhost:8080 where ZAP usually runs
-    zap = ZAPv2(apikey=api_key, proxies={'http': 'http://127.0.0.1:8080', 'https': 'http://127.0.0.1:8080'})
+# --- MODULE 3: ACTIVE PLAYWRIGHT FUZZER ---
+def scan_active_playwright(target_url):
     alerts = []
     
-    zap_is_running = False
+    # PAYLOADS (The "ZAP" Brain)
+    payloads = [
+        {"type": "SQL Injection (Deep)", "payload": "' OR '1'='1", "check": ["syntax error", "mysql", "warning", "postgres"]},
+        {"type": "Reflected XSS (Deep)", "payload": "<img src=x onerror=alert('SENTINEL')>", "check": []}
+    ]
+
     try:
-        # Ping ZAP to see if it's alive
-        zap.core.version
-        zap_is_running = True
-        print(f"[*] ZAP Engine detected. Starting Active Scan on {target_url}...")
-    except:
-        print(f"[*] ZAP Engine NOT detected on port 8080. Switching to Simulation Mode.")
-
-    if zap_is_running:
-        # --- REAL MODE ---
-        try:
-            # 1. Spider (Crawl)
-            zap.spider.scan(target_url)
-            time.sleep(2) 
+        with sync_playwright() as p:
+            # Launch optimized Chromium
+            browser = p.chromium.launch(headless=True)
+            # Set user agent to identify our scanner
+            context = browser.new_context(user_agent="Sentinel-Security-Bot/2.0")
+            page = context.new_page()
             
-            # 2. Fetch Real Alerts
-            raw_alerts = zap.core.alerts(baseurl=target_url)
-            for alert in raw_alerts:
-                alerts.append({
-                    "type": alert['alert'],
-                    "details": f"ZAP Scanner Verification: {alert['description'][:150]}...",
-                    "severity": map_zap_severity(alert['risk']),
-                    "fix": "Refer to official OWASP remediation guidelines."
-                })
-        except Exception as e:
-            print(f"[!] ZAP Scan Error: {e}")
+            # --- 3A. NETWORK MONITOR (500 Errors & Shadow APIs) ---
+            def handle_response(response):
+                try:
+                    # Check for Server Crashes (500 Errors)
+                    if response.status >= 500:
+                        alerts.append({
+                            "type": "Server Error (Potential Vuln)",
+                            "details": f"Endpoint {response.url} returned status {response.status}. Input fuzzing might have broken the backend.",
+                            "severity": "High",
+                            "fix": "Check server logs for uncaught exceptions."
+                        })
+                    
+                    # Check for Shadow APIs (Background JSON calls)
+                    if "application/json" in response.headers.get("content-type", ""):
+                        if "api" in response.url and "google" not in response.url:
+                            alerts.append({
+                                "type": "Shadow API Detected",
+                                "details": f"Background API call intercepted: {response.method} {response.url}",
+                                "severity": "Medium",
+                                "fix": "Ensure this endpoint is documented and secured."
+                            })
+                except: pass
 
-    else:
-        # --- SIMULATION MODE (Safe Fallback) ---
-        alerts.append({
-            "type": "Active Scan Engine Offline",
-            "details": "The OWASP ZAP Daemon (Port 8080) was not reachable. Active fuzzing was skipped.",
-            "severity": "Low",
-            "fix": "Launch the OWASP ZAP Desktop application or Docker container to enable full active scanning."
-        })
-        
-        # Simulated "Deep" result to show potential
-        alerts.append({
-            "type": "Simulated: SQL Injection (Deep)",
-            "details": "Heuristic analysis suggests the /login parameter 'username' is vulnerable to time-based blind SQL injection.",
-            "severity": "Critical",
-            "fix": "Use parameterized queries. (Result generated in Simulation Mode)"
-        })
+            page.on("response", handle_response)
 
-    return alerts
+            try:
+                # Navigate to target
+                page.goto(target_url, timeout=20000, wait_until="domcontentloaded")
+                
+                # --- 3B. STORAGE AUDIT (Secrets) ---
+                local_storage = page.evaluate("() => JSON.stringify(localStorage)")
+                session_storage = page.evaluate("() => JSON.stringify(sessionStorage)")
+                
+                combined_storage = (local_storage + session_storage).lower()
+                
+                if "token" in combined_storage or "auth" in combined_storage or "key" in combined_storage:
+                     alerts.append({
+                        "type": "Insecure Secret Storage",
+                        "details": "Found potential Auth Tokens/Keys in LocalStorage or SessionStorage.",
+                        "severity": "High",
+                        "fix": "Store tokens in HttpOnly Cookies to prevent XSS theft."
+                    })
 
-def map_zap_severity(risk_code):
-    return risk_code # ZAP returns strings like "High", "Medium"
+                # --- 3C. ACTIVE FORM FUZZING ---
+                # Find all interactive inputs
+                inputs = page.locator("input:not([type='hidden']):not([type='submit'])").all()
+                
+                if not inputs:
+                     alerts.append({"type": "Info", "details": "No interactive forms found to fuzz.", "severity": "Low", "fix": "N/A"})
+                
+                for i, input_el in enumerate(inputs):
+                    for attack in payloads:
+                        try:
+                            # Re-locate to avoid stale element errors
+                            current_input = page.locator("input:not([type='hidden']):not([type='submit'])").nth(i)
+                            current_input.fill(attack["payload"])
+                            current_input.press("Enter")
+                            
+                            # Wait for page reaction
+                            page.wait_for_timeout(500) 
+                            
+                            content = page.content().lower()
+                            
+                            # Check 1: SQL Injection Success
+                            if attack["type"] == "SQL Injection (Deep)":
+                                for error in attack["check"]:
+                                    if error in content:
+                                        alerts.append({
+                                            "type": attack["type"],
+                                            "details": f"Payload {attack['payload']} caused DB error: {error}",
+                                            "severity": "Critical",
+                                            "fix": "Use parameterized queries (Prepared Statements)."
+                                        })
+                                        break
+                                        
+                            # Check 2: XSS Success (Reflection)
+                            if attack["type"] == "Reflected XSS (Deep)":
+                                if attack["payload"] in page.content():
+                                    alerts.append({
+                                        "type": attack["type"],
+                                        "details": f"Payload {attack['payload']} was reflected in the DOM unescaped.",
+                                        "severity": "High",
+                                        "fix": "Escape all user inputs before rendering."
+                                    })
+
+                        except Exception: continue
+                            
+            except Exception as e:
+                print(f"[!] Fuzzing error: {e}")
+
+            browser.close()
+
+    except Exception as e:
+        print(f"[!] Playwright Engine failed: {e}")
+        return []
+
+    # Deduplicate alerts to keep report clean
+    unique_alerts = []
+    seen = set()
+    for a in alerts:
+        key = (a['type'], a['details'])
+        if key not in seen:
+            seen.add(key)
+            unique_alerts.append(a)
+
+    return unique_alerts
