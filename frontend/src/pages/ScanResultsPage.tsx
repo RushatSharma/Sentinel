@@ -4,9 +4,9 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import { Doughnut } from "react-chartjs-2";
 import { 
-    Activity, ShieldCheck, FileText, Lock, Terminal, 
+    Activity, ShieldCheck, FileText, Terminal, 
     ShieldAlert, Globe, ChevronDown, ChevronRight, AlertTriangle, CheckCircle2, 
-    Server, Radio, Briefcase, DollarSign, Clock, TrendingUp, Fingerprint, Eye
+    Server, Radio, Briefcase, DollarSign, Clock, TrendingUp, Fingerprint
 } from "lucide-react";
 import type { ScanReport } from "../types"; 
 import { Button } from "../components/ui/button";
@@ -22,6 +22,9 @@ import {
 import { cn } from "../lib/utils";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
+
+// ✅ DEFINING THE API URL DYNAMICALLY
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
 
 export default function ScanResultsPage() {
   const [searchParams] = useSearchParams();
@@ -83,9 +86,10 @@ export default function ScanResultsPage() {
 
     const fetchScan = async () => {
       try {
+        // ✅ FIXED: Using API_BASE_URL instead of localhost
         const endpoint = mode === 'deep' 
-            ? "http://127.0.0.1:5000/api/deep-scan" 
-            : "http://127.0.0.1:5000/api/scan";
+            ? `${API_BASE_URL}/api/deep-scan`
+            : `${API_BASE_URL}/api/scan`;
 
         const response = await axios.post(endpoint, { url });
         
@@ -98,6 +102,7 @@ export default function ScanResultsPage() {
         timeouts.push(finalDelay);
 
       } catch (err) {
+        console.error("Scan failed:", err);
         setError("Connection Failed. Ensure the Sentinel Backend is running.");
         setLoading(false);
       }
@@ -111,7 +116,8 @@ export default function ScanResultsPage() {
   const handleDownload = async (type: 'technical' | 'executive') => {
     if (!report) return;
     try {
-      const response = await axios.post("http://127.0.0.1:5000/api/download-report", {
+      // ✅ FIXED: Using API_BASE_URL here too
+      const response = await axios.post(`${API_BASE_URL}/api/download-report`, {
         ...report, 
         report_type: type 
       }, {
@@ -212,7 +218,6 @@ export default function ScanResultsPage() {
     else if (summary.low > 0) probability = 15;
 
     return {
-        // FIXED LINE BELOW: Changed maximumSignificantDigits to maximumFractionDigits
         financialRisk: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(financialRisk),
         devDays: devDays,
         probability: probability
