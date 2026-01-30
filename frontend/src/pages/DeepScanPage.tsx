@@ -16,6 +16,7 @@ export default function DeepScanPage() {
     if (!url) return;
     setLoading(true);
     
+    // Simulate the initialization time of Playwright
     setTimeout(() => {
         setLoading(false);
         navigate(`/scan-results?url=${encodeURIComponent(url)}&mode=deep`);
@@ -31,7 +32,6 @@ export default function DeepScanPage() {
       <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background pointer-events-none" />
 
       {/* Main Container */}
-      {/* FIXED: Reduced pb-32 to pb-8 to remove excess bottom gap */}
       <div className="container relative z-10 mx-auto px-4 pt-20 pb-6 flex-grow flex items-center justify-center">
         <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 items-start w-full"> 
           
@@ -45,7 +45,7 @@ export default function DeepScanPage() {
              {/* Time Warning Badge */}
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/10 border border-red-500/20 mb-8">
               <Clock className="w-4 h-4 text-sentinel-red animate-pulse" />
-              <span className="text-sm font-medium text-red-400">High Latency: Expect 30-90s wait time.</span>
+              <span className="text-sm font-medium text-red-400">Deep Scan Duration: ~45-90 seconds</span>
             </div>
 
             {/* Heading */}
@@ -59,7 +59,7 @@ export default function DeepScanPage() {
             {/* Description */}
             <div className="text-lg md:text-xl text-muted-foreground mb-10 max-w-3xl">
               <p className="mb-8 leading-relaxed">
-                This is not a passive scan. We launch headless browsers and active attack proxies to simulate a determined threat actor against your application logic.
+                This is not a passive scan. Sentinel launches a <strong>headless browser instance</strong> to interact with your application, injecting payloads into forms and analyzing dynamic DOM responses.
               </p>
               
               {/* Feature List */}
@@ -73,8 +73,8 @@ export default function DeepScanPage() {
                         <Server className="w-4 h-4 text-sentinel-red" />
                     </div>
                     <span>
-                      <strong className="text-foreground block mb-1">Shadow API Interception</strong>
-                      Launches <strong className="text-red-400 font-mono text-sm">Playwright Chromium</strong> to capture hidden AJAX/Fetch calls.
+                      <strong className="text-foreground block mb-1">Infrastructure Enumeration</strong>
+                      Brute-forces common sensitive files (e.g., <span className="font-mono text-xs bg-muted px-1 rounded">.env</span>, <span className="font-mono text-xs bg-muted px-1 rounded">/backup.sql</span>) to detect leaks.
                     </span>
                   </li>
                   <li className="flex items-start gap-3">
@@ -83,7 +83,7 @@ export default function DeepScanPage() {
                     </div>
                     <span>
                       <strong className="text-foreground block mb-1">Active Input Fuzzing</strong>
-                      Injects malicious payloads via <strong className="text-red-400 font-mono text-sm">OWASP ZAP</strong> bridge.
+                      Uses <strong className="text-red-400 font-mono text-sm">Playwright</strong> to type SQLi and XSS payloads into real forms and listen for server crashes.
                     </span>
                   </li>
                 </ul>
@@ -133,8 +133,9 @@ export default function DeepScanPage() {
                       Enter root domain. The engine will map the application tree before initiating active attacks.
                     </p>
                     <div className="flex flex-wrap gap-2 text-xs font-mono text-red-300/70">
-                        <span className="px-2 py-1 bg-red-500/5 rounded-md border border-red-500/10">Playwright</span>
-                        <span className="px-2 py-1 bg-red-500/5 rounded-md border border-red-500/10">ZAP Bridge</span>
+                        <span className="px-2 py-1 bg-red-500/5 rounded-md border border-red-500/10">Playwright Engine</span>
+                        <span className="px-2 py-1 bg-red-500/5 rounded-md border border-red-500/10">Header Analysis</span>
+                        <span className="px-2 py-1 bg-red-500/5 rounded-md border border-red-500/10">DOM Fuzzing</span>
                     </div>
                   </div>
 
@@ -144,7 +145,7 @@ export default function DeepScanPage() {
                         <div className="absolute inset-0 bg-[#0a0a0a] z-20 flex flex-col justify-center p-6 font-mono text-xs text-red-400 space-y-2">
                             <p className="animate-pulse">{">"} Initializing Playwright...</p>
                             <p className="delay-100">{">"} Allocating Chromium [PID: 4922]...</p>
-                            <p className="delay-300">{">"} Bridging ZAP Daemon (8080)...</p>
+                            <p className="delay-300">{">"} Injecting SQLi Payloads...</p>
                             <p className="delay-500 text-red-500 font-bold">{">"} WARN: Intrusive protocols engaged.</p>
                         </div>
                     )}
