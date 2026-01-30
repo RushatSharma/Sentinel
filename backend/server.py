@@ -4,6 +4,8 @@ from scanner_logic import scan_sql_injection, scan_xss, scan_shadow_apis
 from port_scanner import scan_ports
 from reporter import generate_report
 from deep_scanner import run_deep_scan
+# IMPORT DATABASE SAVER
+from database import save_scan_result
 import requests
 import re
 import math
@@ -43,18 +45,7 @@ def scan_page_content(url):
                     "type": "PII Exposure",
                     "details": f"Found {len(valid_emails)} exposed email addresses (GDPR violation).",
                     "severity": "Medium",
-                    "fix": """# PII DATA MASKING PROTOCOL
-# ---------------------------------------------------
-# STEP 1: LOCATE SOURCE
-# grep -r "email" ./src/components
-
-# STEP 2: APPLY SERVER-SIDE MASKING (Example in NodeJS)
-# function maskEmail(email) {
-#   return email.replace(/(?<=.{2}).(?=.*@)/g, "*");
-# }
-
-# STEP 3: REVIEW LOGGING POLICY
-# Ensure PII is not being written to access.log or error.log"""
+                    "fix": """# PII DATA MASKING PROTOCOL\n# ---------------------------------------------------\n# STEP 1: LOCATE SOURCE\n# grep -r "email" ./src/components\n\n# STEP 2: APPLY SERVER-SIDE MASKING (Example in NodeJS)\n# function maskEmail(email) {\n#   return email.replace(/(?<=.{2}).(?=.*@)/g, "*");\n}\n\n# STEP 3: REVIEW LOGGING POLICY\n# Ensure PII is not being written to access.log or error.log"""
                 })
     except: pass
     return findings
@@ -66,21 +57,50 @@ def run_quick_scan():
     """Lightweight scan (~5 seconds)."""
     data = request.json
     target_url = data.get('url')
+    user_id = data.get('user_id')  # <--- CAPTURE USER ID
+
     if not target_url: return jsonify({"error": "No URL provided"}), 400
     if not target_url.startswith('http'): target_url = 'https://' + target_url
 
-    return jsonify(perform_quick_scan(target_url))
+    # Run the scan logic
+    report = perform_quick_scan(target_url)
+
+    # SAVE TO DATABASE IF USER IS LOGGED IN
+    if user_id:
+        try:
+            # Calculate Risk Score for History
+            high = report['summary']['high']
+            med = report['summary']['medium']
+            low = report['summary']['low']
+            risk_score = min(100, (high * 25) + (med * 10) + (low * 2))
+
+            save_scan_result(
+                user_id=user_id,
+                target_url=target_url,
+                mode="Quick",
+                risk_score=risk_score,
+                vulns_found=len(report['vulnerabilities']),
+                report_json=report
+            )
+            print(f"[*] Quick Scan saved for user {user_id}")
+        except Exception as e:
+            print(f"[!] Database Error: {e}")
+
+    return jsonify(report)
 
 @app.route('/api/deep-scan', methods=['POST'])
 def handle_deep_scan():
     """Heavyweight scan (Playwright)."""
     data = request.json
     target_url = data.get('url')
+    user_id = data.get('user_id') # <--- CAPTURE USER ID
+
     if not target_url: return jsonify({"error": "No URL provided"}), 400
     if not target_url.startswith('http'): target_url = 'https://' + target_url
 
     try:
-        report = run_deep_scan(target_url, user_id=None)
+        # Pass user_id to the deep scanner orchestrator
+        report = run_deep_scan(target_url, user_id=user_id)
         return jsonify(report)
     except Exception as e:
         print(f"Deep Scan Error: {e}")
@@ -126,23 +146,12 @@ def perform_quick_scan(target_url):
     try:
         ports = scan_ports(target_url)
         for p in ports:
-            # Extract port number for the fix script
+            # Extract port number
             port_num = ''.join(filter(str.isdigit, p.split(' ')[1])) 
             cvss, cost = calculate_dynamic_risk("Network Exposure", "Low")
             report["vulnerabilities"].append({
                 "type": "Network Exposure", "details": p, "severity": "Low",
-                "fix": f"""# PORT CLOSURE PROCEDURE
-# ---------------------------------------------------
-# STEP 1: IDENTIFY PROCESS
-sudo lsof -i :{port_num}
-
-# STEP 2: STOP SERVICE (If not required)
-sudo systemctl stop <service_name>
-sudo systemctl disable <service_name>
-
-# STEP 3: UPDATE FIREWALL (UFW)
-sudo ufw deny {port_num}/tcp
-sudo ufw reload""",
+                "fix": f"""# PORT CLOSURE PROCEDURE\n# ---------------------------------------------------\n# STEP 1: IDENTIFY PROCESS\nsudo lsof -i :{port_num}\n\n# STEP 2: STOP SERVICE (If not required)\nsudo systemctl stop <service_name>\nsudo systemctl disable <service_name>\n\n# STEP 3: UPDATE FIREWALL (UFW)\nsudo ufw deny {port_num}/tcp\nsudo ufw reload""",
                 "cvss": cvss, "est_cost": cost
             })
     except: pass
@@ -153,15 +162,7 @@ sudo ufw reload""",
         cvss, cost = calculate_dynamic_risk("SQL Injection", "Critical")
         report["vulnerabilities"].append({
             "type": "SQL Injection", "details": sqli, "severity": "Critical",
-            "fix": """# SQL INJECTION PATCH
-# ⛔ CRITICAL: Raw query concatenation detected.
-
-# VULNERABLE CODE:
-# query = "SELECT * FROM users WHERE id = " + user_input
-
-# SECURE PATCH (Parameterized Queries):
-# Python: cursor.execute("SELECT * FROM users WHERE id = %s", (user_input,))
-# Node.js: db.query('SELECT * FROM users WHERE id = $1', [user_input])""", 
+            "fix": """# SQL INJECTION PATCH\n# ⛔ CRITICAL: Raw query concatenation detected.\n\n# VULNERABLE CODE:\n# query = "SELECT * FROM users WHERE id = " + user_input\n\n# SECURE PATCH (Parameterized Queries):\n# Python: cursor.execute("SELECT * FROM users WHERE id = %s", (user_input,))\n# Node.js: db.query('SELECT * FROM users WHERE id = $1', [user_input])""", 
             "cvss": cvss, "est_cost": cost
         })
 
@@ -171,17 +172,7 @@ sudo ufw reload""",
         cvss, cost = calculate_dynamic_risk("XSS", "High")
         report["vulnerabilities"].append({
             "type": "XSS", "details": xss, "severity": "High",
-            "fix": """# XSS DEFENSE PROTOCOL
-# ---------------------------------------------------
-# 1. INPUT VALIDATION:
-# Reject inputs containing <script>, <iframe>, or 'javascript:'
-
-# 2. OUTPUT ENCODING:
-# Use libraries like DOMPurify before rendering HTML.
-# clean = DOMPurify.sanitize(dirty);
-
-# 3. ENABLE CSP HEADER:
-# Content-Security-Policy: default-src 'self'; script-src 'self' https://trusted.cdn.com;""", 
+            "fix": """# XSS DEFENSE PROTOCOL\n# ---------------------------------------------------\n# 1. INPUT VALIDATION:\n# Reject inputs containing <script>, <iframe>, or 'javascript:'\n\n# 2. OUTPUT ENCODING:\n# Use libraries like DOMPurify before rendering HTML.\n# clean = DOMPurify.sanitize(dirty);\n\n# 3. ENABLE CSP HEADER:\n# Content-Security-Policy: default-src 'self'; script-src 'self' https://trusted.cdn.com;""", 
             "cvss": cvss, "est_cost": cost
         })
 
@@ -191,16 +182,7 @@ sudo ufw reload""",
         cvss, cost = calculate_dynamic_risk("Shadow API Detected", "Medium")
         report["vulnerabilities"].append({
             "type": "Shadow API Detected", "details": s, "severity": "Medium",
-            "fix": """# API HARDENING
-# ---------------------------------------------------
-# 1. AUTHENTICATION:
-# Ensure this endpoint requires a valid JWT/OAuth2 token.
-
-# 2. RATE LIMITING (Nginx Example):
-# limit_req_zone $binary_remote_addr zone=mylimit:10m rate=10r/s;
-
-# 3. SWAGGER DOCUMENTATION:
-# Register this endpoint in openapi.yaml to ensure visibility.""", 
+            "fix": """# API HARDENING\n# ---------------------------------------------------\n# 1. AUTHENTICATION:\n# Ensure this endpoint requires a valid JWT/OAuth2 token.\n\n# 2. RATE LIMITING (Nginx Example):\n# limit_req_zone $binary_remote_addr zone=mylimit:10m rate=10r/s;\n\n# 3. SWAGGER DOCUMENTATION:\n# Register this endpoint in openapi.yaml to ensure visibility.""", 
             "cvss": cvss, "est_cost": cost
         })
 

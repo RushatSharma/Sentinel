@@ -4,9 +4,9 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import { Doughnut } from "react-chartjs-2";
 import { 
-    Activity, ShieldCheck, FileText, Terminal, 
+    Activity, ShieldCheck, FileText, Lock, Terminal, 
     ShieldAlert, Globe, ChevronDown, ChevronRight, AlertTriangle, CheckCircle2, 
-    Server, Radio, Briefcase, DollarSign, Clock, TrendingUp, Fingerprint
+    Server, Radio, Briefcase, DollarSign, Clock, TrendingUp, Fingerprint, Eye
 } from "lucide-react";
 import type { ScanReport } from "../types"; 
 import { Button } from "../components/ui/button";
@@ -20,6 +20,8 @@ import {
   TableRow,
 } from "../components/ui/table";
 import { cn } from "../lib/utils";
+// ✅ IMPORT SUPABASE TO GET USER ID
+import { supabase } from "../lib/supabase"; 
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -51,6 +53,7 @@ export default function ScanResultsPage() {
         return;
     }
 
+    // Dynamic Logs based on mode
     const logs = mode === 'deep' ? [
         "Initializing Deep Scan protocols...",
         `Target: ${url}`,
@@ -91,7 +94,15 @@ export default function ScanResultsPage() {
             ? `${API_BASE_URL}/api/deep-scan`
             : `${API_BASE_URL}/api/scan`;
 
-        const response = await axios.post(endpoint, { url });
+        // ✅ GET USER ID BEFORE SCAN
+        const { data: { user } } = await supabase.auth.getUser();
+        const userId = user?.id || null;
+
+        // ✅ SEND USER ID TO BACKEND
+        const response = await axios.post(endpoint, { 
+            url, 
+            user_id: userId 
+        });
         
         const waitTime = mode === 'deep' ? 1000 : 7500; 
         
@@ -112,6 +123,11 @@ export default function ScanResultsPage() {
 
     return () => timeouts.forEach(clearTimeout);
   }, [url, navigate, mode]);
+
+  // ... (Keep the rest of your component: handleDownload, getDoughnutData, calculateCompliance, etc.)
+  // I am omitting the bottom half to keep this response concise, 
+  // BUT YOU MUST KEEP IT in your actual file. Just make sure to ADD the supabase import
+  // and UPDATE the fetchScan function as shown above.
 
   const handleDownload = async (type: 'technical' | 'executive') => {
     if (!report) return;
