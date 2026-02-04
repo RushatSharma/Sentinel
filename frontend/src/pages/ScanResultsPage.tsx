@@ -4,9 +4,9 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import { Doughnut } from "react-chartjs-2";
 import { 
-    Activity, ShieldCheck, FileText, Lock, Terminal, 
+    Activity, ShieldCheck, FileText, Terminal, 
     ShieldAlert, Globe, ChevronDown, ChevronRight, AlertTriangle, CheckCircle2, 
-    Server, Radio, Briefcase, DollarSign, Clock, TrendingUp, Fingerprint, Eye
+    Server, Radio, Briefcase, DollarSign, Clock, TrendingUp, Fingerprint
 } from "lucide-react";
 import type { ScanReport } from "../types"; 
 import { Button } from "../components/ui/button";
@@ -20,12 +20,12 @@ import {
   TableRow,
 } from "../components/ui/table";
 import { cn } from "../lib/utils";
-// ✅ IMPORT SUPABASE TO GET USER ID
+// ✅ IMPORT SUPABASE TO CAPTURE USER ID
 import { supabase } from "../lib/supabase"; 
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-// API URL Dynamic Definition
+// ✅ DYNAMIC API URL
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
 
 export default function ScanResultsPage() {
@@ -53,7 +53,7 @@ export default function ScanResultsPage() {
         return;
     }
 
-    // Dynamic Logs based on mode
+    // ✅ ACCURATE LOGS (Matches your new Backend)
     const logs = mode === 'deep' ? [
         "Initializing Deep Scan protocols...",
         `Target: ${url}`,
@@ -94,11 +94,11 @@ export default function ScanResultsPage() {
             ? `${API_BASE_URL}/api/deep-scan`
             : `${API_BASE_URL}/api/scan`;
 
-        // ✅ GET USER ID BEFORE SCAN
+        // ✅ 1. GET CURRENT USER ID
         const { data: { user } } = await supabase.auth.getUser();
         const userId = user?.id || null;
 
-        // ✅ SEND USER ID TO BACKEND
+        // ✅ 2. SEND ID TO BACKEND (Enables Profile History)
         const response = await axios.post(endpoint, { 
             url, 
             user_id: userId 
@@ -123,11 +123,6 @@ export default function ScanResultsPage() {
 
     return () => timeouts.forEach(clearTimeout);
   }, [url, navigate, mode]);
-
-  // ... (Keep the rest of your component: handleDownload, getDoughnutData, calculateCompliance, etc.)
-  // I am omitting the bottom half to keep this response concise, 
-  // BUT YOU MUST KEEP IT in your actual file. Just make sure to ADD the supabase import
-  // and UPDATE the fetchScan function as shown above.
 
   const handleDownload = async (type: 'technical' | 'executive') => {
     if (!report) return;
@@ -173,32 +168,31 @@ export default function ScanResultsPage() {
     };
   };
 
-  // --- UPDATED: STRICT COMPLIANCE LOGIC ---
+  // ✅ STRICT COMPLIANCE LOGIC
   const calculateCompliance = () => {
     if (!report) return { score: 0, gdpr: "Unknown", pci: "Unknown" };
 
     const vulns = report.vulnerabilities;
     const highSeverityCount = report.summary.high; // Critical + High
 
-    // 1. Strict Fail Conditions
-    // If ANY Critical/High vulnerability exists, Compliance MUST fail.
+    // Fails if ANY Critical/High vulnerability exists
     const isCriticalFail = highSeverityCount > 0;
 
     const hasPII = vulns.some((v:any) => v.type.includes("PII") || v.type.includes("Data"));
     const hasInjection = vulns.some((v:any) => v.type.includes("SQL") || v.type.includes("XSS"));
-    const hasAuthIssues = vulns.some((v:any) => v.type.includes("Auth") || v.type.includes("Cookie") || v.type.includes("Secret") || v.type.includes("File"));
+    const hasAuthIssues = vulns.some((v:any) => v.type.includes("Auth") || v.type.includes("Cookie") || v.type.includes("Secret"));
 
-    // Base score calculation
+    // Base score
     let score = 100;
-    score -= (report.summary.high * 20); // Higher penalty for critical
+    score -= (report.summary.high * 20); 
     score -= (report.summary.medium * 5);
     score -= (report.summary.low * 1);
     score = Math.max(0, score);
 
-    // GDPR Logic: Fails if PII found OR if system is critically compromised
+    // GDPR Status
     const gdprStatus = (hasPII || isCriticalFail) ? "Failing" : "Passing";
     
-    // PCI Logic: Fails if Injection/Auth found OR if system is critically compromised
+    // PCI Status
     const pciStatus = (hasInjection || hasAuthIssues || isCriticalFail) ? "Review" : "Passing";
 
     return {
@@ -210,13 +204,13 @@ export default function ScanResultsPage() {
         gdprBg: gdprStatus === "Failing" ? "bg-red-500" : "bg-emerald-500",
         
         pci: pciStatus,
-        pciColor: pciStatus === "Review" ? "text-red-500" : "text-emerald-500", // Changed orange to red for critical
+        pciColor: pciStatus === "Review" ? "text-red-500" : "text-emerald-500",
         pciWidth: pciStatus === "Review" ? "40%" : "98%",
         pciBg: pciStatus === "Review" ? "bg-red-500" : "bg-emerald-500",
     };
   };
 
-  // --- NEW: DYNAMIC NETWORK LOGIC ---
+  // ✅ DYNAMIC NETWORK STATUS
   const getNetworkStatus = () => {
     if (!report) return { port80: "Unknown", port443: "Unknown", ssh: "Unknown" };
     
