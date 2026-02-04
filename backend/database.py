@@ -15,9 +15,6 @@ else:
     supabase = None
 
 def save_scan_result(user_id, target_url, mode, risk_score, vulns_found, report_json):
-    """
-    Inserts a completed scan report into the scan_history table.
-    """
     if not supabase or not user_id:
         return None
 
@@ -31,9 +28,13 @@ def save_scan_result(user_id, target_url, mode, risk_score, vulns_found, report_
     }
 
     try:
-        response = supabase.table("scan_history").insert(data).execute()
-        print(f"[+] Scan report saved to database for user {user_id}")
+        # Use upsert with on_conflict to prevent duplicates
+        response = supabase.table("scan_history").upsert(
+            data, 
+            on_conflict="user_id, target_url"
+        ).execute()
+        print(f"[+] Scan report synced for user {user_id}")
         return response
     except Exception as e:
-        print(f"[!] Failed to save history: {e}")
+        print(f"[!] Failed to sync history: {e}")
         return None
