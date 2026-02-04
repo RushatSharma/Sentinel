@@ -134,7 +134,8 @@ def scan_sensitive_files(base_url):
                         "type": "Sensitive File Exposure",
                         "details": f"Publicly accessible sensitive file found: {path}",
                         "severity": "Critical",
-                        "fix": f"Immediately delete or restrict access to {path}."
+                        # CHANGED: Generic fix string to allow grouping
+                        "fix": "Immediately delete this file or restrict access via .htaccess/nginx.conf rules."
                     })
         except:
             continue

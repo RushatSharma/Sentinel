@@ -169,18 +169,19 @@ def perform_quick_scan(target_url):
             cvss, cost = calculate_dynamic_risk("Network Exposure", "Low")
             report["vulnerabilities"].append({
                 "type": "Network Exposure", "details": p, "severity": "Low",
-                "fix": f"""# PORT CLOSURE PROCEDURE
+                # CHANGED: Generic Fix Script
+                "fix": """# PORT CLOSURE PROCEDURE
 # ---------------------------------------------------
 # STEP 1: IDENTIFY PROCESS
-sudo lsof -i :{port_num}
+# sudo lsof -i :<PORT>
 
 # STEP 2: STOP SERVICE (If not required)
-sudo systemctl stop <service_name>
-sudo systemctl disable <service_name>
+# sudo systemctl stop <service_name>
+# sudo systemctl disable <service_name>
 
 # STEP 3: UPDATE FIREWALL (UFW)
-sudo ufw deny {port_num}/tcp
-sudo ufw reload""",
+# sudo ufw deny <PORT>/tcp
+# sudo ufw reload""",
                 "cvss": cvss, "est_cost": cost
             })
     except: pass
