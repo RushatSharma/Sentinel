@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import axios from "axios";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
@@ -20,7 +20,6 @@ import {
   TableRow,
 } from "../components/ui/table";
 import { cn } from "../lib/utils";
-// ✅ REPLACED SUPABASE WITH APPWRITE
 import { account } from "../lib/appwrite"; 
 
 ChartJS.register(ArcElement, Tooltip, Legend);
@@ -41,6 +40,9 @@ export default function ScanResultsPage() {
   
   const [expandedRows, setExpandedRows] = useState<number[]>([]);
 
+  // --- FIX: Track the PROCESSED URL to prevent double-fetching ---
+  const processedUrlRef = useRef<string | null>(null);
+
   const toggleRow = (idx: number) => {
     setExpandedRows(prev => 
       prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]
@@ -53,6 +55,10 @@ export default function ScanResultsPage() {
         return;
     }
 
+    // --- 1. ALWAYS Run Logs Animation (Visuals) ---
+    // This ensures text appears even if React re-renders the component
+    setScanLogs([]); // Clear previous logs to prevent duplication
+    
     const logs = mode === 'deep' ? [
         "Initializing Deep Scan protocols...",
         `Target: ${url}`,
@@ -86,49 +92,51 @@ export default function ScanResultsPage() {
       delay += 800; 
     });
 
-    const fetchScan = async () => {
-      try {
-        const endpoint = mode === 'deep' 
-            ? `${API_BASE_URL}/api/deep-scan`
-            : `${API_BASE_URL}/api/scan`;
+    // --- 2. CONDITIONALLY Run API Call (Data) ---
+    // Only fetch if we haven't processed this specific URL yet
+    if (processedUrlRef.current !== url) {
+        processedUrlRef.current = url; // Mark as processing
 
-        // ✅ 1. GET CURRENT APPWRITE USER ID
-        let userId = null;
-        try {
-            const currentUser = await account.get();
-            userId = currentUser.$id;
-        } catch (authErr) {
-            console.log("No active session, performing guest scan.");
-        }
-
-        // ✅ 2. SEND ID TO BACKEND
-        const response = await axios.post(endpoint, { 
-            url, 
-            user_id: userId 
-        });
-        
-        const waitTime = mode === 'deep' ? 1000 : 7500; 
-        
-        const finalDelay = setTimeout(() => {
-            setReport(response.data);
+        const fetchScan = async () => {
+          try {
+            const endpoint = mode === 'deep' 
+                ? `${API_BASE_URL}/api/deep-scan`
+                : `${API_BASE_URL}/api/scan`;
+    
+            let userId = null;
+            try {
+                const currentUser = await account.get();
+                userId = currentUser.$id;
+            } catch (authErr) {
+                console.log("No active session, performing guest scan.");
+            }
+    
+            const response = await axios.post(endpoint, { 
+                url, 
+                user_id: userId 
+            });
+            
+            const waitTime = mode === 'deep' ? 1000 : 7500; 
+            
+            const finalDelay = setTimeout(() => {
+                setReport(response.data);
+                setLoading(false);
+            }, waitTime);
+            timeouts.push(finalDelay);
+    
+          } catch (err) {
+            console.error("Scan failed:", err);
+            setError("Connection Failed. Ensure the Sentinel Backend is running.");
             setLoading(false);
-        }, waitTime);
-        timeouts.push(finalDelay);
+          }
+        };
 
-      } catch (err) {
-        console.error("Scan failed:", err);
-        setError("Connection Failed. Ensure the Sentinel Backend is running.");
-        setLoading(false);
-      }
-    };
+        fetchScan();
+    }
 
-    fetchScan();
-
+    // Cleanup timeouts on unmount
     return () => timeouts.forEach(clearTimeout);
   }, [url, navigate, mode]);
-
-  // ... Rest of the component logic (Charts, Downloads, UI Rendering) remains the same
-  // but ensure no other supabase references exist in the file.
 
   const handleDownload = async (type: 'technical' | 'executive') => {
     if (!report) return;
@@ -174,41 +182,32 @@ export default function ScanResultsPage() {
     };
   };
 
-  // ✅ STRICT COMPLIANCE LOGIC
   const calculateCompliance = () => {
     if (!report) return { score: 0, gdpr: "Unknown", pci: "Unknown" };
 
     const vulns = report.vulnerabilities;
-    const highSeverityCount = report.summary.high; // Critical + High
+    const highSeverityCount = report.summary.high; 
 
-    // Fails if ANY Critical/High vulnerability exists
     const isCriticalFail = highSeverityCount > 0;
-
     const hasPII = vulns.some((v:any) => v.type.includes("PII") || v.type.includes("Data"));
     const hasInjection = vulns.some((v:any) => v.type.includes("SQL") || v.type.includes("XSS"));
     const hasAuthIssues = vulns.some((v:any) => v.type.includes("Auth") || v.type.includes("Cookie") || v.type.includes("Secret"));
 
-    // Base score
     let score = 100;
     score -= (report.summary.high * 20); 
     score -= (report.summary.medium * 5);
     score -= (report.summary.low * 1);
     score = Math.max(0, score);
 
-    // GDPR Status
     const gdprStatus = (hasPII || isCriticalFail) ? "Failing" : "Passing";
-    
-    // PCI Status
     const pciStatus = (hasInjection || hasAuthIssues || isCriticalFail) ? "Review" : "Passing";
 
     return {
         score: score,
-        
         gdpr: gdprStatus,
         gdprColor: gdprStatus === "Failing" ? "text-red-500" : "text-emerald-500",
         gdprWidth: gdprStatus === "Failing" ? "30%" : "95%",
         gdprBg: gdprStatus === "Failing" ? "bg-red-500" : "bg-emerald-500",
-        
         pci: pciStatus,
         pciColor: pciStatus === "Review" ? "text-red-500" : "text-emerald-500",
         pciWidth: pciStatus === "Review" ? "40%" : "98%",
@@ -216,7 +215,6 @@ export default function ScanResultsPage() {
     };
   };
 
-  // ✅ DYNAMIC NETWORK STATUS
   const getNetworkStatus = () => {
     if (!report) return { port80: "Unknown", port443: "Unknown", ssh: "Unknown" };
     
