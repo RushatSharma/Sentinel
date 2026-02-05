@@ -1,29 +1,23 @@
-import { Navbar } from "@/components/Navbar";
-import { HeroSection } from "@/components/HeroSection";
-import { ComplianceSection } from "@/components/ComplianceSection";
-import { ReportingSection } from "@/components/ReportingSection"; // Import the new section
-import { Footer } from "@/components/Footer";
-import { InteractiveTerminal } from "@/components/InteractiveTerminal";
-import { BentoGrid } from "@/components/BentoGrid";
-import { ComplianceTicker } from "@/components/ComplianceTicker";
+import {Navbar} from "../components/Navbar"; // <--- FIXED: No curly braces {}
+import {HeroSection} from "../components/HeroSection";
+import {FeaturesSection} from "../components/FeaturesSection";
+import {ComplianceSection} from "../components/ComplianceSection";
+import {ReportingSection} from "../components/ReportingSection";
+import {CtaSection} from "../components/CtaSection";
+import {Footer} from "../components/Footer";
 
-
-const LandingPage = () => {
+export default function LandingPage() {
   return (
-    // Added 'grid-background' to apply the texture globally
-    <div className="min-h-screen bg-background grid-background">
+    <div className="min-h-screen bg-background">
       <Navbar />
       <main>
-         <HeroSection />
-        <BentoGrid />
-        <InteractiveTerminal />
+        <HeroSection />
+        <FeaturesSection />
         <ComplianceSection />
         <ReportingSection />
-        <ComplianceTicker />
+        <CtaSection />
       </main>
       <Footer />
     </div>
   );
-};
-
-export default LandingPage;
+}

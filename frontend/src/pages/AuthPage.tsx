@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { account, ID } from '../lib/appwrite'; // Import Appwrite
+import { account, ID } from '../lib/appwrite';
+import { useAuth } from '@/context/AuthContext'; // Import the hook
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,49 +21,49 @@ export default function AuthPage() {
   
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { checkSession } = useAuth(); // Get the session checker
 
-  // LOGIN HANDLER
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault(); // STOPS THE BLINKING/RELOAD
+    e.preventDefault();
     setIsLoading(true);
     setError(null);
 
     try {
-      // Create session (Login)
       await account.createEmailPasswordSession(email, password);
+      
+      // CRITICAL: Update the global auth state instantly
+      await checkSession();
       
       toast({
         title: "Welcome back!",
         description: "Successfully logged in.",
       });
       
-      navigate('/'); // Redirect to home/dashboard
+      navigate('/'); 
     } catch (err: any) {
       console.error("Login Error:", err);
-      setError(err.message || "Failed to login. Please check your credentials.");
+      setError(err.message || "Failed to login.");
       toast({
         variant: "destructive",
         title: "Login failed",
-        description: err.message || "Invalid credentials",
+        description: err.message,
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  // SIGNUP HANDLER
   const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault(); // STOPS THE BLINKING/RELOAD
+    e.preventDefault();
     setIsLoading(true);
     setError(null);
 
     try {
-      // 1. Create Account
-      // Appwrite params: userId, email, password, name
       await account.create(ID.unique(), email, password, name);
-
-      // 2. Auto Login after signup
       await account.createEmailPasswordSession(email, password);
+
+      // CRITICAL: Update the global auth state instantly
+      await checkSession();
 
       toast({
         title: "Account created",
@@ -101,7 +102,6 @@ export default function AuthPage() {
             <TabsTrigger value="signup">Sign Up</TabsTrigger>
           </TabsList>
 
-          {/* LOGIN FORM */}
           <TabsContent value="login">
             <Card>
               <CardHeader>
@@ -166,7 +166,6 @@ export default function AuthPage() {
             </Card>
           </TabsContent>
 
-          {/* SIGNUP FORM */}
           <TabsContent value="signup">
             <Card>
               <CardHeader>

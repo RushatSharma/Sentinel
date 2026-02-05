@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-// Switched from Supabase to Appwrite
-import { account, databases } from "@/lib/appwrite"; 
+import { account, databases } from "@/lib/appwrite";
 import { Query } from "appwrite";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Navbar } from "@/components/Navbar"; 
+import { Navbar } from "@/components/Navbar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,19 +21,21 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { 
-  User, 
-  Settings, 
-  History, 
-  ShieldAlert, 
-  LogOut, 
-  Calendar, 
-  FileText, 
+import {
+  User,
+  Settings,
+  History,
+  ShieldAlert,
+  LogOut,
+  Calendar,
+  FileText,
   ExternalLink,
   ShieldCheck,
   Shield,
   Trash2,
-  AlertTriangle 
+  AlertTriangle,
+  Download,
+  Loader2
 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/components/ui/use-toast";
@@ -45,11 +46,12 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [scanHistory, setScanHistory] = useState<any[]>([]);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
+  // --- FETCH DATA ---
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Appwrite method to get current logged in user
         const currentUser = await account.get();
         if (!currentUser) {
           navigate("/auth");
@@ -57,7 +59,6 @@ export default function ProfilePage() {
         }
         setUser(currentUser);
 
-        // Fetching history from Appwrite Database
         const response = await databases.listDocuments(
           import.meta.env.VITE_APPWRITE_DATABASE_ID,
           import.meta.env.VITE_APPWRITE_COLLECTION_ID,
@@ -68,7 +69,6 @@ export default function ProfilePage() {
         );
 
         setScanHistory(response.documents || []);
-        
       } catch (error) {
         console.error("Error loading profile:", error);
         navigate("/auth");
@@ -80,6 +80,8 @@ export default function ProfilePage() {
     fetchData();
   }, [navigate]);
 
+  // --- ACTIONS ---
+
   const handleLogout = async () => {
     try {
       await account.deleteSession('current');
@@ -90,22 +92,81 @@ export default function ProfilePage() {
   };
 
   const handleDeleteAccount = async () => {
+    toast({
+      title: "Action Required",
+      description: "Account deletion protocol initiated. Contact admin for permanent removal.",
+    });
+    await handleLogout();
+  };
+
+  // 1. DELETE SCAN FUNCTION
+  const handleDeleteScan = async (scanId: string) => {
     try {
-        // Note: Appwrite requires the User to be deleted via Server SDK or 
-        // a specific Cloud Function for security. 
-        // For client-side, we can at least block the session.
-        toast({
-            title: "Action Required",
-            description: "Account deletion protocol initiated. Contact admin for permanent removal.",
-        });
-        await handleLogout();
+      await databases.deleteDocument(
+        import.meta.env.VITE_APPWRITE_DATABASE_ID,
+        import.meta.env.VITE_APPWRITE_COLLECTION_ID,
+        scanId
+      );
+      
+      // Update UI instantly
+      setScanHistory((prev) => prev.filter((scan) => scan.$id !== scanId));
+      
+      toast({ title: "Scan deleted successfully" });
+    } catch (error) {
+      console.error("Delete failed:", error);
+      toast({ variant: "destructive", title: "Failed to delete scan" });
+    }
+  };
+
+  // 2. DOWNLOAD REPORT FUNCTION
+  const handleDownloadReport = async (scan: any) => {
+    try {
+      setDownloadingId(scan.$id);
+      
+      // Parse the JSON string back into an object
+      let reportData = {};
+      try {
+        reportData = typeof scan.report_json === 'string' 
+          ? JSON.parse(scan.report_json) 
+          : scan.report_json;
+      } catch (e) {
+        throw new Error("Report data is corrupted or missing.");
+      }
+
+      // Add report type for the backend
+      const payload = { ...reportData, report_type: 'technical' };
+
+      // Call your existing Backend API
+      const response = await fetch('http://127.0.0.1:5000/api/download-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) throw new Error("Backend failed to generate PDF");
+
+      // Convert response to Blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Sentinel_Report_${scan.target_url}_${format(new Date(), 'yyyyMMdd')}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({ title: "Report downloaded successfully" });
+
     } catch (error: any) {
-        console.error("Error deleting account:", error);
-        toast({
-            title: "Error",
-            description: "Could not process request. Please try again.",
-            variant: "destructive"
-        });
+      console.error("Download error:", error);
+      toast({ 
+        variant: "destructive", 
+        title: "Download Failed", 
+        description: error.message 
+      });
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -134,8 +195,8 @@ export default function ProfilePage() {
         
         <div className="max-w-6xl mx-auto space-y-4">
           
-          {/* --- HEADER SECTION --- */}
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-5 rounded-2xl bg-secondary/30 border-2 border-red-500/50 backdrop-blur-sm shadow-lg shadow-red-900/10 animate-in slide-in-from-top-4 duration-500 w-full">
+          {/* HEADER (Same as before) */}
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-5 rounded-2xl bg-secondary/30 border-2 border-red-500/50 backdrop-blur-sm shadow-lg shadow-red-900/10 w-full">
             <div className="flex items-center gap-5 w-full md:w-auto">
               <Avatar className="h-16 w-16 border-4 border-background shadow-xl shrink-0">
                 <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${user?.name || 'User'}`} />
@@ -169,7 +230,7 @@ export default function ProfilePage() {
             </div>
           </div>
   
-          {/* --- TABS SECTION --- */}
+          {/* TABS */}
           <Tabs defaultValue="history" className="w-full">
             <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 max-w-full md:max-w-2xl mb-4 bg-secondary/50 p-1 h-auto md:h-10">
               <TabsTrigger value="overview" className="gap-2 text-xs md:text-sm">
@@ -186,8 +247,8 @@ export default function ProfilePage() {
               </TabsTrigger>
             </TabsList>
   
-            {/* 1. OVERVIEW TAB */}
-            <TabsContent value="overview" className="space-y-4 animate-in fade-in-50 duration-300">
+            {/* OVERVIEW TAB */}
+            <TabsContent value="overview" className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <Card className="border-2 border-red-500/20 hover:border-red-500/40 transition-colors">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -226,8 +287,8 @@ export default function ProfilePage() {
               </div>
             </TabsContent>
   
-            {/* 2. SCAN HISTORY TAB */}
-            <TabsContent value="history" className="animate-in fade-in-50 duration-300">
+            {/* --- SCAN HISTORY TAB (UPDATED) --- */}
+            <TabsContent value="history">
               <Card className="border-2 border-red-500/50 bg-background/50 backdrop-blur-sm">
                 <CardHeader className="pb-3">
                   <CardTitle>Recent Operations</CardTitle>
@@ -274,9 +335,49 @@ export default function ProfilePage() {
                             <div className="text-right">
                                <div className="scale-90 origin-left md:origin-right">{getRiskBadge(scan.risk_score || 0)}</div>
                             </div>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0">
-                              <FileText className="w-4 h-4" />
-                            </Button>
+                            
+                            {/* ACTION BUTTONS */}
+                            <div className="flex gap-2">
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0"
+                                    onClick={() => handleDownloadReport(scan)}
+                                    disabled={downloadingId === scan.$id}
+                                >
+                                    {downloadingId === scan.$id ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <Download className="w-4 h-4" />
+                                    )}
+                                </Button>
+                                
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-500 shrink-0">
+                                            <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Delete Scan Record?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                This will permanently remove the record of the scan for {scan.target_url}. 
+                                                The report data will also be lost.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction 
+                                                className="bg-red-600 hover:bg-red-700"
+                                                onClick={() => handleDeleteScan(scan.$id)}
+                                            >
+                                                Delete
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -286,8 +387,8 @@ export default function ProfilePage() {
               </Card>
             </TabsContent>
   
-            {/* 3. USER INFORMATION TAB */}
-            <TabsContent value="user-info" className="animate-in fade-in-50 duration-300">
+            {/* USER INFO TAB (Same as before) */}
+            <TabsContent value="user-info">
               <Card className="border-2 border-red-500/50">
                 <CardHeader className="pb-3">
                   <CardTitle>User Information</CardTitle>
@@ -298,20 +399,11 @@ export default function ProfilePage() {
                 <CardContent className="space-y-4">
                   <div className="grid gap-2">
                     <Label htmlFor="name">Display Name</Label>
-                    <Input 
-                      id="name" 
-                      defaultValue={user?.name} 
-                      className="bg-secondary/50" 
-                    />
+                    <Input id="name" defaultValue={user?.name} className="bg-secondary/50" />
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="email">Email Address</Label>
-                    <Input 
-                      id="email" 
-                      defaultValue={user?.email} 
-                      disabled 
-                      className="bg-secondary/20 text-muted-foreground cursor-not-allowed" 
-                    />
+                    <Input id="email" defaultValue={user?.email} disabled className="bg-secondary/20 text-muted-foreground cursor-not-allowed" />
                   </div>
                   <div className="pt-2">
                     <Button className="bg-sentinel-blue hover:bg-sentinel-blue/90 text-white w-full md:w-auto">
@@ -322,8 +414,8 @@ export default function ProfilePage() {
               </Card>
             </TabsContent>
 
-            {/* 4. DANGER ZONE TAB */}
-            <TabsContent value="danger-zone" className="animate-in fade-in-50 duration-300">
+            {/* DANGER ZONE TAB (Same as before) */}
+            <TabsContent value="danger-zone">
                 <Card className="border-2 border-red-900/50 bg-red-950/10">
                     <CardHeader>
                         <CardTitle className="text-red-500 flex items-center gap-2">
