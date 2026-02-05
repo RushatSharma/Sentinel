@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { account } from "@/lib/appwrite"; // Import Appwrite account
+import { account } from "@/lib/appwrite"; 
 import LandingPage from "./pages/LandingPage";
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/AuthPage"; 
@@ -18,19 +18,21 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
-  const checkSession = async () => {
-    try {
-      const session = await account.get();
-      setUser(session);
-    } catch (error: any) {
-      // 401 is expected if the user hasn't logged in yet
-      setUser(null); 
-      console.log("No active session found.");
-    }
-  };
-  checkSession();
-}, []);
+    const checkSession = async () => {
+      try {
+        await account.get();
+        // SUCCESS: Session exists
+        setIsAuthenticated(true); 
+      } catch (error: any) {
+        // ERROR: No session (401 is expected here if not logged in)
+        console.log("No active session found.");
+        setIsAuthenticated(false); 
+      }
+    };
+    checkSession();
+  }, []);
 
+  // 1. Loading state (while checking Appwrite)
   if (isAuthenticated === null) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -39,6 +41,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
+  // 2. Redirect if not authenticated, otherwise render children
   return isAuthenticated ? <>{children}</> : <Navigate to="/auth" replace />;
 };
 
@@ -52,7 +55,7 @@ const App = () => (
           <Route path="/" element={<LandingPage />} />
           <Route path="/auth" element={<AuthPage />} />
           
-          {/* Protected Routes - Migration: Logic replaced Supabase listeners */}
+          {/* Protected Routes */}
           <Route 
             path="/scan-results" 
             element={
