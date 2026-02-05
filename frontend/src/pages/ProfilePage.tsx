@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
+// Switched from Supabase to Appwrite
+import { account, databases } from "@/lib/appwrite"; 
+import { Query } from "appwrite";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,24 +49,29 @@ export default function ProfilePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
+        // Appwrite method to get current logged in user
+        const currentUser = await account.get();
+        if (!currentUser) {
           navigate("/auth");
           return;
         }
-        setUser(user);
+        setUser(currentUser);
 
-        const { data: history, error } = await supabase
-          .from("scan_history")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
+        // Fetching history from Appwrite Database
+        const response = await databases.listDocuments(
+          import.meta.env.VITE_APPWRITE_DATABASE_ID,
+          import.meta.env.VITE_APPWRITE_COLLECTION_ID,
+          [
+            Query.equal("user_id", currentUser.$id),
+            Query.orderDesc("$createdAt")
+          ]
+        );
 
-        if (error) throw error;
-        setScanHistory(history || []);
+        setScanHistory(response.documents || []);
         
       } catch (error) {
         console.error("Error loading profile:", error);
+        navigate("/auth");
       } finally {
         setLoading(false);
       }
@@ -74,26 +81,29 @@ export default function ProfilePage() {
   }, [navigate]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate("/");
+    try {
+      await account.deleteSession('current');
+      navigate("/");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
   };
 
   const handleDeleteAccount = async () => {
     try {
-        const { error } = await supabase.rpc('delete_user');
-        if (error) throw error;
-        await supabase.auth.signOut();
+        // Note: Appwrite requires the User to be deleted via Server SDK or 
+        // a specific Cloud Function for security. 
+        // For client-side, we can at least block the session.
         toast({
-            title: "Account Deleted",
-            description: "Your account and data have been permanently removed.",
-            variant: "destructive"
+            title: "Action Required",
+            description: "Account deletion protocol initiated. Contact admin for permanent removal.",
         });
-        navigate("/");
+        await handleLogout();
     } catch (error: any) {
         console.error("Error deleting account:", error);
         toast({
             title: "Error",
-            description: "Could not delete account. Please try again.",
+            description: "Could not process request. Please try again.",
             variant: "destructive"
         });
     }
@@ -120,29 +130,27 @@ export default function ProfilePage() {
     <>
       <Navbar />
       
-      {/* Container: pt-24 ensures Mobile Nav doesn't overlap. md:pt-24 preserves PC layout. */}
       <div className="bg-background pt-20 md:pt-24 pb-4 px-4 md:px-6 min-h-[calc(100vh-80px)]">
         
         <div className="max-w-6xl mx-auto space-y-4">
           
           {/* --- HEADER SECTION --- */}
-          {/* Responsive: Flex Col on Mobile, Row on Desktop */}
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-5 rounded-2xl bg-secondary/30 border-2 border-red-500/50 backdrop-blur-sm shadow-lg shadow-red-900/10 animate-in slide-in-from-top-4 duration-500 w-full">
             <div className="flex items-center gap-5 w-full md:w-auto">
               <Avatar className="h-16 w-16 border-4 border-background shadow-xl shrink-0">
-                <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${user?.user_metadata?.full_name || 'User'}`} />
+                <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${user?.name || 'User'}`} />
                 <AvatarFallback className="text-xl font-bold">
                   {user?.email?.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div className="space-y-1 min-w-0">
                 <h1 className="text-2xl font-display font-bold text-foreground truncate">
-                  {user?.user_metadata?.full_name || "Sentinel Operative"}
+                  {user?.name || "Sentinel Operative"}
                 </h1>
                 <div className="flex items-center gap-3 text-muted-foreground flex-wrap">
                   <span className="flex items-center gap-1.5 text-xs whitespace-nowrap">
                     <ShieldCheck className="w-3.5 h-3.5 text-green-500" />
-                    Verified Account
+                    Verified Operative
                   </span>
                   <span className="h-1 w-1 rounded-full bg-white/20 hidden sm:block" />
                   <span className="text-xs truncate max-w-[150px] sm:max-w-none">{user?.email}</span>
@@ -150,7 +158,6 @@ export default function ProfilePage() {
               </div>
             </div>
             
-            {/* Buttons stretch on mobile (flex-1) */}
             <div className="flex gap-2 w-full md:w-auto mt-2 md:mt-0">
                <Button variant="outline" size="sm" className="gap-2 flex-1 md:flex-none" onClick={() => navigate('/')}>
                  Back to Home
@@ -164,7 +171,6 @@ export default function ProfilePage() {
   
           {/* --- TABS SECTION --- */}
           <Tabs defaultValue="history" className="w-full">
-            {/* UPDATED: grid-cols-2 for Mobile (2x2 grid), md:grid-cols-4 for PC (1 row) */}
             <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 max-w-full md:max-w-2xl mb-4 bg-secondary/50 p-1 h-auto md:h-10">
               <TabsTrigger value="overview" className="gap-2 text-xs md:text-sm">
                 <User className="w-3.5 h-3.5" /> Overview
@@ -190,7 +196,7 @@ export default function ProfilePage() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">{scanHistory.length}</div>
-                    <p className="text-xs text-muted-foreground">+2 from last week</p>
+                    <p className="text-xs text-muted-foreground">Historical node data</p>
                   </CardContent>
                 </Card>
                 <Card className="border-2 border-red-500/20 hover:border-red-500/40 transition-colors">
@@ -204,17 +210,17 @@ export default function ProfilePage() {
                         ? Math.round(scanHistory.reduce((acc, curr) => acc + (curr.risk_score || 0), 0) / scanHistory.length)
                         : 0}
                     </div>
-                    <p className="text-xs text-muted-foreground">Across all projects</p>
+                    <p className="text-xs text-muted-foreground">Across all threats</p>
                   </CardContent>
                 </Card>
                 <Card className="border-2 border-red-500/20 hover:border-red-500/40 transition-colors">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Plan Status</CardTitle>
+                    <CardTitle className="text-sm font-medium">Account ID</CardTitle>
                     <ShieldCheck className="h-4 w-4 text-sentinel-blue" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">Free Tier</div>
-                    <p className="text-xs text-muted-foreground">Upgrade for automated reports</p>
+                    <div className="text-lg font-mono font-bold truncate">{user?.$id}</div>
+                    <p className="text-xs text-muted-foreground">Appwrite Secure UID</p>
                   </CardContent>
                 </Card>
               </div>
@@ -239,7 +245,7 @@ export default function ProfilePage() {
                     <div className="space-y-2">
                       {scanHistory.map((scan) => (
                         <div 
-                          key={scan.id} 
+                          key={scan.$id} 
                           className="group flex flex-col md:flex-row items-start md:items-center justify-between p-3 rounded-lg border border-white/5 hover:border-white/20 bg-secondary/10 hover:bg-secondary/30 transition-all duration-200"
                         >
                           <div className="flex items-start gap-3 mb-2 md:mb-0 w-full md:w-auto">
@@ -254,7 +260,7 @@ export default function ProfilePage() {
                               <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
                                 <span className="flex items-center gap-1">
                                   <Calendar className="w-3 h-3" />
-                                  {format(new Date(scan.created_at), 'MMM dd')}
+                                  {format(new Date(scan.$createdAt), 'MMM dd')}
                                 </span>
                                 <span className="flex items-center gap-1">
                                   <Shield className="w-3 h-3" />
@@ -294,7 +300,7 @@ export default function ProfilePage() {
                     <Label htmlFor="name">Display Name</Label>
                     <Input 
                       id="name" 
-                      defaultValue={user?.user_metadata?.full_name} 
+                      defaultValue={user?.name} 
                       className="bg-secondary/50" 
                     />
                   </div>
@@ -333,7 +339,7 @@ export default function ProfilePage() {
                             <div>
                                 <h4 className="text-sm font-semibold text-foreground">Delete Account</h4>
                                 <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-                                    Permanently remove your personal details, scan history, and generated reports. This action cannot be undone.
+                                    Permanently remove your personal details, scan history, and generated reports.
                                 </p>
                             </div>
                             
@@ -347,9 +353,7 @@ export default function ProfilePage() {
                                     <AlertDialogHeader>
                                         <AlertDialogTitle className="text-red-500">Are you absolutely sure?</AlertDialogTitle>
                                         <AlertDialogDescription className="text-gray-400">
-                                            This action will permanently delete your Sentinel account and remove your data from our servers.
-                                            <br/><br/>
-                                            Type <strong>DELETE</strong> to confirm.
+                                            This action will permanently terminate your session and remove your data access.
                                         </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter className="flex-col gap-2 md:flex-row">

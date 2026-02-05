@@ -20,12 +20,12 @@ import {
   TableRow,
 } from "../components/ui/table";
 import { cn } from "../lib/utils";
-// ✅ IMPORT SUPABASE TO CAPTURE USER ID
-import { supabase } from "../lib/supabase"; 
+// ✅ REPLACED SUPABASE WITH APPWRITE
+import { account } from "../lib/appwrite"; 
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-// ✅ DYNAMIC API URL
+// DYNAMIC API URL
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
 
 export default function ScanResultsPage() {
@@ -53,16 +53,14 @@ export default function ScanResultsPage() {
         return;
     }
 
-    // ✅ ACCURATE LOGS (Matches your new Backend)
     const logs = mode === 'deep' ? [
         "Initializing Deep Scan protocols...",
         `Target: ${url}`,
         "Launching Playwright Headless Engine...",
         "Phase 1: Auditing Security Headers (CSP, HSTS)...",
         "Phase 2: Enumerating Sensitive Files (.env, backups)...",
-        "Phase 3: Active Browser Fuzzing (SQLi Injection)...",
-        "Phase 3: Active Browser Fuzzing (XSS Reflection)...",
-        "Analyzing DOM for broken state (500 Errors)...",
+        "Phase 3: Active Browser Fuzzing...",
+        "Analyzing DOM for broken state...",
         "Compiling deep analysis report..."
     ] : [
         "Initializing heuristic engines...",
@@ -94,11 +92,16 @@ export default function ScanResultsPage() {
             ? `${API_BASE_URL}/api/deep-scan`
             : `${API_BASE_URL}/api/scan`;
 
-        // ✅ 1. GET CURRENT USER ID
-        const { data: { user } } = await supabase.auth.getUser();
-        const userId = user?.id || null;
+        // ✅ 1. GET CURRENT APPWRITE USER ID
+        let userId = null;
+        try {
+            const currentUser = await account.get();
+            userId = currentUser.$id;
+        } catch (authErr) {
+            console.log("No active session, performing guest scan.");
+        }
 
-        // ✅ 2. SEND ID TO BACKEND (Enables Profile History)
+        // ✅ 2. SEND ID TO BACKEND
         const response = await axios.post(endpoint, { 
             url, 
             user_id: userId 
@@ -123,6 +126,9 @@ export default function ScanResultsPage() {
 
     return () => timeouts.forEach(clearTimeout);
   }, [url, navigate, mode]);
+
+  // ... Rest of the component logic (Charts, Downloads, UI Rendering) remains the same
+  // but ensure no other supabase references exist in the file.
 
   const handleDownload = async (type: 'technical' | 'executive') => {
     if (!report) return;

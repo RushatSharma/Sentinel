@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Menu, X, Sun, Moon, LogIn, User, LogOut } from 'lucide-react'; 
 import { cn } from '@/lib/utils';
-import { supabase } from '@/lib/supabase';
+// --- APPWRITE IMPORT ---
+import { account } from '@/lib/appwrite';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function Navbar() {
@@ -18,15 +19,19 @@ export function Navbar() {
     return savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches);
   });
 
-  // --- AUTH LISTENER ---
+  // --- AUTH LOGIC ---
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-    });
+    // Check initial session
+    const checkSession = async () => {
+      try {
+        const session = await account.get();
+        setUser(session);
+      } catch (error) {
+        setUser(null);
+      }
+    };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
+    checkSession();
 
     // Close dropdown when clicking outside
     const handleClickOutside = (event: MouseEvent) => {
@@ -37,16 +42,20 @@ export function Navbar() {
     document.addEventListener("mousedown", handleClickOutside);
 
     return () => {
-      subscription.unsubscribe();
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setIsProfileOpen(false);
-    // UPDATED: Redirect to Auth page instead of Home
-    navigate('/auth');
+    try {
+      // Appwrite logout
+      await account.deleteSession('current');
+      setUser(null);
+      setIsProfileOpen(false);
+      navigate('/auth');
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
   };
 
   // --- THEME LOGIC ---
@@ -132,11 +141,11 @@ export function Navbar() {
                     className="flex items-center gap-2 p-1 pr-3 rounded-full border border-white/10 bg-secondary/30 hover:bg-secondary/50 transition-colors"
                  >
                     <Avatar className="h-8 w-8">
-                        <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${user?.user_metadata?.full_name || 'User'}`} />
+                        <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${user?.name || 'User'}`} />
                         <AvatarFallback>U</AvatarFallback>
                     </Avatar>
                     <span className="text-sm font-medium text-foreground max-w-[100px] truncate">
-                        {user?.user_metadata?.full_name || 'Account'}
+                        {user?.name || 'Account'}
                     </span>
                  </button>
 
@@ -144,11 +153,10 @@ export function Navbar() {
                  {isProfileOpen && (
                     <div className="absolute right-0 mt-2 w-56 rounded-xl border border-white/10 bg-background/95 backdrop-blur-xl shadow-2xl animate-in fade-in zoom-in-95 z-50 overflow-hidden">
                         <div className="p-3 border-b border-white/10">
-                            <p className="text-sm font-semibold text-foreground truncate">{user?.user_metadata?.full_name}</p>
+                            <p className="text-sm font-semibold text-foreground truncate">{user?.name}</p>
                             <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
                         </div>
                         <div className="p-1 space-y-1">
-                            {/* UPDATED: Only Profile Option Remaining */}
                             <Link to="/profile" onClick={() => setIsProfileOpen(false)}>
                                 <Button variant="ghost" className="w-full justify-start h-9 px-2 text-sm font-normal">
                                     <User className="mr-2 h-4 w-4" />
@@ -223,11 +231,11 @@ export function Navbar() {
                         <Link to="/profile" onClick={() => setIsMenuOpen(false)}>
                              <div className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 border border-white/10 mb-2">
                                 <Avatar className="h-10 w-10">
-                                    <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${user?.user_metadata?.full_name || 'User'}`} />
+                                    <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${user?.name || 'User'}`} />
                                     <AvatarFallback>U</AvatarFallback>
                                 </Avatar>
                                 <div>
-                                    <p className="font-medium text-sm">{user?.user_metadata?.full_name}</p>
+                                    <p className="font-medium text-sm">{user?.name}</p>
                                     <p className="text-xs text-muted-foreground truncate max-w-[200px]">{user?.email}</p>
                                 </div>
                              </div>

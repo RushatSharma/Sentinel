@@ -1,23 +1,26 @@
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
-# Import scanner logic
-from scanner_logic import scan_sql_injection, scan_xss, scan_shadow_apis
-from port_scanner import scan_ports
-from reporter import generate_report
-from deep_scanner import run_deep_scan
-from database import save_scan_result 
+import os
 import requests
 import re
 import math
 
+# --- LOGIC IMPORTS ---
+# Fixed the ImportError by importing the module directly
+import scanner_logic 
+from port_scanner import scan_ports
+from reporter import generate_report
+from deep_scanner import run_deep_scan
+from database import save_scan_result 
+
 app = Flask(__name__)
 CORS(app)
 
-def health_check():
-    return "Sentinel Active", 200
-
 # --- HELPER: Risk Calculation ---
 def calculate_dynamic_risk(vuln_type, severity):
+    """
+    Calculates CVSS-based risk scores and estimated financial impact.
+    """
     cvss_map = {
         "SQL Injection": 9.8, "XSS": 6.1, "Network Exposure": 5.3,
         "Shadow API Detected": 7.5, "PII Exposure": 8.2, 
@@ -31,62 +34,113 @@ def calculate_dynamic_risk(vuln_type, severity):
     return round(score, 1), round(financial_impact, 2)
 
 def scan_page_content(url):
+    """
+    Scans for PII leaks (emails) using Regex.
+    """
     findings = []
     try:
         response = requests.get(url, timeout=5)
         content = response.text
-        
-        # Simple Regex to find exposed emails (PII)
         emails = set(re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', content))
         if emails:
-            valid_emails = [e for e in emails if "example.com" not in e and "uilib" not in e and "node_modules" not in e]
+            valid_emails = [e for e in emails if "example.com" not in e and "uilib" not in e]
             if valid_emails:
                 findings.append({
                     "type": "PII Exposure",
-                    "details": f"Found {len(valid_emails)} exposed email addresses (GDPR violation).",
+                    "details": f"Found {len(valid_emails)} exposed email addresses.",
                     "severity": "Medium",
-                    "fix": """# PII DATA MASKING PROTOCOL
-# ---------------------------------------------------
-# STEP 1: LOCATE SOURCE
-# grep -r "email" ./src/components
-
-# STEP 2: APPLY SERVER-SIDE MASKING (Example in NodeJS)
-# function maskEmail(email) {
-#   return email.replace(/(?<=.{2}).(?=.*@)/g, "*");
-# }
-
-# STEP 3: REVIEW LOGGING POLICY
-# Ensure PII is not being written to access.log or error.log"""
+                    "fix": "# PII DATA MASKING: Apply server-side masking filters."
                 })
     except: pass
     return findings
 
-# --- ROUTES ---
+# --- QUICK SCAN ORCHESTRATOR ---
+def perform_quick_scan(target_url):
+    """
+    Orchestrates the individual scanning modules into a single report.
+    """
+    report = {
+        "target": target_url,
+        "vulnerabilities": [],
+        "summary": {"high": 0, "medium": 0, "low": 0},
+        "financial_risk_total": 0
+    }
+
+    # 1. PII Scan
+    for pii in scan_page_content(target_url):
+        cvss, cost = calculate_dynamic_risk("PII Exposure", pii['severity'])
+        report["vulnerabilities"].append({**pii, "cvss": cvss, "est_cost": cost})
+
+    # 2. Port Scan
+    try:
+        for p in scan_ports(target_url):
+            cvss, cost = calculate_dynamic_risk("Network Exposure", "Low")
+            report["vulnerabilities"].append({
+                "type": "Network Exposure", "details": p, "severity": "Low",
+                "fix": "# FIREWALL: Use 'ufw deny <port>' to close exposed services.",
+                "cvss": cvss, "est_cost": cost
+            })
+    except: pass
+
+    # 3. SQL Injection (From scanner_logic module)
+    sqli = scanner_logic.scan_sql_injection(target_url)
+    if sqli:
+        cvss, cost = calculate_dynamic_risk("SQL Injection", "Critical")
+        report["vulnerabilities"].append({
+            "type": "SQL Injection", "details": sqli, "severity": "Critical",
+            "fix": "# PATCH: Use Parameterized Queries (Prepared Statements).",
+            "cvss": cvss, "est_cost": cost
+        })
+
+    # 4. XSS (From scanner_logic module)
+    xss = scanner_logic.scan_xss(target_url)
+    if xss:
+        cvss, cost = calculate_dynamic_risk("XSS", "High")
+        report["vulnerabilities"].append({
+            "type": "XSS", "details": xss, "severity": "High",
+            "fix": "# DEFENSE: Implement Content Security Policy (CSP) and output encoding.",
+            "cvss": cvss, "est_cost": cost
+        })
+
+    # 5. Shadow APIs (From scanner_logic module)
+    for s in scanner_logic.scan_shadow_apis(target_url):
+        cvss, cost = calculate_dynamic_risk("Shadow API Detected", "Medium")
+        report["vulnerabilities"].append({
+            "type": "Shadow API Detected", "details": s, "severity": "Medium",
+            "fix": "# HARDENING: Ensure endpoint requires OAuth2/JWT tokens.",
+            "cvss": cvss, "est_cost": cost
+        })
+
+    # Final Summary Calculation
+    for vuln in report["vulnerabilities"]:
+        report["financial_risk_total"] += vuln.get("est_cost", 0)
+        sev = vuln["severity"]
+        if sev in ["Critical", "High"]: report["summary"]["high"] += 1
+        elif sev == "Medium": report["summary"]["medium"] += 1
+        else: report["summary"]["low"] += 1
+
+    return report
+
+# --- API ROUTES ---
 
 @app.route('/api/scan', methods=['POST'])
-def run_quick_scan():
-    """
-    Lightweight scan (~5 seconds).
-    Performs Regex & Port scanning, then SAVES to DB.
-    """
+def run_quick_scan_api():
     data = request.json
     target_url = data.get('url')
-    user_id = data.get('user_id')  # <--- CAPTURE USER ID
+    user_id = data.get('user_id') 
 
     if not target_url: return jsonify({"error": "No URL provided"}), 400
     if not target_url.startswith('http'): target_url = 'https://' + target_url
 
-    # 1. Run the scan logic
+    # Execute Scan
     report = perform_quick_scan(target_url)
 
-    # 2. Save to Database (If user is logged in)
+    # Sync to Appwrite if User ID exists
     if user_id:
         try:
-            # Calculate a simple weighted risk score for the dashboard
             high = report['summary']['high']
             med = report['summary']['medium']
-            low = report['summary']['low']
-            risk_score = min(100, (high * 25) + (med * 10) + (low * 2))
+            risk_score = min(100, (high * 25) + (med * 10))
 
             save_scan_result(
                 user_id=user_id,
@@ -96,162 +150,38 @@ def run_quick_scan():
                 vulns_found=len(report['vulnerabilities']),
                 report_json=report
             )
-            print(f"[*] Quick Scan saved for user {user_id}")
         except Exception as e:
-            print(f"[!] Database Error: {e}")
+            print(f"[!] History Sync Error: {e}")
 
     return jsonify(report)
 
 @app.route('/api/deep-scan', methods=['POST'])
 def handle_deep_scan():
-    """
-    Heavyweight scan (Playwright).
-    Passes user_id to the orchestrator for internal saving.
-    """
     data = request.json
     target_url = data.get('url')
-    user_id = data.get('user_id') # <--- CAPTURE USER ID
+    user_id = data.get('user_id')
 
     if not target_url: return jsonify({"error": "No URL provided"}), 400
     if not target_url.startswith('http'): target_url = 'https://' + target_url
 
     try:
-        # Pass user_id to deep_scanner.py
-        report = run_deep_scan(target_url, user_id=user_id)
+        # Passes session ID for internal deep scan tracking
+        report = run_deep_scan(target_url, user_id=user_id) 
         return jsonify(report)
     except Exception as e:
-        print(f"Deep Scan Error: {e}")
-        return jsonify({"error": "Deep scan failed to initialize"}), 500
+        return jsonify({"error": "Deep scan engine failed"}), 500
 
 @app.route('/api/download-report', methods=['POST'])
 def download_report():
     data = request.json
     report_type = data.get('report_type', 'technical')
-    # Remove metadata keys if present to avoid pollution
     report_data = {k:v for k,v in data.items() if k != 'report_type'}
-    
-    if not report_data or 'vulnerabilities' not in report_data:
-        return jsonify({"error": "No valid report data provided"}), 400
     
     try:
         pdf_path = generate_report(report_data, report_type)
         return send_file(pdf_path, as_attachment=True)
     except Exception as e:
-        print(f"Report error: {e}")
-        return jsonify({"error": "Failed"}), 500
-
-# --- QUICK SCAN LOGIC ---
-def perform_quick_scan(target_url):
-    report = {
-        "target": target_url,
-        "vulnerabilities": [],
-        "summary": {"high": 0, "medium": 0, "low": 0},
-        "financial_risk_total": 0
-    }
-
-    print(f"[*] Running Quick Scan for {target_url}...")
-
-    # 1. LIVE PII SCAN
-    pii_findings = scan_page_content(target_url)
-    for pii in pii_findings:
-        cvss, cost = calculate_dynamic_risk("PII Exposure", pii['severity'])
-        report["vulnerabilities"].append({
-            "type": "PII Exposure", "details": pii['details'], "severity": pii['severity'],
-            "fix": pii['fix'], "cvss": cvss, "est_cost": cost
-        })
-
-    # 2. PORT SCAN
-    try:
-        ports = scan_ports(target_url)
-        for p in ports:
-            # Extract port number for the fix script
-            port_num = ''.join(filter(str.isdigit, p.split(' ')[1])) 
-            cvss, cost = calculate_dynamic_risk("Network Exposure", "Low")
-            report["vulnerabilities"].append({
-                "type": "Network Exposure", "details": p, "severity": "Low",
-                # CHANGED: Generic Fix Script
-                "fix": """# PORT CLOSURE PROCEDURE
-# ---------------------------------------------------
-# STEP 1: IDENTIFY PROCESS
-# sudo lsof -i :<PORT>
-
-# STEP 2: STOP SERVICE (If not required)
-# sudo systemctl stop <service_name>
-# sudo systemctl disable <service_name>
-
-# STEP 3: UPDATE FIREWALL (UFW)
-# sudo ufw deny <PORT>/tcp
-# sudo ufw reload""",
-                "cvss": cvss, "est_cost": cost
-            })
-    except: pass
-
-    # 3. REGEX SQLi SCAN
-    sqli = scan_sql_injection(target_url)
-    if sqli:
-        cvss, cost = calculate_dynamic_risk("SQL Injection", "Critical")
-        report["vulnerabilities"].append({
-            "type": "SQL Injection", "details": sqli, "severity": "Critical",
-            "fix": """# SQL INJECTION PATCH
-# ⛔ CRITICAL: Raw query concatenation detected.
-
-# VULNERABLE CODE:
-# query = "SELECT * FROM users WHERE id = " + user_input
-
-# SECURE PATCH (Parameterized Queries):
-# Python: cursor.execute("SELECT * FROM users WHERE id = %s", (user_input,))
-# Node.js: db.query('SELECT * FROM users WHERE id = $1', [user_input])""", 
-            "cvss": cvss, "est_cost": cost
-        })
-
-    # 4. REGEX XSS SCAN
-    xss = scan_xss(target_url)
-    if xss:
-        cvss, cost = calculate_dynamic_risk("XSS", "High")
-        report["vulnerabilities"].append({
-            "type": "XSS", "details": xss, "severity": "High",
-            "fix": """# XSS DEFENSE PROTOCOL
-# ---------------------------------------------------
-# 1. INPUT VALIDATION:
-# Reject inputs containing <script>, <iframe>, or 'javascript:'
-
-# 2. OUTPUT ENCODING:
-# Use libraries like DOMPurify before rendering HTML.
-# clean = DOMPurify.sanitize(dirty);
-
-# 3. ENABLE CSP HEADER:
-# Content-Security-Policy: default-src 'self'; script-src 'self' https://trusted.cdn.com;""", 
-            "cvss": cvss, "est_cost": cost
-        })
-
-    # 5. REGEX SHADOW API SCAN
-    shadows = scan_shadow_apis(target_url)
-    for s in shadows:
-        cvss, cost = calculate_dynamic_risk("Shadow API Detected", "Medium")
-        report["vulnerabilities"].append({
-            "type": "Shadow API Detected", "details": s, "severity": "Medium",
-            "fix": """# API HARDENING
-# ---------------------------------------------------
-# 1. AUTHENTICATION:
-# Ensure this endpoint requires a valid JWT/OAuth2 token.
-
-# 2. RATE LIMITING (Nginx Example):
-# limit_req_zone $binary_remote_addr zone=mylimit:10m rate=10r/s;
-
-# 3. SWAGGER DOCUMENTATION:
-# Register this endpoint in openapi.yaml to ensure visibility.""", 
-            "cvss": cvss, "est_cost": cost
-        })
-
-    # CALCULATE TOTALS
-    for vuln in report["vulnerabilities"]:
-        report["financial_risk_total"] += vuln.get("est_cost", 0)
-        sev = vuln["severity"]
-        if sev in ["Critical", "High"]: report["summary"]["high"] += 1
-        elif sev == "Medium": report["summary"]["medium"] += 1
-        elif sev == "Low": report["summary"]["low"] += 1
-
-    return report
+        return jsonify({"error": "PDF generation failed"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
