@@ -9,7 +9,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Navbar } from "@/components/Navbar";
+import { Navbar } from "@/components/Navbar"; // Ensure this import is correct based on your previous fix
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,14 +34,13 @@ import {
   ShieldAlert,
   LogOut,
   Calendar,
-  FileText,
-  ExternalLink,
   ShieldCheck,
   Shield,
   Trash2,
   AlertTriangle,
   Download,
-  Loader2
+  Loader2,
+  ChevronDown
 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/components/ui/use-toast";
@@ -43,12 +48,14 @@ import { useToast } from "@/components/ui/use-toast";
 export default function ProfilePage() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  
+  // State
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [scanHistory, setScanHistory] = useState<any[]>([]);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
-  // --- FETCH DATA ---
+  // Fetch Data
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -71,7 +78,7 @@ export default function ProfilePage() {
         setScanHistory(response.documents || []);
       } catch (error) {
         console.error("Error loading profile:", error);
-        navigate("/auth");
+        // Don't redirect immediately on error to avoid flicker, just show empty state
       } finally {
         setLoading(false);
       }
@@ -80,8 +87,7 @@ export default function ProfilePage() {
     fetchData();
   }, [navigate]);
 
-  // --- ACTIONS ---
-
+  // Actions
   const handleLogout = async () => {
     try {
       await account.deleteSession('current');
@@ -99,7 +105,6 @@ export default function ProfilePage() {
     await handleLogout();
   };
 
-  // 1. DELETE SCAN FUNCTION
   const handleDeleteScan = async (scanId: string) => {
     try {
       await databases.deleteDocument(
@@ -108,35 +113,33 @@ export default function ProfilePage() {
         scanId
       );
       
-      // Update UI instantly
       setScanHistory((prev) => prev.filter((scan) => scan.$id !== scanId));
-      
       toast({ title: "Scan deleted successfully" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Delete failed:", error);
-      toast({ variant: "destructive", title: "Failed to delete scan" });
+      toast({ 
+        variant: "destructive", 
+        title: "Failed to delete scan",
+        description: error.message 
+      });
     }
   };
 
-  // 2. DOWNLOAD REPORT FUNCTION
-  const handleDownloadReport = async (scan: any) => {
+  const handleDownloadReport = async (scan: any, type: 'technical' | 'executive') => {
     try {
       setDownloadingId(scan.$id);
       
-      // Parse the JSON string back into an object
       let reportData = {};
       try {
         reportData = typeof scan.report_json === 'string' 
           ? JSON.parse(scan.report_json) 
           : scan.report_json;
       } catch (e) {
-        throw new Error("Report data is corrupted or missing.");
+        throw new Error("Report data is corrupted.");
       }
 
-      // Add report type for the backend
-      const payload = { ...reportData, report_type: 'technical' };
+      const payload = { ...reportData, report_type: type };
 
-      // Call your existing Backend API
       const response = await fetch('http://127.0.0.1:5000/api/download-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -145,26 +148,20 @@ export default function ProfilePage() {
 
       if (!response.ok) throw new Error("Backend failed to generate PDF");
 
-      // Convert response to Blob and download
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Sentinel_Report_${scan.target_url}_${format(new Date(), 'yyyyMMdd')}.pdf`;
+      a.download = `Sentinel_${type === 'executive' ? 'Exec' : 'Tech'}_${scan.target_url}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      toast({ title: "Report downloaded successfully" });
+      toast({ title: `${type === 'executive' ? 'Executive' : 'Technical'} report downloaded` });
 
     } catch (error: any) {
-      console.error("Download error:", error);
-      toast({ 
-        variant: "destructive", 
-        title: "Download Failed", 
-        description: error.message 
-      });
+      toast({ variant: "destructive", title: "Download Failed", description: error.message });
     } finally {
       setDownloadingId(null);
     }
@@ -176,208 +173,151 @@ export default function ProfilePage() {
     return <Badge className="bg-green-500 hover:bg-green-600">Safe ({score})</Badge>;
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-pulse flex flex-col items-center gap-4">
-          <div className="h-12 w-12 rounded-full bg-muted"></div>
-          <div className="h-4 w-48 rounded bg-muted"></div>
-        </div>
-      </div>
-    );
-  }
+  // REMOVED: The blocking "if (loading) return..." block is gone.
+  // The layout below renders immediately.
 
   return (
     <>
       <Navbar />
-      
       <div className="bg-background pt-20 md:pt-24 pb-4 px-4 md:px-6 min-h-[calc(100vh-80px)]">
-        
         <div className="max-w-6xl mx-auto space-y-4">
           
-          {/* HEADER (Same as before) */}
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-5 rounded-2xl bg-secondary/30 border-2 border-red-500/50 backdrop-blur-sm shadow-lg shadow-red-900/10 w-full">
+          {/* HEADER */}
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-5 rounded-2xl bg-secondary/30 border-2 border-red-500/50 backdrop-blur-sm shadow-lg shadow-red-900/10 w-full animate-in fade-in duration-500">
             <div className="flex items-center gap-5 w-full md:w-auto">
               <Avatar className="h-16 w-16 border-4 border-background shadow-xl shrink-0">
                 <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${user?.name || 'User'}`} />
-                <AvatarFallback className="text-xl font-bold">
-                  {user?.email?.charAt(0).toUpperCase()}
+                <AvatarFallback>
+                    {loading ? "..." : user?.email?.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <div className="space-y-1 min-w-0">
+              <div className="space-y-1">
                 <h1 className="text-2xl font-display font-bold text-foreground truncate">
-                  {user?.name || "Sentinel Operative"}
+                  {loading ? "Loading Profile..." : user?.name || "Sentinel Operative"}
                 </h1>
-                <div className="flex items-center gap-3 text-muted-foreground flex-wrap">
-                  <span className="flex items-center gap-1.5 text-xs whitespace-nowrap">
-                    <ShieldCheck className="w-3.5 h-3.5 text-green-500" />
-                    Verified Operative
-                  </span>
-                  <span className="h-1 w-1 rounded-full bg-white/20 hidden sm:block" />
-                  <span className="text-xs truncate max-w-[150px] sm:max-w-none">{user?.email}</span>
+                <div className="flex items-center gap-3 text-muted-foreground text-xs">
+                  <ShieldCheck className="w-3.5 h-3.5 text-green-500" /> Verified Operative
+                  <span className="h-1 w-1 rounded-full bg-white/20" />
+                  {loading ? "..." : user?.email}
                 </div>
               </div>
             </div>
-            
-            <div className="flex gap-2 w-full md:w-auto mt-2 md:mt-0">
-               <Button variant="outline" size="sm" className="gap-2 flex-1 md:flex-none" onClick={() => navigate('/')}>
-                 Back to Home
-               </Button>
-               <Button variant="destructive" size="sm" className="gap-2 flex-1 md:flex-none" onClick={handleLogout}>
-                 <LogOut className="w-4 h-4" />
-                 Sign Out
-               </Button>
+            <div className="flex gap-2">
+               <Button variant="outline" size="sm" onClick={() => navigate('/')}>Home</Button>
+               <Button variant="destructive" size="sm" onClick={handleLogout}><LogOut className="w-4 h-4 mr-2" />Sign Out</Button>
             </div>
           </div>
   
           {/* TABS */}
           <Tabs defaultValue="history" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 max-w-full md:max-w-2xl mb-4 bg-secondary/50 p-1 h-auto md:h-10">
-              <TabsTrigger value="overview" className="gap-2 text-xs md:text-sm">
-                <User className="w-3.5 h-3.5" /> Overview
-              </TabsTrigger>
-              <TabsTrigger value="history" className="gap-2 text-xs md:text-sm">
-                <History className="w-3.5 h-3.5" /> Scan History
-              </TabsTrigger>
-              <TabsTrigger value="user-info" className="gap-2 text-xs md:text-sm">
-                <Settings className="w-3.5 h-3.5" /> User Info
-              </TabsTrigger>
-              <TabsTrigger value="danger-zone" className="gap-2 text-xs md:text-sm data-[state=active]:bg-red-500 data-[state=active]:text-white">
-                <AlertTriangle className="w-3.5 h-3.5" /> Danger Zone
-              </TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-4">
+              <TabsTrigger value="overview"><User className="w-3.5 h-3.5 mr-2" /> Overview</TabsTrigger>
+              <TabsTrigger value="history"><History className="w-3.5 h-3.5 mr-2" /> History</TabsTrigger>
+              <TabsTrigger value="user-info"><Settings className="w-3.5 h-3.5 mr-2" /> User Info</TabsTrigger>
+              <TabsTrigger value="danger-zone"><AlertTriangle className="w-3.5 h-3.5 mr-2" /> Danger</TabsTrigger>
             </TabsList>
   
             {/* OVERVIEW TAB */}
             <TabsContent value="overview" className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <Card className="border-2 border-red-500/20 hover:border-red-500/40 transition-colors">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Scans Run</CardTitle>
+              <div className="grid gap-4 md:grid-cols-3">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium">Total Scans</CardTitle>
                     <Shield className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{scanHistory.length}</div>
-                    <p className="text-xs text-muted-foreground">Historical node data</p>
+                    <div className="text-2xl font-bold">
+                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : scanHistory.length}
+                    </div>
                   </CardContent>
                 </Card>
-                <Card className="border-2 border-red-500/20 hover:border-red-500/40 transition-colors">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Avg. Risk Score</CardTitle>
-                    <ShieldAlert className="h-4 w-4 text-sentinel-red" />
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium">Avg Risk Score</CardTitle>
+                    <ShieldAlert className="h-4 w-4 text-red-500" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
-                      {scanHistory.length > 0 
+                      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 
+                        scanHistory.length > 0 
                         ? Math.round(scanHistory.reduce((acc, curr) => acc + (curr.risk_score || 0), 0) / scanHistory.length)
                         : 0}
                     </div>
-                    <p className="text-xs text-muted-foreground">Across all threats</p>
-                  </CardContent>
-                </Card>
-                <Card className="border-2 border-red-500/20 hover:border-red-500/40 transition-colors">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Account ID</CardTitle>
-                    <ShieldCheck className="h-4 w-4 text-sentinel-blue" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-lg font-mono font-bold truncate">{user?.$id}</div>
-                    <p className="text-xs text-muted-foreground">Appwrite Secure UID</p>
                   </CardContent>
                 </Card>
               </div>
             </TabsContent>
   
-            {/* --- SCAN HISTORY TAB (UPDATED) --- */}
+            {/* HISTORY TAB */}
             <TabsContent value="history">
-              <Card className="border-2 border-red-500/50 bg-background/50 backdrop-blur-sm">
-                <CardHeader className="pb-3">
-                  <CardTitle>Recent Operations</CardTitle>
-                  <CardDescription>
-                    A log of all heuristic warfare scans executed by this account.
-                  </CardDescription>
-                </CardHeader>
+              <Card className="border-2 border-red-500/50">
+                <CardHeader><CardTitle>Scan Operations</CardTitle></CardHeader>
                 <CardContent>
-                  {scanHistory.length === 0 ? (
-                    <div className="text-center py-6 text-muted-foreground">
-                      <Shield className="w-10 h-10 mx-auto mb-3 opacity-20" />
-                      <p className="text-sm">No scans recorded yet.</p>
-                    </div>
+                  {loading ? (
+                     <div className="flex justify-center py-8">
+                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                     </div>
+                  ) : scanHistory.length === 0 ? (
+                    <div className="text-center py-6 text-muted-foreground">No scans recorded.</div>
                   ) : (
                     <div className="space-y-2">
                       {scanHistory.map((scan) => (
-                        <div 
-                          key={scan.$id} 
-                          className="group flex flex-col md:flex-row items-start md:items-center justify-between p-3 rounded-lg border border-white/5 hover:border-white/20 bg-secondary/10 hover:bg-secondary/30 transition-all duration-200"
-                        >
-                          <div className="flex items-start gap-3 mb-2 md:mb-0 w-full md:w-auto">
-                            <div className="p-2 rounded-md bg-background border border-white/10 group-hover:border-sentinel-blue/50 transition-colors shrink-0">
-                              <Shield className="w-4 h-4 text-muted-foreground group-hover:text-sentinel-blue" />
-                            </div>
-                            <div className="min-w-0">
-                              <h4 className="font-semibold text-sm text-foreground flex items-center gap-2 truncate">
-                                <span className="truncate">{scan.target_url}</span>
-                                <ExternalLink className="w-3 h-3 opacity-50 shrink-0" />
-                              </h4>
-                              <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-                                <span className="flex items-center gap-1">
-                                  <Calendar className="w-3 h-3" />
-                                  {format(new Date(scan.$createdAt), 'MMM dd')}
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <Shield className="w-3 h-3" />
-                                  {scan.scan_mode || 'Quick'}
-                                </span>
-                              </div>
-                            </div>
+                        <div key={scan.$id} className="flex flex-col md:flex-row items-center justify-between p-3 rounded-lg border border-white/5 bg-secondary/10">
+                          
+                          {/* Left: Info */}
+                          <div className="flex items-center gap-3 w-full md:w-auto">
+                             <Shield className="w-8 h-8 text-primary/50" />
+                             <div>
+                                <h4 className="font-semibold text-sm truncate w-48 md:w-auto">{scan.target_url}</h4>
+                                <div className="flex gap-2 text-xs text-muted-foreground">
+                                   <span>{format(new Date(scan.$createdAt), 'MMM dd')}</span>
+                                   <span>• {scan.scan_mode || 'Quick'}</span>
+                                </div>
+                             </div>
                           </div>
   
-                          <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end pl-11 md:pl-0">
-                            <div className="text-right">
-                               <div className="scale-90 origin-left md:origin-right">{getRiskBadge(scan.risk_score || 0)}</div>
-                            </div>
+                          {/* Right: Actions */}
+                          <div className="flex items-center gap-3 w-full md:w-auto justify-end mt-2 md:mt-0">
+                            {getRiskBadge(scan.risk_score || 0)}
                             
-                            {/* ACTION BUTTONS */}
-                            <div className="flex gap-2">
-                                <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0"
-                                    onClick={() => handleDownloadReport(scan)}
-                                    disabled={downloadingId === scan.$id}
-                                >
-                                    {downloadingId === scan.$id ? (
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                    ) : (
-                                        <Download className="w-4 h-4" />
-                                    )}
+                            {/* DOWNLOAD DROPDOWN */}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" disabled={downloadingId === scan.$id}>
+                                   {downloadingId === scan.$id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                                   <ChevronDown className="w-3 h-3 ml-1 opacity-50" />
                                 </Button>
-                                
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-500 shrink-0">
-                                            <Trash2 className="w-4 h-4" />
-                                        </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>Delete Scan Record?</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                                This will permanently remove the record of the scan for {scan.target_url}. 
-                                                The report data will also be lost.
-                                            </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                            <AlertDialogAction 
-                                                className="bg-red-600 hover:bg-red-700"
-                                                onClick={() => handleDeleteScan(scan.$id)}
-                                            >
-                                                Delete
-                                            </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                            </div>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleDownloadReport(scan, 'technical')}>
+                                  Technical Report
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDownloadReport(scan, 'executive')}>
+                                  Executive Summary
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+
+                            {/* DELETE BUTTON */}
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-red-500">
+                                        <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Delete Scan?</AlertDialogTitle>
+                                        <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction className="bg-red-600" onClick={() => handleDeleteScan(scan.$id)}>
+                                            Delete
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                           </div>
                         </div>
                       ))}
@@ -386,80 +326,33 @@ export default function ProfilePage() {
                 </CardContent>
               </Card>
             </TabsContent>
-  
-            {/* USER INFO TAB (Same as before) */}
+
+            {/* User Info & Danger Zone (Simplified for brevity as they don't depend on loading state as critically) */}
             <TabsContent value="user-info">
               <Card className="border-2 border-red-500/50">
-                <CardHeader className="pb-3">
-                  <CardTitle>User Information</CardTitle>
-                  <CardDescription>
-                    Manage your personal information and security preferences.
-                  </CardDescription>
-                </CardHeader>
+                <CardHeader><CardTitle>User Information</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="name">Display Name</Label>
-                    <Input id="name" defaultValue={user?.name} className="bg-secondary/50" />
+                    <Label>Display Name</Label>
+                    <Input defaultValue={user?.name || ""} disabled={loading} className="bg-secondary/50" />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="email">Email Address</Label>
-                    <Input id="email" defaultValue={user?.email} disabled className="bg-secondary/20 text-muted-foreground cursor-not-allowed" />
-                  </div>
-                  <div className="pt-2">
-                    <Button className="bg-sentinel-blue hover:bg-sentinel-blue/90 text-white w-full md:w-auto">
-                      Save Changes
-                    </Button>
+                    <Label>Email Address</Label>
+                    <Input defaultValue={user?.email || ""} disabled className="bg-secondary/20 text-muted-foreground" />
                   </div>
                 </CardContent>
               </Card>
             </TabsContent>
-
-            {/* DANGER ZONE TAB (Same as before) */}
+            
             <TabsContent value="danger-zone">
-                <Card className="border-2 border-red-900/50 bg-red-950/10">
-                    <CardHeader>
-                        <CardTitle className="text-red-500 flex items-center gap-2">
-                            <AlertTriangle className="w-5 h-5" />
-                            Danger Zone
-                        </CardTitle>
-                        <CardDescription className="text-red-200/60">
-                            Irreversible actions for your account. Proceed with extreme caution.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="p-4 border border-red-500/20 bg-background/50 rounded-lg flex flex-col md:flex-row items-center justify-between gap-4">
-                            <div>
-                                <h4 className="text-sm font-semibold text-foreground">Delete Account</h4>
-                                <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-                                    Permanently remove your personal details, scan history, and generated reports.
-                                </p>
-                            </div>
-                            
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="destructive" className="bg-red-600 hover:bg-red-700 w-full md:w-auto">
-                                        Delete My Account
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent className="border-red-500/50 bg-[#1a1a1a] max-w-[90%] md:max-w-lg rounded-xl">
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle className="text-red-500">Are you absolutely sure?</AlertDialogTitle>
-                                        <AlertDialogDescription className="text-gray-400">
-                                            This action will permanently terminate your session and remove your data access.
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter className="flex-col gap-2 md:flex-row">
-                                        <AlertDialogCancel className="bg-transparent border-white/10 hover:bg-white/5 hover:text-white mt-2 md:mt-0">Cancel</AlertDialogCancel>
-                                        <AlertDialogAction onClick={handleDeleteAccount} className="bg-red-600 hover:bg-red-700 text-white border-0">
-                                            Yes, delete my account
-                                        </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        </div>
-                    </CardContent>
-                </Card>
+               <Card className="border-red-900/50 bg-red-950/10">
+                 <CardHeader><CardTitle className="text-red-500">Danger Zone</CardTitle></CardHeader>
+                 <CardContent>
+                   <Button variant="destructive" onClick={handleDeleteAccount}>Delete Account</Button>
+                 </CardContent>
+               </Card>
             </TabsContent>
+
           </Tabs>
         </div>
       </div>

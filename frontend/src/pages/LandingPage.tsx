@@ -3,8 +3,8 @@ import {HeroSection} from "../components/HeroSection";
 import {FeaturesSection} from "../components/FeaturesSection";
 import {ComplianceSection} from "../components/ComplianceSection";
 import {ReportingSection} from "../components/ReportingSection";
-import {CtaSection} from "../components/CtaSection";
 import {Footer} from "../components/Footer";
+import { ComplianceTicker } from "@/components/ComplianceTicker";
 
 export default function LandingPage() {
   return (
@@ -15,7 +15,7 @@ export default function LandingPage() {
         <FeaturesSection />
         <ComplianceSection />
         <ReportingSection />
-        <CtaSection />
+        <ComplianceTicker />
       </main>
       <Footer />
     </div>
