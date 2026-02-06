@@ -1,47 +1,50 @@
 import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "@/context/AuthContext"; // Import from new file
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ThemeProvider } from "@/components/ThemeProvider";
+import { AuthProvider } from "@/context/AuthContext";
 
+// Pages
+import Home from "./pages/Home";
 import LandingPage from "./pages/LandingPage";
+import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
-import AuthPage from "./pages/AuthPage"; 
-import ScanResultsPage from "./pages/ScanResultsPage"; 
-import DeepScanPage from "./pages/DeepScanPage";
 import ProfilePage from "./pages/ProfilePage";
+import DeepScanPage from "./pages/DeepScanPage";
+import ScanResultsPage from "./pages/ScanResultsPage";
+import AboutPage from "./pages/AboutPage"; // <--- Import AboutPage
 
 const queryClient = new QueryClient();
 
-// Protected Route checks the context we created
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) return null; // Or a loading spinner
-
-  return isAuthenticated ? <>{children}</> : <Navigate to="/auth" replace />;
-};
-
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    {/* 1. Wrap everything in AuthProvider */}
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/auth" element={<AuthPage />} />
-            
-            <Route path="/scan-results" element={<ProtectedRoute><ScanResultsPage /></ProtectedRoute>} />
-            <Route path="/deep-scan" element={<ProtectedRoute><DeepScanPage /></ProtectedRoute>} />
-            <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-            
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
+    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/auth" element={<AuthPage />} />
+              <Route path="/about" element={<AboutPage />} /> {/* <--- Add Route */}
+              
+              {/* Protected/App Routes */}
+              <Route path="/dashboard" element={<Home />} />
+              <Route path="/deep-scan" element={<DeepScanPage />} />
+              <Route path="/scan-results/:scanId" element={<ScanResultsPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
+              
+              {/* 404 Route */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

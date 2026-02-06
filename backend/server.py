@@ -183,5 +183,12 @@ def download_report():
     except Exception as e:
         return jsonify({"error": "PDF generation failed"}), 500
 
+# --- HEALTH CHECK (Keep-Alive) ---
+@app.route('/', methods=['GET'])
+@app.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({"status": "active", "message": "Sentinel Backend is Running"}), 200
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
