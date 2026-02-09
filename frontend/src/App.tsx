@@ -33,7 +33,10 @@ const App = () => (
               {/* Protected/App Routes */}
               <Route path="/dashboard" element={<Home />} />
               <Route path="/deep-scan" element={<DeepScanPage />} />
-              <Route path="/scan-results/:scanId" element={<ScanResultsPage />} />
+              
+              {/* CHANGED: Removed "/:scanId" to match query-param navigation */}
+              <Route path="/scan-results" element={<ScanResultsPage />} />
+              
               <Route path="/profile" element={<ProfilePage />} />
               
               {/* 404 Route */}
@@ -41,7 +44,6 @@ const App = () => (
             </Routes>
           </BrowserRouter>
 
-          {/* Moved to bottom to fix the layout gap issue */}
           <Toaster />
           <Sonner />
           
