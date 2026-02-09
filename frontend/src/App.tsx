@@ -14,7 +14,7 @@ import NotFound from "./pages/NotFound";
 import ProfilePage from "./pages/ProfilePage";
 import DeepScanPage from "./pages/DeepScanPage";
 import ScanResultsPage from "./pages/ScanResultsPage";
-import AboutPage from "./pages/AboutPage"; // <--- Import AboutPage
+import AboutPage from "./pages/AboutPage"; 
 
 const queryClient = new QueryClient();
 
@@ -23,14 +23,12 @@ const App = () => (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
       <AuthProvider>
         <TooltipProvider>
-          <Toaster />
-          <Sonner />
           <BrowserRouter>
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<LandingPage />} />
               <Route path="/auth" element={<AuthPage />} />
-              <Route path="/about" element={<AboutPage />} /> {/* <--- Add Route */}
+              <Route path="/about" element={<AboutPage />} />
               
               {/* Protected/App Routes */}
               <Route path="/dashboard" element={<Home />} />
@@ -42,6 +40,11 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
+
+          {/* Moved to bottom to fix the layout gap issue */}
+          <Toaster />
+          <Sonner />
+          
         </TooltipProvider>
       </AuthProvider>
     </ThemeProvider>

@@ -75,6 +75,7 @@ export function Navbar() {
     { name: 'Features', href: '/#features' },
     { name: 'Compliance', href: '/#compliance' },
     { name: 'Reporting', href: '/#reporting' },
+    { name: 'About', href: '/about' }, // Added About Link
   ];
 
   return (
@@ -137,8 +138,8 @@ export function Navbar() {
                <div className="relative" ref={profileRef}>
                  {/* PROFILE TRIGGER BUTTON */}
                  <button 
-                    onClick={() => setIsProfileOpen(!isProfileOpen)}
-                    className="flex items-center gap-2 p-1 pr-3 rounded-full border border-white/10 bg-secondary/30 hover:bg-secondary/50 transition-colors"
+                   onClick={() => setIsProfileOpen(!isProfileOpen)}
+                   className="flex items-center gap-2 p-1 pr-3 rounded-full border border-white/10 bg-secondary/30 hover:bg-secondary/50 transition-colors"
                  >
                     <Avatar className="h-8 w-8">
                         <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${user?.name || 'User'}`} />
