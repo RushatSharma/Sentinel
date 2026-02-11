@@ -15,6 +15,7 @@ import ProfilePage from "./pages/ProfilePage";
 import DeepScanPage from "./pages/DeepScanPage";
 import ScanResultsPage from "./pages/ScanResultsPage";
 import AboutPage from "./pages/AboutPage"; 
+import NormalScanPage from "./pages/NormalScanPage"; // IMPORT ADDED
 
 const queryClient = new QueryClient();
 
@@ -32,11 +33,10 @@ const App = () => (
               
               {/* Protected/App Routes */}
               <Route path="/dashboard" element={<Home />} />
+              <Route path="/scan" element={<NormalScanPage />} /> {/* NEW ROUTE ADDED */}
               <Route path="/deep-scan" element={<DeepScanPage />} />
               
-              {/* CHANGED: Removed "/:scanId" to match query-param navigation */}
               <Route path="/scan-results" element={<ScanResultsPage />} />
-              
               <Route path="/profile" element={<ProfilePage />} />
               
               {/* 404 Route */}

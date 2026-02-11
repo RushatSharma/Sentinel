@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Menu, X, Sun, Moon, LogIn, User, LogOut } from 'lucide-react'; 
+import { Menu, X, Sun, Moon, LogIn, User, LogOut, ShieldCheck, ScanSearch, Info } from 'lucide-react'; 
 import { cn } from '@/lib/utils';
 // --- APPWRITE IMPORT ---
 import { account } from '@/lib/appwrite';
@@ -71,11 +71,11 @@ export function Navbar() {
 
   const toggleTheme = () => setIsDarkMode(prev => !prev);
 
+  // UPDATED NAVIGATION LINKS
   const navLinks = [
-    { name: 'Features', href: '/#features' },
-    { name: 'Compliance', href: '/#compliance' },
-    { name: 'Reporting', href: '/#reporting' },
-    { name: 'About', href: '/about' }, // Added About Link
+    { name: 'Quick Scan', href: '/scan', icon: <ScanSearch className="w-4 h-4 mr-2" /> },
+    { name: 'Deep Scan', href: '/deep-scan', icon: <ShieldCheck className="w-4 h-4 mr-2" /> },
+    { name: 'About Protocol', href: '/about', icon: <Info className="w-4 h-4 mr-2" /> },
   ];
 
   return (
@@ -111,16 +111,16 @@ export function Navbar() {
           {/* --- DESKTOP NAVIGATION --- */}
           <nav className="hidden lg:flex absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 items-center space-x-8">
             {navLinks.map((item) => (
-              <a
+              <Link
                 key={item.name}
-                href={item.href}
+                to={item.href}
                 className={cn(
-                  "font-medium text-base text-muted-foreground transition-colors hover:text-sentinel-blue py-2 relative",
+                  "flex items-center font-medium text-base text-muted-foreground transition-colors hover:text-sentinel-blue py-2 relative",
                   "after:content-[''] after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-full after:origin-center after:scale-x-0 after:bg-sentinel-blue after:transition-transform after:duration-300 hover:after:scale-x-100"
                 )}
               >
                 {item.name}
-              </a>
+              </Link>
             ))}
           </nav>
 
@@ -204,14 +204,15 @@ export function Navbar() {
           <div className="absolute left-0 w-full lg:hidden bg-background/95 backdrop-blur-xl border-b border-white/10 shadow-2xl animate-in slide-in-from-top-5">
             <nav className="flex flex-col p-4 space-y-2">
               {navLinks.map((item) => (
-                <a
+                <Link
                   key={item.name}
-                  href={item.href}
-                  className="px-4 py-3 text-base font-medium text-foreground hover:text-sentinel-blue hover:bg-secondary/50 rounded-lg transition-colors"
+                  to={item.href}
+                  className="flex items-center px-4 py-3 text-base font-medium text-foreground hover:text-sentinel-blue hover:bg-secondary/50 rounded-lg transition-colors"
                   onClick={() => setIsMenuOpen(false)}
                 >
+                  {item.icon}
                   {item.name}
-                </a>
+                </Link>
               ))}
               
               <div className="h-px bg-white/10 my-2" />
