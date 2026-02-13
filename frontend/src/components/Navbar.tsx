@@ -1,7 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom'; // Added useLocation
 import { Button } from '@/components/ui/button';
-import { Menu, X, Sun, Moon, LogIn, User, LogOut, ShieldCheck, ScanSearch, Info } from 'lucide-react'; 
+import { 
+  Menu, 
+  X, 
+  Sun, 
+  Moon, 
+  LogIn, 
+  User, 
+  LogOut, 
+  ShieldCheck, 
+  ScanSearch, 
+  Info, 
+  Home // Added Home icon
+} from 'lucide-react'; 
 import { cn } from '@/lib/utils';
 // --- APPWRITE IMPORT ---
 import { account } from '@/lib/appwrite';
@@ -12,6 +24,7 @@ export function Navbar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const navigate = useNavigate();
+  const location = useLocation(); // Hook to get current path
   const profileRef = useRef<HTMLDivElement>(null);
   
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -72,7 +85,13 @@ export function Navbar() {
   const toggleTheme = () => setIsDarkMode(prev => !prev);
 
   // UPDATED NAVIGATION LINKS
+  // We conditionally add the "Home" link if the current path is NOT "/"
   const navLinks = [
+    ...(location.pathname !== '/' ? [{ 
+      name: 'Home', 
+      href: '/', 
+      icon: <Home className="w-4 h-4 mr-2" /> 
+    }] : []),
     { name: 'Quick Scan', href: '/scan', icon: <ScanSearch className="w-4 h-4 mr-2" /> },
     { name: 'Deep Scan', href: '/deep-scan', icon: <ShieldCheck className="w-4 h-4 mr-2" /> },
     { name: 'About Protocol', href: '/about', icon: <Info className="w-4 h-4 mr-2" /> },

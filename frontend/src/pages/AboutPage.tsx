@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
@@ -29,16 +29,29 @@ import {
     Activity,
     Search,
     FileText,
-    Siren
+    Siren,
+    Terminal,
+    Hash,
+    BarChart3,
+    Wifi,
+    HardDrive,
+    Network,
+    AlertTriangle,
+    ShieldAlert,
+    LockKeyhole,
+    RefreshCw
 } from "lucide-react";
 
 const AboutPage = () => {
   const [mounted, setMounted] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(document.documentElement.classList.contains('dark'));
-
+  const [randomHex, setRandomHex] = useState<string[]>([]);
+  const [threatLogs, setThreatLogs] = useState<{time: string, type: string, status: string}[]>([]);
+  
   useEffect(() => {
     setMounted(true);
     
+    // Theme Observer
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         if (mutation.attributeName === 'class') {
@@ -47,7 +60,44 @@ const AboutPage = () => {
       });
     });
     observer.observe(document.documentElement, { attributes: true });
-    return () => observer.disconnect();
+
+    // Generate random hex data
+    const generateHex = () => {
+        const chars = "0123456789ABCDEF";
+        const lines = [];
+        for(let i=0; i<12; i++) {
+            let line = "";
+            for(let j=0; j<24; j++) {
+                line += chars[Math.floor(Math.random() * chars.length)];
+            }
+            lines.push(line);
+        }
+        setRandomHex(lines);
+    };
+
+    // Generate random threat logs
+    const generateThreatLog = () => {
+         const types = ["SQL Injection", "XSS Attempt", "Brute Force", "Packet Flood", "C2 Beacon", "Zero-Day"];
+         const statuses = ["BLOCKED", "MITIGATED", "ISOLATED"];
+         const newLog = {
+             time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+             type: types[Math.floor(Math.random() * types.length)],
+             status: statuses[Math.floor(Math.random() * statuses.length)]
+         };
+         // Keep last 5 logs
+         setThreatLogs(prev => [newLog, ...prev].slice(0, 5));
+    };
+    
+    generateHex();
+    generateThreatLog();
+    const hexInterval = setInterval(generateHex, 1500);
+    const logInterval = setInterval(generateThreatLog, 2500);
+
+    return () => {
+        observer.disconnect();
+        clearInterval(hexInterval);
+        clearInterval(logInterval);
+    };
   }, []);
 
   const teamMembers = [
@@ -79,9 +129,6 @@ const AboutPage = () => {
   ];
 
   const animationKey = isDarkMode ? 'dark' : 'light';
-
-  // "Happy Accident" Class: 
-  // transition-all duration-1000 ease-out -> Creates the fluid morphing/resizing effect.
   const liquidTextClass = "transition-all duration-1000 ease-out";
 
   return (
@@ -90,65 +137,209 @@ const AboutPage = () => {
       
       <main className="flex-grow relative">
         {/* --- GLOBAL BACKGROUND --- */}
-        <div className="absolute inset-0 grid-background pointer-events-none opacity-50" />
-        <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background pointer-events-none" />
-
-        {/* --- HERO SECTION --- */}
-        <section className="relative pt-24 pb-20 lg:pt-40 lg:pb-32 overflow-hidden">
-          
-          <div className="container mx-auto px-4 relative z-10">
-            <div className="max-w-5xl mx-auto text-center space-y-6">
+        <div className="absolute inset-0 grid-background pointer-events-none opacity-40 dark:opacity-20" />
+        
+        {/* --- HERO SECTION: COMPACT COMMAND CENTER --- */}
+        {/* lg:h-[calc(100vh-64px)] ensures it fits perfectly on desktop without scrolling */}
+        <section className="relative pt-4 pb-4 lg:pt-0 lg:pb-0 overflow-hidden min-h-[calc(100vh-64px)] lg:h-[calc(100vh-64px)] flex flex-col justify-center">
+          <div className="container mx-auto px-4 relative z-10 h-full flex-grow flex flex-col py-4">
+            
+            {/* The Main Flex Container */}
+            <div className="flex flex-col lg:flex-row gap-0 border border-border bg-background/40 backdrop-blur-md shadow-2xl flex-grow rounded-lg overflow-hidden h-full">
                 
-                {/* Status Pill */}
-                <div 
-                    key={`status-${animationKey}`}
-                    className={`inline-flex items-center rounded-full border border-border bg-card/50 backdrop-blur-md px-4 py-1.5 text-xs font-medium text-muted-foreground shadow-sm animate-in fade-in zoom-in-90 duration-1000 fill-mode-forwards ${liquidTextClass}`}
-                >
-                    <span className="relative flex h-2 w-2 mr-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                    </span>
-                    System Operational • v2.4.0
+                {/* 1. LEFT ZONE: Main Interface (65% Width) */}
+                <div className="lg:w-[65%] p-6 lg:p-10 flex flex-col justify-between relative border-b lg:border-b-0 lg:border-r border-border h-full">
+                    
+                    {/* Top Decor */}
+                    <div className="flex justify-between items-start">
+                         <div 
+                            key={`badge-${animationKey}`}
+                            className={`inline-flex items-center gap-2 px-3 py-1 text-xs font-mono font-bold tracking-widest text-primary uppercase border-l-2 border-primary pl-3 ${liquidTextClass}`}
+                        >
+                            <span>// System Architecture v2.4</span>
+                        </div>
+                        <div className="hidden sm:flex gap-1.5">
+                             <div className="w-1.5 h-1.5 bg-muted-foreground/30 rounded-sm" />
+                             <div className="w-1.5 h-1.5 bg-muted-foreground/30 rounded-sm" />
+                             <div className="w-1.5 h-1.5 bg-primary rounded-sm animate-pulse" />
+                        </div>
+                    </div>
+
+                    {/* Center Content */}
+                    <div className="space-y-6 max-w-2xl my-auto">
+                        <h1 
+                            key={`heading-${animationKey}`}
+                            className={`text-4xl lg:text-6xl xl:text-7xl font-bold font-display tracking-tight leading-[0.95] text-foreground animate-in fade-in slide-in-from-left-8 duration-1000 delay-100 fill-mode-forwards ${liquidTextClass}`}
+                        >
+                          Engineering <br />
+                          Trust In A <br />
+                          <span className="text-transparent bg-clip-text bg-gradient-to-r from-sentinel-blue to-purple-500">
+                            Zero-Trust
+                          </span> World.
+                        </h1>
+
+                        <p 
+                            key={`subtext-1-${animationKey}`}
+                            className={`text-base lg:text-lg text-muted-foreground leading-relaxed animate-in fade-in slide-in-from-left-8 duration-1000 delay-200 fill-mode-forwards ${liquidTextClass}`}
+                        >
+                          Sentinel is the blueprint for modern defense. We don't just patch holes; we re-architect your security posture from the ground up.
+                        </p>
+                        
+                        <div className="flex flex-wrap gap-3 animate-in fade-in slide-in-from-left-8 duration-1000 delay-300 fill-mode-forwards">
+                             <Link to="/auth">
+                                <Button size="lg" className="rounded-none h-10 border border-primary bg-primary/10 hover:bg-primary hover:text-white text-primary px-6 transition-all text-sm">
+                                    [ INITIALIZE_SCAN ]
+                                </Button>
+                             </Link>
+                             <Link to="/features">
+                                <Button variant="ghost" size="lg" className="rounded-none h-10 border-b border-muted-foreground/30 hover:border-primary px-6 text-sm">
+                                    Read Protocol
+                                </Button>
+                             </Link>
+                        </div>
+
+                        {/* THREAT CONDITION GAUGE */}
+                        <div className="p-3 bg-card/50 border border-border/50 rounded-lg animate-in fade-in slide-in-from-left-8 duration-1000 delay-400 fill-mode-forwards relative overflow-hidden max-w-sm">
+                            <div className="flex justify-between items-center mb-2">
+                                <div className="flex items-center gap-2">
+                                     <AlertTriangle className="w-3 h-3 text-orange-500 animate-pulse" />
+                                     <span className="text-[10px] font-mono font-bold text-muted-foreground tracking-wider">THREAT CON</span>
+                                </div>
+                                <span className="text-[10px] font-mono font-bold text-orange-500 animate-pulse">ELEVATED</span>
+                            </div>
+
+                            {/* Segmented Bar */}
+                            <div className="flex gap-0.5 h-2">
+                                {[...Array(4)].map((_, i) => <div key={`safe-${i}`} className="flex-1 bg-emerald-500/80 rounded-[1px]" />)}
+                                {[...Array(3)].map((_, i) => <div key={`elevated-${i}`} className="flex-1 bg-orange-500 animate-pulse rounded-[1px]" />)}
+                                {[...Array(3)].map((_, i) => <div key={`critical-${i}`} className="flex-1 bg-muted/30 rounded-[1px]" />)}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Bottom Status Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-6 border-t border-border/50 opacity-80 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-500 fill-mode-forwards">
+                        <div>
+                            <div className="text-[10px] uppercase text-muted-foreground tracking-wider mb-0.5 flex items-center gap-1"><Activity className="w-3 h-3" /> Uptime</div>
+                            <div className="font-mono text-base font-bold">99.99%</div>
+                        </div>
+                        <div>
+                            <div className="text-[10px] uppercase text-muted-foreground tracking-wider mb-0.5 flex items-center gap-1"><Shield className="w-3 h-3" /> Blocked</div>
+                            <div className="font-mono text-base font-bold text-sentinel-blue">1.2M+</div>
+                        </div>
+                        <div>
+                            <div className="text-[10px] uppercase text-muted-foreground tracking-wider mb-0.5 flex items-center gap-1"><Lock className="w-3 h-3" /> Encrypt</div>
+                            <div className="font-mono text-base font-bold">AES-256</div>
+                        </div>
+                        <div>
+                            <div className="text-[10px] uppercase text-muted-foreground tracking-wider mb-0.5 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Audit</div>
+                            <div className="font-mono text-base font-bold text-emerald-500">SOC2</div>
+                        </div>
+                    </div>
                 </div>
 
-                {/* Main Heading - TRUE BLACK */}
-                <h1 
-                    key={`heading-${animationKey}`}
-                    className={`text-6xl md:text-8xl font-bold font-display tracking-tighter leading-none text-black dark:text-white animate-in fade-in zoom-in-90 duration-1000 delay-100 fill-mode-forwards ${liquidTextClass}`}
-                >
-                  Digital Immunity <br />
-                  <span>
-                    For The Modern Web.
-                  </span>
-                </h1>
+                {/* 2. RIGHT ZONE: Compact Telemetry Sidebar (35% Width) */}
+                <div className="lg:w-[35%] bg-card/20 relative flex flex-col font-mono text-xs overflow-hidden bg-muted/10 h-full">
+                    
+                    {/* Sidebar Header (Fixed) */}
+                    <div className="p-3 border-b border-border bg-muted/30 flex justify-between items-center shrink-0">
+                        <span className="text-muted-foreground font-bold">LIVE TELEMETRY</span>
+                        <div className="flex gap-2 items-center">
+                             <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                             <span className="text-[10px] text-red-500 font-bold">ON</span>
+                        </div>
+                    </div>
 
-                {/* Subtext Paragraph 1 - TRUE BLACK */}
-                <p 
-                    key={`subtext-1-${animationKey}`}
-                    className={`text-xl md:text-2xl text-black dark:text-white max-w-2xl mx-auto leading-relaxed animate-in fade-in zoom-in-90 duration-1000 delay-200 fill-mode-forwards ${liquidTextClass}`}
-                >
-                  Sentinel isn't just a scanner. It's a <span className="font-semibold">heuristic warfare engine</span> that predicts vectors before they become breaches.
-                </p>
+                    {/* Module A: Network Map (Fixed) */}
+                    <div className="p-4 border-b border-border space-y-2 shrink-0">
+                        <div className="flex justify-between items-center text-muted-foreground">
+                            <span className="flex items-center gap-2 text-[10px]"><Globe className="w-3 h-3" /> NODES</span>
+                            <span className="text-emerald-500 text-[9px]">SYNC</span>
+                        </div>
+                        <div className="h-16 w-full bg-black/20 dark:bg-white/5 rounded border border-border/50 relative overflow-hidden">
+                            <div className="absolute top-1/2 left-1/4 w-1 h-1 bg-sentinel-blue rounded-full animate-ping" />
+                            <div className="absolute top-1/3 left-1/2 w-1 h-1 bg-purple-500 rounded-full animate-ping delay-700" />
+                            <div className="absolute bottom-1/4 right-1/4 w-1 h-1 bg-emerald-500 rounded-full animate-ping delay-1000" />
+                            <div className="absolute inset-0 grid-background opacity-20" />
+                        </div>
+                    </div>
 
-                {/* Subtext Paragraph 2 - TRUE BLACK */}
-                <p 
-                    key={`subtext-2-${animationKey}`}
-                    className={`text-lg md:text-xl text-black dark:text-white max-w-xl mx-auto leading-relaxed animate-in fade-in zoom-in-90 duration-1000 delay-300 fill-mode-forwards ${liquidTextClass}`}
-                >
-                  We don't just find vulnerabilities. We eliminate the logic that makes them possible.
-                </p>
+                     {/* MODULE D: Active Threat Log (Flexible) */}
+                     <div className="p-4 border-b border-border space-y-2 flex-1 min-h-0 bg-background/30 flex flex-col">
+                         <div className="flex justify-between items-center shrink-0">
+                             <span className="text-[10px] text-muted-foreground flex items-center gap-2">
+                                 <ShieldAlert className="w-3 h-3 text-orange-500" /> DEFENSE_LOG
+                             </span>
+                         </div>
+                         <div className="space-y-1.5 overflow-hidden relative font-mono text-[9px] flex-1">
+                            {threatLogs.map((log, i) => (
+                                <div key={i} className="flex justify-between items-center animate-in slide-in-from-top-1 duration-300 border-b border-border/30 pb-0.5 last:border-0">
+                                    <div className="flex gap-2">
+                                        <span className="text-muted-foreground/50">{log.time}</span>
+                                        <span className="text-foreground truncate max-w-[100px]">{log.type}</span>
+                                    </div>
+                                    <span className="text-emerald-500 font-bold">{log.status}</span>
+                                </div>
+                            ))}
+                         </div>
+                     </div>
 
-                {/* CTA Button */}
-                <div 
-                    key={`cta-${animationKey}`}
-                    className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-0 animate-in fade-in zoom-in-90 duration-1000 delay-500 fill-mode-forwards"
-                >
-                   <Link to="/auth">
-                      <Button size="lg" className="h-12 px-8 rounded-full text-base bg-foreground text-background hover:bg-foreground/90 font-semibold shadow-[0_0_20px_-5px_rgba(0,0,0,0.3)] dark:shadow-[0_0_20px_-5px_rgba(255,255,255,0.3)] transition-all hover:scale-105">
-                        Initialize Scan
-                      </Button>
-                   </Link>
+                    {/* Module B: Scrolling Hex (Flexible) */}
+                    <div className="p-4 space-y-2 relative border-b border-border flex-1 min-h-0 flex flex-col">
+                        <div className="flex justify-between items-center shrink-0">
+                            <span className="text-[10px] text-muted-foreground flex items-center gap-2"><HardDrive className="w-3 h-3" /> STREAM</span>
+                        </div>
+                        <div className="opacity-40 text-[9px] leading-tight font-mono break-all overflow-hidden text-muted-foreground flex-1">
+                            {randomHex.map((line, i) => (
+                                <div key={i} className="animate-in fade-in duration-300">{line}</div>
+                            ))}
+                        </div>
+                        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent h-[30%] w-full animate-scan pointer-events-none" />
+                    </div>
+
+                     {/* MODULE E: Encryption (Fixed) */}
+                    <div className="p-3 border-b border-border shrink-0 bg-muted/20">
+                         <div className="flex justify-between items-center mb-2">
+                             <span className="text-[10px] text-muted-foreground flex items-center gap-2">
+                                 <LockKeyhole className="w-3 h-3" /> KEYS
+                             </span>
+                             <RefreshCw className="w-3 h-3 text-muted-foreground/70 animate-[spin_4s_linear_infinite]" />
+                         </div>
+                         <div className="flex items-center justify-between gap-2">
+                             <div className="space-y-0.5 flex-1">
+                                 <div className="text-[8px] font-mono text-foreground/80 truncate">{randomHex[0]?.substring(0,12)}...</div>
+                                 <div className="h-0.5 w-full bg-sentinel-blue/40 animate-pulse" />
+                             </div>
+                             <div className="space-y-0.5 flex-1 text-right">
+                                 <div className="text-[8px] font-mono text-foreground/80 truncate ml-auto">{randomHex[1]?.substring(0,12)}...</div>
+                                 <div className="h-0.5 w-full bg-emerald-500/40 animate-pulse delay-500" />
+                             </div>
+                         </div>
+                    </div>
+
+                    {/* Module C: Server Load (Fixed) */}
+                    <div className="p-4 bg-muted/10 shrink-0">
+                         <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                                <Activity className="w-3 h-3 text-sentinel-blue" />
+                                <span className="text-[10px] text-muted-foreground">LOAD</span>
+                            </div>
+                            <span className="text-xs font-bold">42%</span>
+                         </div>
+                         <div className="space-y-1.5">
+                             <div className="flex items-center gap-2 text-[9px] text-muted-foreground/60">
+                                <span className="w-6">CPU</span>
+                                <div className="h-1 flex-grow bg-muted/50 overflow-hidden rounded-full"><div className="h-full w-[45%] bg-sentinel-blue rounded-full" /></div>
+                             </div>
+                             <div className="flex items-center gap-2 text-[9px] text-muted-foreground/60">
+                                <span className="w-6">MEM</span>
+                                <div className="h-1 flex-grow bg-muted/50 overflow-hidden rounded-full"><div className="h-full w-[30%] bg-emerald-500 rounded-full" /></div>
+                             </div>
+                         </div>
+                    </div>
+
                 </div>
+
             </div>
           </div>
         </section>
@@ -197,13 +388,13 @@ const AboutPage = () => {
             </div>
         </section>
 
-        {/* --- LOGIC OF DEFENSE --- */}
+        {/* --- ANATOMY OF DEFENSE --- */}
         <section className="py-24 relative">
             <div className="container mx-auto px-4">
                 <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
                     <div className="max-w-2xl">
                         <Badge variant="outline" className="mb-4 border-primary/20 text-primary">Core Philosophy</Badge>
-                        <h2 className={`text-4xl md:text-5xl font-bold font-display tracking-tight ${liquidTextClass}`}>The Logic of Defense</h2>
+                        <h2 className={`text-4xl md:text-5xl font-bold font-display tracking-tight ${liquidTextClass}`}>The Anatomy of Defense</h2>
                         <p className={`text-lg md:text-xl text-muted-foreground mt-4 leading-relaxed ${liquidTextClass}`}>
                             Traditional security is reactive. Sentinel is heuristic. We built an engine that thinks like a hacker to protect you like a fortress.
                         </p>
@@ -279,14 +470,14 @@ const AboutPage = () => {
             </div>
         </section>
 
-        {/* --- ORIGIN & TIMELINE --- */}
+        {/* --- PROTOCOL EVOLUTION --- */}
         <section className="py-24 border-t border-border bg-muted/20">
             <div className="container mx-auto px-4">
                 <div className="grid lg:grid-cols-2 gap-16 items-start">
                     
                     <div className="space-y-8 sticky top-24">
                         <div>
-                             <h2 className={`text-3xl md:text-4xl font-bold font-display tracking-tight mb-4 ${liquidTextClass}`}>From Script to Platform</h2>
+                             <h2 className={`text-3xl md:text-4xl font-bold font-display tracking-tight mb-4 ${liquidTextClass}`}>Protocol Evolution</h2>
                              <p className={`text-lg md:text-xl text-muted-foreground leading-relaxed ${liquidTextClass}`}>
                                 Sentinel wasn't founded in a boardroom. It was founded in a server room at 3 AM during a massive DDoS attack.
                              </p>

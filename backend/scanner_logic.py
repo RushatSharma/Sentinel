@@ -38,9 +38,9 @@ def get_form_details(form):
     details["inputs"] = inputs
     return details
 
-# --- SCANNER 1: SQL INJECTION ---
+# --- SCANNER 1: SQL INJECTION (Enhanced) ---
 def scan_sql_injection(url):
-    payloads = ["'", "\"", "' OR 1=1 --"] 
+    payloads = ["'", "\"", "' OR 1=1 --", "' UNION SELECT 1,2,3 --"] 
     forms = get_forms(url)
     if not forms: return None
 
@@ -58,19 +58,29 @@ def scan_sql_injection(url):
             
             target_url = urljoin(url, form_details["action"])
             try:
-                if form_details["method"] == "post":
+                method = form_details["method"]
+                if method == "post":
                     res = requests.post(target_url, data=data, headers=get_header(), timeout=3)
                 else:
                     res = requests.get(target_url, params=data, headers=get_header(), timeout=3)
                 
-                if "mysql" in res.text.lower() or "syntax error" in res.text.lower():
-                    return f"SQL Injection on {target_url} (Payload: {payload})"
+                # Check for SQL errors
+                if any(x in res.text.lower() for x in ["mysql", "syntax error", "sql", "database error"]):
+                    return {
+                        "type": "SQL Injection",
+                        "severity": "Critical",
+                        "url": target_url,
+                        "description": "The application allows unvalidated user input to interfere with backend database queries.",
+                        "impact": "Attackers can steal all customer data, modify balances, or bypass authentication panels completely. This is a catastrophic breach risk.",
+                        "reproduction": f"1. Navigate to {url}\n2. Submit the form ({method.upper()}) with payload: {payload}\n3. Observe database error in response.",
+                        "remediation": "Use Parameterized Queries (Prepared Statements) for all database access. Never concatenate strings into SQL queries."
+                    }
             except: continue
     return None
 
-# --- SCANNER 2: XSS ---
+# --- SCANNER 2: XSS (Enhanced) ---
 def scan_xss(url):
-    xss_payload = "<script>alert('XSS')</script>"
+    xss_payload = "<script>alert('SENTINEL_XSS')</script>"
     forms = get_forms(url)
     if not forms: return None
 
@@ -84,39 +94,50 @@ def scan_xss(url):
         
         target_url = urljoin(url, form_details["action"])
         try:
-            if form_details["method"] == "post":
+            method = form_details["method"]
+            if method == "post":
                 res = requests.post(target_url, data=data, headers=get_header(), timeout=3)
             else:
                 res = requests.get(target_url, params=data, headers=get_header(), timeout=3)
             
             if xss_payload in res.text:
-                return f"Reflected XSS on {target_url}"
+                return {
+                    "type": "Reflected XSS",
+                    "severity": "High",
+                    "url": target_url,
+                    "description": "The application reflects user input back to the browser without sanitization.",
+                    "impact": "Attackers can execute malicious scripts in users' browsers, stealing session cookies, redirecting users to phishing sites, or performing actions on their behalf.",
+                    "reproduction": f"1. Send a {method.upper()} request to {target_url}\n2. Inject payload: {xss_payload}\n3. The script executes in the browser.",
+                    "remediation": "Contextually encode all user data before rendering it in HTML. Implement a Content Security Policy (CSP)."
+                }
         except: continue
     return None
 
-# --- SCANNER 3: SHADOW API HUNTER ---
+# --- SCANNER 3: SHADOW API HUNTER (Enhanced) ---
 def scan_shadow_apis(url):
-    """
-    Downloads JS files and looks for hidden API endpoints using Regex.
-    """
     detected_apis = []
     try:
         res = requests.get(url, headers=get_header(), timeout=5)
         soup = BeautifulSoup(res.content, "html.parser")
         
-        # Find all script sources
         scripts = [script.attrs.get("src") for script in soup.find_all("script") if script.attrs.get("src")]
         
         for script in scripts:
             script_url = urljoin(url, script)
             try:
                 js_content = requests.get(script_url, timeout=3).text
-                # Regex looking for /api/..., /v1/..., /admin/...
                 matches = re.findall(r'["\'](\/(?:api|v1|admin|private)\/[a-zA-Z0-9_\-\/]+)["\']', js_content)
                 for match in matches:
-                    detected_apis.append(f"Hidden Endpoint '{match}' found in {script}")
+                    detected_apis.append({
+                        "type": "Shadow API Endpoint",
+                        "severity": "Medium",
+                        "url": urljoin(url, match),
+                        "description": f"An undocumented API endpoint '{match}' was found leaked in client-side JavaScript.",
+                        "impact": "Shadow APIs often lack the rigorous authentication/authorization checks of public APIs, allowing unauthorized data access.",
+                        "reproduction": f"1. Inspect source code of {script_url}\n2. Locate endpoint: {match}\n3. Send direct request to endpoint.",
+                        "remediation": "Audit all exposed endpoints. Remove debug/admin routes from production JS bundles."
+                    })
             except: continue
     except: pass
     
-    # Deduplicate results
-    return list(set(detected_apis))
+    return detected_apis

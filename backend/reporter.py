@@ -40,7 +40,7 @@ class AdvancedPDF(FPDF):
         self.set_text_color(15, 23, 42)
         self.cell(w-10, 8, value, 0, 2)
         
-        self.set_font('Arial', '', 7) # Smaller font for subtitle to fit
+        self.set_font('Arial', '', 7)
         self.set_text_color(100, 116, 139)
         self.cell(w-10, 5, subtitle, 0, 0)
 
@@ -82,19 +82,24 @@ class AdvancedPDF(FPDF):
         self.cell(0, 10, label, 0, 1, 'L')
         self.ln(2)
 
-    def body_text(self, text):
-        self.set_font('Arial', '', 11)
+    def sub_title(self, label):
+        self.set_font('Arial', 'B', 11)
         self.set_text_color(51, 65, 85)
-        self.multi_cell(0, 6, text)
+        self.cell(0, 8, label, 0, 1, 'L')
+
+    def body_text(self, text):
+        self.set_font('Arial', '', 10)
+        self.set_text_color(51, 65, 85)
+        self.multi_cell(0, 5, text)
         self.ln()
 
-# --- DYNAMIC BUSINESS INTELLIGENCE ---
+# --- BUSINESS LOGIC ---
 def calculate_business_metrics(summary, vulnerabilities):
     # Base Calculation
     financial_risk = (summary['high'] * 75000) + (summary['medium'] * 15000) + (summary['low'] * 2000)
     
     # Dynamic Multipliers based on specific findings
-    vuln_types = [v['type'].lower() for v in vulnerabilities]
+    vuln_types = [v.get('type', '').lower() for v in vulnerabilities]
     
     # Multiplier: Database Breach Risk
     if any("sql" in v for v in vuln_types):
@@ -123,17 +128,17 @@ def get_grade_info(summary):
     if summary['high'] > 0:
         return "F", (220, 38, 38), "CRITICAL EXPOSURE", "Emergency Patching Required"
     elif summary['medium'] > 2:
-        return "C", (249, 115, 22), "ELEVATED RISK", "Schedule Remediation Sprint"
-    elif summary['medium'] > 0 or summary['low'] > 0:
-        return "B", (234, 179, 8), "MODERATE HYGIENE", "hardening Required"
+        return "C", (249, 115, 22), "ELEVATED RISK", "Plan Remediation Sprint"
+    elif summary['medium'] > 0:
+        return "B", (234, 179, 8), "MODERATE POSTURE", "Hardening Recommended"
     else:
-        return "A", (22, 163, 74), "SECURE", "Continuous Monitoring Active"
+        return "A", (22, 163, 74), "SECURE", "Continue Monitoring"
 
 # --- NEW: CONTEXT-AWARE SUMMARY GENERATOR ---
 def generate_dynamic_summary(report_data):
     summary = report_data.get('summary', {})
     vulns = report_data.get('vulnerabilities', [])
-    vuln_types = [v['type'] for v in vulns]
+    vuln_types = [v.get('type', '') for v in vulns]
     target = report_data.get('target', 'Target System')
 
     # 1. OPENING STATEMENT
@@ -148,25 +153,17 @@ def generate_dynamic_summary(report_data):
     # 2. SPECIFIC THREAT HIGHLIGHTS (The "Smart" Part)
     highlights = []
     
-    # Check for SQL Injection
     if any("SQL" in t for t in vuln_types):
         highlights.append("CRITICAL: Database integrity is compromised. Active SQL Injection vectors were detected, allowing potential attackers to dump user data or modify records.")
-        
-    # Check for XSS
+    
     if any("XSS" in t for t in vuln_types):
-        highlights.append("Client-side security is weak. Reflected XSS vulnerabilities were found, which could lead to user session hijacking or phishing campaigns.")
+        highlights.append("Client-side security is weak. Reflected XSS vulnerabilities were found, which could lead to user session hijacking.")
         
-    # Check for PII
-    if any("PII" in t for t in vuln_types):
-        highlights.append("PRIVACY ALERT: Personally Identifiable Information (PII) is being leaked in cleartext, posing a significant GDPR/CCPA compliance risk.")
-        
-    # Check for Secrets/.env
     if any("Sensitive File" in t or "Secret" in t for t in vuln_types):
-        highlights.append("INFRASTRUCTURE LEAK: Critical configuration files (e.g., .env, backup.sql) are publicly accessible. This often leads to full server compromise.")
+        highlights.append("INFRASTRUCTURE LEAK: Critical configuration files (e.g., .env) are publicly accessible. This often leads to full server compromise.")
 
-    # Check for Shadow APIs
     if any("Shadow API" in t for t in vuln_types):
-        highlights.append("Undocumented 'Shadow APIs' were discovered. These endpoints often lack proper authentication checks compared to main API routes.")
+        highlights.append("Undocumented 'Shadow APIs' were discovered. These endpoints often lack proper authentication checks.")
 
     if highlights:
         text += "\n\nKEY FINDINGS:\n" + " ".join(highlights)
@@ -179,7 +176,7 @@ def generate_dynamic_summary(report_data):
 
 def generate_dynamic_actions(vulns):
     actions = []
-    vuln_types = [v['type'] for v in vulns]
+    vuln_types = [v.get('type', '') for v in vulns]
     
     if any("SQL" in t for t in vuln_types):
         actions.append("URGENT: Implement Prepared Statements (Parameterized Queries) for all database interactions.")
@@ -189,9 +186,6 @@ def generate_dynamic_actions(vulns):
         
     if any("XSS" in t for t in vuln_types):
         actions.append("Sanitize all user inputs using a library like DOMPurify and implement a strict Content-Security-Policy (CSP).")
-        
-    if any("PII" in t for t in vuln_types):
-        actions.append("Compliance: Redact email addresses and phone numbers from API responses.")
         
     if any("Shadow" in t for t in vuln_types):
         actions.append("Audit: Catalog detected Shadow APIs and enforce JWT authentication on these routes.")
@@ -203,39 +197,29 @@ def generate_dynamic_actions(vulns):
         
     return actions
 
-# --- AGGREGATION LOGIC ---
-def aggregate_vulnerabilities(vulnerabilities):
-    groups = {}
-    for v in vulnerabilities:
-        key = (v['type'], v['severity'], v['fix'])
-        if key not in groups:
-            groups[key] = {
-                'type': v['type'], 'severity': v['severity'], 'fix': v['fix'], 'targets': []
-            }
-        if v['details'] not in groups[key]['targets']:
-            groups[key]['targets'].append(v['details'])
-    return list(groups.values())
-
 # --- MAIN GENERATOR ---
 def generate_report(report_data, report_type='technical'):
     pdf = AdvancedPDF()
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
 
-    # --- HEADER ---
-    title_prefix = "EXECUTIVE" if report_type == 'executive' else "TECHNICAL"
+    vulns = report_data.get('vulnerabilities', [])
+    summary = report_data.get('summary', {'high': 0, 'medium': 0, 'low': 0})
+    target = report_data.get('target', 'Unknown')
+
+    # --- TITLE PAGE HEADER ---
+    title_prefix = "EXECUTIVE STRATEGY" if report_type == 'executive' else "TECHNICAL AUDIT"
     pdf.set_font('Arial', 'B', 24)
     pdf.set_text_color(15, 23, 42)
-    pdf.cell(0, 10, f"{title_prefix} AUDIT REPORT", 0, 1, 'L')
+    pdf.cell(0, 10, f"{title_prefix} REPORT", 0, 1, 'L')
     
     pdf.set_font('Arial', '', 10)
     pdf.set_text_color(100, 116, 139)
-    pdf.cell(0, 6, f"Target Asset: {report_data.get('target', 'Unknown')}", 0, 1, 'L')
+    pdf.cell(0, 6, f"Target Asset: {target}", 0, 1, 'L')
     pdf.cell(0, 6, f"Scan Date: {time.strftime('%Y-%m-%d')}", 0, 1, 'L')
     pdf.ln(10)
 
-    # --- GRADE CARD ---
-    summary = report_data.get('summary', {'high': 0, 'medium': 0, 'low': 0})
+    # --- SCORECARD (Both Reports) ---
     grade, color, grade_title, grade_action = get_grade_info(summary)
     
     pdf.set_fill_color(248, 250, 252)
@@ -260,11 +244,11 @@ def generate_report(report_data, report_type='technical'):
     pdf.set_font('Arial', '', 10)
     pdf.set_text_color(71, 85, 105)
     pdf.cell(100, 6, grade_action, 0, 0)
-    pdf.ln(35) 
+    pdf.ln(40)
 
     # --- DYNAMIC METRICS ---
     pdf.ln(5)
-    fin_risk, dev_days, prob = calculate_business_metrics(summary, report_data.get('vulnerabilities', []))
+    fin_risk, dev_days, prob = calculate_business_metrics(summary, vulns)
     
     start_x = 10
     card_w = 60
@@ -278,22 +262,45 @@ def generate_report(report_data, report_type='technical'):
     
     pdf.set_y(y_pos + card_h + 10)
 
-    # ================= EXECUTIVE MODE =================
+    # ================= EXECUTIVE REPORT =================
     if report_type == 'executive':
         pdf.ln(5)
         pdf.chapter_title("Threat Visualization")
         pdf.draw_severity_chart(10, pdf.get_y(), 190, 8, summary)
-        
+
         pdf.ln(15)
-        pdf.chapter_title("Executive Intelligence Summary")
-        # CALL DYNAMIC SUMMARY GENERATOR
+        pdf.chapter_title("1. Business Impact Analysis")
+        pdf.body_text(f"This report outlines the security posture of {target}. The findings below represent risks to data integrity, customer trust, and operational continuity.")
+        
+        # Group by severity for high-level overview
+        critical_vulns = [v for v in vulns if v.get('severity') in ['High', 'Critical']]
+        
+        if critical_vulns:
+            for v in critical_vulns:
+                pdf.ln(5)
+                # Title
+                pdf.set_font('Arial', 'B', 11)
+                pdf.set_text_color(220, 38, 38)
+                pdf.cell(0, 6, f"[{v.get('severity', 'UNK').upper()}] {v.get('type', 'Vulnerability')}", 0, 1)
+                
+                # Business Impact (The "Why it matters")
+                pdf.set_font('Arial', 'I', 10)
+                pdf.set_text_color(51, 65, 85)
+                impact = v.get('impact', 'This vulnerability poses a standard security risk.')
+                pdf.multi_cell(0, 6, f"Business Risk: {impact}")
+        else:
+             pdf.ln(5)
+             pdf.set_text_color(22, 163, 74)
+             pdf.body_text("No critical business risks were identified during this scan.")
+
+        pdf.ln(10)
+        pdf.chapter_title("2. Executive Intelligence Summary")
         dynamic_text = generate_dynamic_summary(report_data)
         pdf.body_text(dynamic_text)
-        
-        pdf.ln(5)
-        pdf.chapter_title("Strategic Remediation Roadmap")
-        # CALL DYNAMIC ACTIONS GENERATOR
-        actions = generate_dynamic_actions(report_data.get('vulnerabilities', []))
+            
+        pdf.ln(10)
+        pdf.chapter_title("3. Strategic Remediation Roadmap")
+        actions = generate_dynamic_actions(vulns)
         
         pdf.set_font('Arial', '', 11)
         pdf.set_text_color(51, 65, 85)
@@ -301,72 +308,95 @@ def generate_report(report_data, report_type='technical'):
             pdf.cell(5, 8, chr(149), 0, 0) # Bullet point
             pdf.multi_cell(0, 8, action)
 
-    # ================= TECHNICAL MODE =================
+    # ================= TECHNICAL REPORT =================
     else:
         pdf.ln(5)
-        pdf.chapter_title("Detailed Vulnerability Matrix")
+        pdf.chapter_title("1. Detailed Vulnerability Matrix")
         
-        pdf.set_font('Arial', 'B', 10)
-        pdf.set_fill_color(241, 245, 249)
-        pdf.set_text_color(71, 85, 105)
-        pdf.cell(15, 10, "#", 1, 0, 'C', 1)
-        pdf.cell(30, 10, "Severity", 1, 0, 'C', 1)
-        pdf.cell(145, 10, "Finding", 1, 1, 'L', 1)
-        
-        pdf.set_font('Arial', '', 10)
-        pdf.set_text_color(51, 65, 85)
-        
-        grouped_vulns = aggregate_vulnerabilities(report_data.get('vulnerabilities', []))
-        
-        if not grouped_vulns:
-            pdf.ln(10)
-            pdf.cell(190, 10, "System Clean. No vulnerabilities detected.", 1, 1, 'C')
-        
-        for i, vuln in enumerate(grouped_vulns, 1):
-            sev = vuln['severity']
+        if not vulns:
+            pdf.ln(5)
+            pdf.body_text("No technical vulnerabilities detected.")
+            
+        for i, v in enumerate(vulns, 1):
+            # Page break check
+            if pdf.get_y() > 250: pdf.add_page()
+            
+            # --- Finding Header ---
+            pdf.set_fill_color(241, 245, 249)
+            pdf.set_draw_color(203, 213, 225)
+            pdf.rect(10, pdf.get_y(), 190, 8, 'F')
+            pdf.set_font('Arial', 'B', 10)
+            pdf.set_text_color(15, 23, 42)
+            pdf.cell(10, 8, str(i), 0, 0, 'C')
+            pdf.cell(150, 8, v.get('type', 'Unknown'), 0, 0, 'L')
+            
+            # Severity Badge
+            sev = v.get('severity', 'Low')
             if sev == 'Critical': pdf.set_text_color(220, 38, 38)
             elif sev == 'High': pdf.set_text_color(239, 68, 68)
             elif sev == 'Medium': pdf.set_text_color(249, 115, 22)
             else: pdf.set_text_color(22, 163, 74)
+            pdf.cell(30, 8, sev.upper(), 0, 1, 'R')
             
+            # --- Details ---
             pdf.ln(2)
-            pdf.cell(15, 10, str(i), 1, 0, 'C')
-            pdf.cell(30, 10, sev.upper(), 1, 0, 'C')
-            
-            pdf.set_text_color(15, 23, 42)
-            title_text = vuln['type']
-            if len(vuln['targets']) > 1:
-                title_text += f" ({len(vuln['targets'])} instances)"
-            
-            pdf.cell(145, 10, title_text, 1, 1, 'L')
-            
-            # Details
-            pdf.ln(1)
-            pdf.set_x(25)
-            pdf.set_font('Arial', '', 9)
-            pdf.set_text_color(71, 85, 105)
-            
-            targets_str = "\n".join([f"- {t}" for t in vuln['targets'][:5]])
-            if len(vuln['targets']) > 5: targets_str += "\n... (see full logs for more)"
-            
-            pdf.multi_cell(175, 5, f"Affected Endpoints:\n{targets_str}")
-            
-            # Code Fix Box
-            pdf.ln(2)
-            pdf.set_x(25)
-            pdf.set_font('Courier', '', 8)
-            pdf.set_fill_color(248, 250, 252)
-            pdf.set_text_color(22, 163, 74)
-            pdf.multi_cell(175, 5, f"FIX: {vuln['fix']}", 1, 'L', True)
-            
-            pdf.ln(3)
             pdf.set_font('Arial', '', 10)
+            pdf.set_text_color(51, 65, 85)
+            
+            # Location
+            pdf.set_font('Arial', 'B', 9)
+            pdf.cell(25, 6, "Location:", 0, 0)
+            pdf.set_font('Arial', '', 9)
+            pdf.cell(0, 6, v.get('url', 'N/A'), 0, 1)
+            
+            # Description
+            desc = v.get('description', 'No description available.')
+            pdf.multi_cell(0, 5, desc)
+            pdf.ln(2)
+            
+            # --- Reproduction Steps (Grey Box) ---
+            pdf.set_fill_color(248, 250, 252)
+            pdf.set_draw_color(226, 232, 240)
+            y_start = pdf.get_y()
+            # Calculate height for rect based on content approximation
+            # Just drawing the box first, content goes over it
+            pdf.rect(10, y_start, 190, 25, 'FD') 
+            
+            pdf.set_xy(12, y_start + 2)
+            pdf.set_font('Arial', 'B', 9)
+            pdf.set_text_color(71, 85, 105)
+            pdf.cell(0, 5, "Step-by-Step Reproduction / Proof of Concept:", 0, 1)
+            
+            pdf.set_font('Courier', '', 8)
+            pdf.set_text_color(30, 41, 59)
+            steps = v.get('reproduction', 'No reproduction steps provided.')
+            pdf.multi_cell(186, 4, steps)
+            
+            # Reset Y to below the box
+            pdf.set_y(y_start + 28)
+            
+            # --- Remediation (Green Border) ---
+            pdf.set_draw_color(22, 163, 74) # Green
+            pdf.set_line_width(0.2)
+            pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+            pdf.ln(2)
+            
+            pdf.set_font('Arial', 'B', 9)
+            pdf.set_text_color(22, 163, 74)
+            pdf.cell(25, 6, "REMEDIATION:", 0, 0)
+            
+            pdf.set_font('Arial', '', 9)
+            pdf.set_text_color(51, 65, 85)
+            fix = v.get('remediation', 'Please patch this issue immediately.')
+            pdf.multi_cell(0, 6, fix)
+            
+            pdf.ln(8)
 
     # --- OUTPUT ---
     if not os.path.exists("reports"):
         os.makedirs("reports")
     
-    target_clean = report_data.get('target', 'unknown').replace("http://", "").replace("https://", "")
+    target_clean = str(target).replace("http://", "").replace("https://", "")
     clean_name = re.sub(r'[\\/*?:"<>|]', '_', target_clean)
     suffix = "Executive" if report_type == 'executive' else "Technical"
     filename = f"reports/Sentinel_{suffix}_{clean_name}_{int(time.time())}.pdf"

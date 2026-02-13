@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import axios from "axios";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
@@ -56,8 +56,7 @@ export default function ScanResultsPage() {
     }
 
     // --- 1. ALWAYS Run Logs Animation (Visuals) ---
-    // This ensures text appears even if React re-renders the component
-    setScanLogs([]); // Clear previous logs to prevent duplication
+    setScanLogs([]); 
     
     const logs = mode === 'deep' ? [
         "Initializing Deep Scan protocols...",
@@ -93,9 +92,8 @@ export default function ScanResultsPage() {
     });
 
     // --- 2. CONDITIONALLY Run API Call (Data) ---
-    // Only fetch if we haven't processed this specific URL yet
     if (processedUrlRef.current !== url) {
-        processedUrlRef.current = url; // Mark as processing
+        processedUrlRef.current = url; 
 
         const fetchScan = async () => {
           try {
@@ -219,7 +217,8 @@ export default function ScanResultsPage() {
     if (!report) return { port80: "Unknown", port443: "Unknown", ssh: "Unknown" };
     
     const networkVulns = report.vulnerabilities.filter((v:any) => v.type === "Network Exposure");
-    const openPorts = networkVulns.map((v:any) => v.details);
+    // Normalize logic for network vulnerability details
+    const openPorts = networkVulns.map((v:any) => v.url || v.details || "");
 
     const checkPort = (port: string) => {
         const isOpen = openPorts.some((p: string) => p.includes(port));
@@ -303,21 +302,31 @@ export default function ScanResultsPage() {
     };
   };
 
+  // --- UPDATED: Robust Aggregation to handle new/old backend schema ---
   const groupedVulnerabilities = useMemo(() => {
     if (!report?.vulnerabilities) return [];
     const groups: { [key: string]: any } = {};
     
     report.vulnerabilities.forEach((vuln: any) => {
-        const key = `${vuln.type}|${vuln.severity}|${vuln.fix}`;
+        // Handle "remediation" (new) vs "fix" (old)
+        const fix = vuln.remediation || vuln.fix || "No specific remediation provided.";
+        
+        // Handle "url" (new) vs "details" (old)
+        // This prevents OBJECTS from being pushed into groupedDetails
+        const details = vuln.url || vuln.details || "Unknown location";
+        
+        const key = `${vuln.type}|${vuln.severity}|${fix}`;
+        
         if (!groups[key]) {
             groups[key] = {
                 ...vuln,
-                groupedDetails: [vuln.details],
+                fix: fix, // Store normalized fix
+                groupedDetails: [details], // Store normalized details (string)
                 maxCvss: vuln.cvss || 0 
             };
         } else {
-            if (!groups[key].groupedDetails.includes(vuln.details)) {
-                groups[key].groupedDetails.push(vuln.details);
+            if (!groups[key].groupedDetails.includes(details)) {
+                groups[key].groupedDetails.push(details);
             }
             if (vuln.cvss > groups[key].maxCvss) {
                 groups[key].maxCvss = vuln.cvss;
@@ -641,9 +650,8 @@ export default function ScanResultsPage() {
                                     </TableRow>
                                 ) : (
                                     groupedVulnerabilities.map((vuln: any, idx: number) => (
-                                        <>
+                                        <React.Fragment key={idx}>
                                             <TableRow 
-                                                key={idx} 
                                                 className={cn(
                                                     "cursor-pointer hover:bg-muted/50 transition-colors",
                                                     expandedRows.includes(idx) && "bg-muted/30"
@@ -694,12 +702,12 @@ export default function ScanResultsPage() {
                                                                     <div className="text-sm max-h-32 overflow-y-auto bg-background/50 p-2 rounded border">
                                                                         {vuln.groupedDetails.length > 1 ? (
                                                                             <ul className="list-disc pl-4 space-y-1">
-                                                                                {vuln.groupedDetails.map((d: string, i: number) => (
-                                                                                    <li key={i}>{d}</li>
+                                                                                {vuln.groupedDetails.map((d: any, i: number) => (
+                                                                                    <li key={i}>{typeof d === 'object' ? (d.url || JSON.stringify(d)) : d}</li>
                                                                                 ))}
                                                                             </ul>
                                                                         ) : (
-                                                                            <p>{vuln.groupedDetails[0]}</p>
+                                                                            <p>{typeof vuln.groupedDetails[0] === 'object' ? (vuln.groupedDetails[0].url || JSON.stringify(vuln.groupedDetails[0])) : vuln.groupedDetails[0]}</p>
                                                                         )}
                                                                     </div>
                                                                 </div>
@@ -717,9 +725,9 @@ export default function ScanResultsPage() {
                                                                         </div>
                                                                     )}
                                                                     <p className="text-sm leading-relaxed">
-                                                                        {vuln.severity === 'Critical' ? 'Immediate exploitation possible. Data loss imminent. This vulnerability enables remote code execution or direct database access.' : 
+                                                                        {vuln.description || (vuln.severity === 'Critical' ? 'Immediate exploitation possible. Data loss imminent. This vulnerability enables remote code execution or direct database access.' : 
                                                                          vuln.severity === 'High' ? 'Significant risk to integrity and availability. Attackers could manipulate data or deny service to legitimate users.' :
-                                                                         'Moderate risk. While not immediately exploitable without other factors, it violates security best practices and should be remediated in the next sprint.'}
+                                                                         'Moderate risk. While not immediately exploitable without other factors, it violates security best practices and should be remediated in the next sprint.')}
                                                                     </p>
                                                                 </div>
                                                             </div>
@@ -742,7 +750,7 @@ export default function ScanResultsPage() {
                                                     </TableCell>
                                                 </TableRow>
                                             )}
-                                        </>
+                                        </React.Fragment>
                                     ))
                                 )}
                             </TableBody>

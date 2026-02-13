@@ -90,7 +90,8 @@ export function LandingHero() {
                   key={`cta-${animationKey}`}
                   className="flex flex-col sm:flex-row items-center justify-center gap-0 pt-2 animate-in fade-in zoom-in-90 duration-1000 delay-500 fill-mode-forwards"
               >
-                 <Link to="/auth">
+                 {/* Updated Link to point to Quick Scan page */}
+                 <Link to="/scan">
                     <Button size="lg" className="h-12 px-8 rounded-full text-base bg-foreground text-background hover:bg-foreground/90 font-semibold shadow-[0_0_20px_-5px_rgba(0,0,0,0.3)] dark:shadow-[0_0_20px_-5px_rgba(255,255,255,0.3)] transition-all hover:scale-105">
                       Initialize Scan
                     </Button>
