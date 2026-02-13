@@ -3,6 +3,8 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import random
 import re
+# IMPORT THE KNOWLEDGE BASE
+from vuln_kb import VULN_DB
 
 # --- CONFIG: STEALTH HEADERS ---
 USER_AGENTS = [
@@ -13,7 +15,6 @@ USER_AGENTS = [
 def get_header():
     return {"User-Agent": random.choice(USER_AGENTS)}
 
-# --- HELPER FUNCTIONS ---
 def get_forms(url):
     try:
         content = requests.get(url, headers=get_header(), timeout=5).content
@@ -38,9 +39,23 @@ def get_form_details(form):
     details["inputs"] = inputs
     return details
 
-# --- SCANNER 1: SQL INJECTION (Enhanced) ---
+# --- HELPER: BUILD VULN OBJECT ---
+def create_vuln(key, target, reproduction_steps):
+    kb = VULN_DB.get(key, {})
+    return {
+        "type": kb.get("title", key),
+        "severity": kb.get("severity", "Low"),
+        "url": target,
+        "description": kb.get("description", "No description."),
+        "impact": kb.get("impact", "Check detailed logs."),
+        "remediation": kb.get("remediation", "Patch immediately."),
+        "reproduction": reproduction_steps,
+        "fix": kb.get("code_fix", "No code example.")
+    }
+
+# --- SCANNER 1: SQL INJECTION ---
 def scan_sql_injection(url):
-    payloads = ["'", "\"", "' OR 1=1 --", "' UNION SELECT 1,2,3 --"] 
+    payloads = ["'", "\"", "' OR 1=1 --"] 
     forms = get_forms(url)
     if not forms: return None
 
@@ -58,29 +73,24 @@ def scan_sql_injection(url):
             
             target_url = urljoin(url, form_details["action"])
             try:
-                method = form_details["method"]
-                if method == "post":
+                if form_details["method"] == "post":
                     res = requests.post(target_url, data=data, headers=get_header(), timeout=3)
                 else:
                     res = requests.get(target_url, params=data, headers=get_header(), timeout=3)
                 
-                # Check for SQL errors
-                if any(x in res.text.lower() for x in ["mysql", "syntax error", "sql", "database error"]):
-                    return {
-                        "type": "SQL Injection",
-                        "severity": "Critical",
-                        "url": target_url,
-                        "description": "The application allows unvalidated user input to interfere with backend database queries.",
-                        "impact": "Attackers can steal all customer data, modify balances, or bypass authentication panels completely. This is a catastrophic breach risk.",
-                        "reproduction": f"1. Navigate to {url}\n2. Submit the form ({method.upper()}) with payload: {payload}\n3. Observe database error in response.",
-                        "remediation": "Use Parameterized Queries (Prepared Statements) for all database access. Never concatenate strings into SQL queries."
-                    }
+                if "mysql" in res.text.lower() or "syntax error" in res.text.lower():
+                    # RETURN RICH OBJECT FROM KB
+                    return create_vuln(
+                        "SQL_INJECTION", 
+                        target_url, 
+                        f"1. Navigate to {target_url}\n2. Inject payload: {payload}\n3. Observe database syntax error."
+                    )
             except: continue
     return None
 
-# --- SCANNER 2: XSS (Enhanced) ---
+# --- SCANNER 2: XSS ---
 def scan_xss(url):
-    xss_payload = "<script>alert('SENTINEL_XSS')</script>"
+    xss_payload = "<script>alert('XSS')</script>"
     forms = get_forms(url)
     if not forms: return None
 
@@ -94,28 +104,23 @@ def scan_xss(url):
         
         target_url = urljoin(url, form_details["action"])
         try:
-            method = form_details["method"]
-            if method == "post":
+            if form_details["method"] == "post":
                 res = requests.post(target_url, data=data, headers=get_header(), timeout=3)
             else:
                 res = requests.get(target_url, params=data, headers=get_header(), timeout=3)
             
             if xss_payload in res.text:
-                return {
-                    "type": "Reflected XSS",
-                    "severity": "High",
-                    "url": target_url,
-                    "description": "The application reflects user input back to the browser without sanitization.",
-                    "impact": "Attackers can execute malicious scripts in users' browsers, stealing session cookies, redirecting users to phishing sites, or performing actions on their behalf.",
-                    "reproduction": f"1. Send a {method.upper()} request to {target_url}\n2. Inject payload: {xss_payload}\n3. The script executes in the browser.",
-                    "remediation": "Contextually encode all user data before rendering it in HTML. Implement a Content Security Policy (CSP)."
-                }
+                return create_vuln(
+                    "XSS_REFLECTED",
+                    target_url,
+                    f"1. Submit form at {target_url}\n2. Payload: {xss_payload}\n3. Alert box triggers."
+                )
         except: continue
     return None
 
-# --- SCANNER 3: SHADOW API HUNTER (Enhanced) ---
+# --- SCANNER 3: SHADOW API HUNTER ---
 def scan_shadow_apis(url):
-    detected_apis = []
+    detected_results = []
     try:
         res = requests.get(url, headers=get_header(), timeout=5)
         soup = BeautifulSoup(res.content, "html.parser")
@@ -128,16 +133,15 @@ def scan_shadow_apis(url):
                 js_content = requests.get(script_url, timeout=3).text
                 matches = re.findall(r'["\'](\/(?:api|v1|admin|private)\/[a-zA-Z0-9_\-\/]+)["\']', js_content)
                 for match in matches:
-                    detected_apis.append({
-                        "type": "Shadow API Endpoint",
-                        "severity": "Medium",
-                        "url": urljoin(url, match),
-                        "description": f"An undocumented API endpoint '{match}' was found leaked in client-side JavaScript.",
-                        "impact": "Shadow APIs often lack the rigorous authentication/authorization checks of public APIs, allowing unauthorized data access.",
-                        "reproduction": f"1. Inspect source code of {script_url}\n2. Locate endpoint: {match}\n3. Send direct request to endpoint.",
-                        "remediation": "Audit all exposed endpoints. Remove debug/admin routes from production JS bundles."
-                    })
+                    # Append rich object to list
+                    detected_results.append(create_vuln(
+                        "SHADOW_API",
+                        urljoin(url, match),
+                        f"Found in script: {script_url}\nEndpoint: {match}"
+                    ))
             except: continue
     except: pass
     
-    return detected_apis
+    # Deduplication logic required since we are returning dicts now
+    unique = {v['url']: v for v in detected_results}.values()
+    return list(unique)

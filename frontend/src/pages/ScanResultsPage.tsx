@@ -40,7 +40,7 @@ export default function ScanResultsPage() {
   
   const [expandedRows, setExpandedRows] = useState<number[]>([]);
 
-  // --- FIX: Track the PROCESSED URL to prevent double-fetching ---
+  // Track processed URL to prevent double-fetching
   const processedUrlRef = useRef<string | null>(null);
 
   const toggleRow = (idx: number) => {
@@ -55,7 +55,7 @@ export default function ScanResultsPage() {
         return;
     }
 
-    // --- 1. ALWAYS Run Logs Animation (Visuals) ---
+    // --- 1. Logs Animation ---
     setScanLogs([]); 
     
     const logs = mode === 'deep' ? [
@@ -91,7 +91,7 @@ export default function ScanResultsPage() {
       delay += 800; 
     });
 
-    // --- 2. CONDITIONALLY Run API Call (Data) ---
+    // --- 2. API Call ---
     if (processedUrlRef.current !== url) {
         processedUrlRef.current = url; 
 
@@ -132,7 +132,6 @@ export default function ScanResultsPage() {
         fetchScan();
     }
 
-    // Cleanup timeouts on unmount
     return () => timeouts.forEach(clearTimeout);
   }, [url, navigate, mode]);
 
@@ -213,12 +212,15 @@ export default function ScanResultsPage() {
     };
   };
 
+  // --- FIXED: Network Status Logic ---
   const getNetworkStatus = () => {
     if (!report) return { port80: "Unknown", port443: "Unknown", ssh: "Unknown" };
     
     const networkVulns = report.vulnerabilities.filter((v:any) => v.type === "Network Exposure");
-    // Normalize logic for network vulnerability details
-    const openPorts = networkVulns.map((v:any) => v.url || v.details || "");
+    
+    // SAFETY FIX: Force all items to string. 
+    // This prevents "p.includes is not a function" if 'url' or 'details' is an object/null.
+    const openPorts = networkVulns.map((v:any) => String(v.url || v.details || ""));
 
     const checkPort = (port: string) => {
         const isOpen = openPorts.some((p: string) => p.includes(port));
@@ -302,17 +304,14 @@ export default function ScanResultsPage() {
     };
   };
 
-  // --- UPDATED: Robust Aggregation to handle new/old backend schema ---
+  // --- FIXED: Vulnerability Aggregation ---
   const groupedVulnerabilities = useMemo(() => {
     if (!report?.vulnerabilities) return [];
     const groups: { [key: string]: any } = {};
     
     report.vulnerabilities.forEach((vuln: any) => {
-        // Handle "remediation" (new) vs "fix" (old)
+        // Normalize Fields
         const fix = vuln.remediation || vuln.fix || "No specific remediation provided.";
-        
-        // Handle "url" (new) vs "details" (old)
-        // This prevents OBJECTS from being pushed into groupedDetails
         const details = vuln.url || vuln.details || "Unknown location";
         
         const key = `${vuln.type}|${vuln.severity}|${fix}`;
@@ -320,8 +319,8 @@ export default function ScanResultsPage() {
         if (!groups[key]) {
             groups[key] = {
                 ...vuln,
-                fix: fix, // Store normalized fix
-                groupedDetails: [details], // Store normalized details (string)
+                fix: fix,
+                groupedDetails: [details],
                 maxCvss: vuln.cvss || 0 
             };
         } else {
