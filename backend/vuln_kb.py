@@ -46,6 +46,7 @@ VULN_DB = {
         ),
         "code_fix": (
             "\n"
+            "\n"
             "<div dangerouslySetInnerHTML={{ __html: userInput }} />\n\n"
             "\n"
             "<div>{userInput}</div>"
@@ -76,10 +77,10 @@ VULN_DB = {
 
     # --- API & INFRASTRUCTURE ---
     "SHADOW_API": {
-        "title": "Shadow API Exposure",
+        "title": "Shadow API Detected",
         "severity": "Medium",
         "description": (
-            "The scanner detected undocumented API endpoints leaked in client-side JavaScript files. "
+            "Undocumented API endpoints were found referenced in client-side JavaScript. "
             "These 'Shadow APIs' are often development or legacy routes that were not intended for public access."
         ),
         "impact": (
@@ -92,7 +93,7 @@ VULN_DB = {
             "3. MINIFICATION: Remove source maps and internal comments from production builds."
         ),
         "code_fix": (
-            "// Ensure all routes are protected middleware\n"
+            "// Ensure all routes use protected middleware\n"
             "app.use('/api/v1/admin', requireAuth, adminRoutes);"
         )
     },
@@ -121,10 +122,37 @@ VULN_DB = {
     "NETWORK_EXPOSURE": {
         "title": "Network Port Exposure",
         "severity": "Low",
-        "description": "Unnecessary network ports are open to the public internet.",
-        "impact": "Increases the attack surface. Services like SSH or Databases should not be globally accessible.",
-        "remediation": "Configure firewall rules (UFW/AWS Security Groups) to whitelist IP access.",
-        "code_fix": "ufw deny 22/tcp\nufw allow from 192.168.1.100 to any port 22"
+        "description": "Unnecessary network ports (e.g., 22, 8080, 3306) are open to the public internet.",
+        "impact": "BRUTE FORCE RISK. Open services like SSH or MySQL allow attackers to attempt credential stuffing or exploit service-level vulnerabilities.",
+        "remediation": "Configure firewall rules (UFW/AWS Security Groups) to block ingress traffic on non-web ports.",
+        "code_fix": (
+            "# Ubuntu UFW\n"
+            "sudo ufw deny 22/tcp\n"
+            "sudo ufw allow 80/tcp\n"
+            "sudo ufw allow 443/tcp"
+        )
+    },
+    "PII_EXPOSURE": {
+        "title": "PII Exposure (Email/Phone)",
+        "severity": "Medium",
+        "description": (
+            "The application leaks Personally Identifiable Information (PII) such as email addresses or "
+            "phone numbers in the source code or HTTP response. This violates privacy regulations (GDPR/CCPA)."
+        ),
+        "impact": (
+            "PRIVACY VIOLATION. Scrapers can harvest these emails for phishing campaigns, spam, or "
+            "social engineering attacks against your users."
+        ),
+        "remediation": (
+            "1. MASK DATA: Obfuscate emails (e.g., u***@example.com) on the server side.\n"
+            "2. REMOVE COMMENTS: Ensure developers aren't leaving contact info in HTML comments."
+        ),
+        "code_fix": (
+            "\n"
+            "\n\n"
+            "\n"
+            ""
+        )
     },
     "SERVER_ERROR": {
         "title": "Verbose Server Error (Information Leakage)",
@@ -280,5 +308,30 @@ VULN_DB = {
         "impact": "LOCAL FILE DISCLOSURE. Attackers can read /etc/passwd or other sensitive system files.",
         "remediation": "Disable DTD processing and external entity resolution in your XML parser.",
         "code_fix": "parser.setFeature(xml.sax.handler.feature_external_ges, False)"
+    },
+    # backend/vuln_kb.py (Add these new keys)
+    "SSTI": {
+        "title": "Server-Side Template Injection (SSTI)",
+        "severity": "Critical",
+        "description": "The application blindly evaluates user input as a template code. This allows attackers to inject commands that run on the server.",
+        "impact": "REMOTE CODE EXECUTION (RCE). Attackers can read sensitive files, install malware, or delete the database.",
+        "remediation": "Treat all user input as data, not code. Use 'Logic-less' templates like Mustache or properly configure auto-escaping.",
+        "code_fix": "# VULNERABLE (Flask/Jinja2):\nreturn render_template_string('Hello ' + user_input)\n\n# SECURE:\nreturn render_template('hello.html', name=user_input)"
+    },
+    "OPEN_REDIRECT": {
+        "title": "Open Redirect Vulnerability",
+        "severity": "Medium",
+        "description": "The application redirects users to a URL provided in the input without validation.",
+        "impact": "PHISHING AID. Attackers use your domain to look trustworthy while redirecting victims to malware/scam sites.",
+        "remediation": "Validate the redirect URL against a whitelist of trusted domains before redirecting.",
+        "code_fix": "if not url.startswith('https://mysite.com'):\n    return abort(400)"
+    },
+    "WEAK_SSL": {
+        "title": "Weak SSL/TLS Configuration",
+        "severity": "High",
+        "description": "The server accepts connections using old protocols (TLS 1.0/1.1) or has an expired certificate.",
+        "impact": "MAN-IN-THE-MIDDLE. Attackers can intercept encrypted traffic.",
+        "remediation": "Disable TLS 1.0/1.1 in your web server config. Use Let's Encrypt for valid certificates.",
+        "code_fix": "# Nginx\nssl_protocols TLSv1.2 TLSv1.3;"
     }
 }

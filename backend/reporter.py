@@ -76,6 +76,29 @@ class AdvancedPDF(FPDF):
         self.set_text_color(100, 116, 139)
         self.cell(w, 5, f"THREAT LANDSCAPE: {int((summary['high']/total)*100)}% CRITICAL | {int((summary['medium']/total)*100)}% MODERATE | {int((summary['low']/total)*100)}% LOW", 0, 0, 'C')
 
+    # --- NEW: Code Snippet Renderer ---
+    def draw_code_block(self, code_text):
+        self.set_font('Courier', '', 8)
+        self.set_fill_color(245, 247, 250) # Light Slate/Grey background
+        self.set_draw_color(226, 232, 240) # Subtle border
+        
+        # Calculate height based on lines (approximate 4 units per line + padding)
+        lines = code_text.split('\n')
+        h = (len(lines) * 4) + 6
+        
+        # Draw box
+        x = self.get_x()
+        y = self.get_y()
+        self.rect(x, y, 190, h, 'FD')
+        
+        # Draw text inside
+        self.set_xy(x + 2, y + 3)
+        self.set_text_color(51, 65, 85) # Dark Slate text
+        self.multi_cell(186, 4, code_text)
+        
+        # Move cursor below the box
+        self.set_y(y + h + 2)
+
     def chapter_title(self, label):
         self.set_font('Arial', 'B', 14)
         self.set_text_color(15, 23, 42)
@@ -134,7 +157,7 @@ def get_grade_info(summary):
     else:
         return "A", (22, 163, 74), "SECURE", "Continue Monitoring"
 
-# --- NEW: CONTEXT-AWARE SUMMARY GENERATOR ---
+# --- CONTEXT-AWARE SUMMARY GENERATOR ---
 def generate_dynamic_summary(report_data):
     summary = report_data.get('summary', {})
     vulns = report_data.get('vulnerabilities', [])
@@ -150,20 +173,20 @@ def generate_dynamic_summary(report_data):
     else:
         text += "The system demonstrates a strong security posture with no immediate critical threats detected. "
 
-    # 2. SPECIFIC THREAT HIGHLIGHTS (The "Smart" Part)
+    # 2. SPECIFIC THREAT HIGHLIGHTS
     highlights = []
     
     if any("SQL" in t for t in vuln_types):
-        highlights.append("CRITICAL: Database integrity is compromised. Active SQL Injection vectors were detected, allowing potential attackers to dump user data or modify records.")
+        highlights.append("CRITICAL: Database integrity is compromised. Active SQL Injection vectors were detected.")
     
     if any("XSS" in t for t in vuln_types):
-        highlights.append("Client-side security is weak. Reflected XSS vulnerabilities were found, which could lead to user session hijacking.")
+        highlights.append("Client-side security is weak. Reflected XSS vulnerabilities were found.")
         
-    if any("Sensitive File" in t or "Secret" in t for t in vuln_types):
-        highlights.append("INFRASTRUCTURE LEAK: Critical configuration files (e.g., .env) are publicly accessible. This often leads to full server compromise.")
+    if any("Sensitive File" in t or "Secret" in t or "PII" in t for t in vuln_types):
+        highlights.append("INFRASTRUCTURE LEAK: Critical configuration files or PII data are publicly accessible.")
 
-    if any("Shadow API" in t for t in vuln_types):
-        highlights.append("Undocumented 'Shadow APIs' were discovered. These endpoints often lack proper authentication checks.")
+    if any("Shadow" in t for t in vuln_types):
+        highlights.append("Undocumented 'Shadow APIs' were discovered.")
 
     if highlights:
         text += "\n\nKEY FINDINGS:\n" + " ".join(highlights)
@@ -283,7 +306,7 @@ def generate_report(report_data, report_type='technical'):
                 pdf.set_text_color(220, 38, 38)
                 pdf.cell(0, 6, f"[{v.get('severity', 'UNK').upper()}] {v.get('type', 'Vulnerability')}", 0, 1)
                 
-                # Business Impact (The "Why it matters")
+                # Business Impact
                 pdf.set_font('Arial', 'I', 10)
                 pdf.set_text_color(51, 65, 85)
                 impact = v.get('impact', 'This vulnerability poses a standard security risk.')
@@ -319,7 +342,7 @@ def generate_report(report_data, report_type='technical'):
             
         for i, v in enumerate(vulns, 1):
             # Page break check
-            if pdf.get_y() > 250: pdf.add_page()
+            if pdf.get_y() > 220: pdf.add_page()
             
             # --- Finding Header ---
             pdf.set_fill_color(241, 245, 249)
@@ -358,8 +381,6 @@ def generate_report(report_data, report_type='technical'):
             pdf.set_fill_color(248, 250, 252)
             pdf.set_draw_color(226, 232, 240)
             y_start = pdf.get_y()
-            # Calculate height for rect based on content approximation
-            # Just drawing the box first, content goes over it
             pdf.rect(10, y_start, 190, 25, 'FD') 
             
             pdf.set_xy(12, y_start + 2)
@@ -389,6 +410,15 @@ def generate_report(report_data, report_type='technical'):
             pdf.set_text_color(51, 65, 85)
             fix = v.get('remediation', 'Please patch this issue immediately.')
             pdf.multi_cell(0, 6, fix)
+            
+            # --- NEW: CODE SNIPPET RENDERER ---
+            code_snippet = v.get('fix')
+            if code_snippet and "No code example" not in code_snippet:
+                pdf.ln(4)
+                pdf.set_font('Arial', 'B', 8)
+                pdf.set_text_color(71, 85, 105) # Slate 600
+                pdf.cell(0, 5, "SUGGESTED PATCH / CONFIGURATION:", 0, 1)
+                pdf.draw_code_block(code_snippet)
             
             pdf.ln(8)
 
