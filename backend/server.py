@@ -202,13 +202,16 @@ def handle_deep_scan():
     data = request.json
     target_url = data.get('url')
     user_id = data.get('user_id')
+    
+    # --- NEW: Extract auth configuration ---
+    auth_config = data.get('auth_config') 
 
     if not target_url: return jsonify({"error": "No URL provided"}), 400
     if not target_url.startswith('http'): target_url = 'https://' + target_url
 
     try:
-        # Passes session ID for internal deep scan tracking
-        report = run_deep_scan(target_url, user_id=user_id) 
+        # Passes session ID and auth_config for internal deep scan tracking
+        report = run_deep_scan(target_url, user_id=user_id, auth_config=auth_config) 
         return jsonify(report)
     except Exception as e:
         print(f"[!] Deep scan error: {e}")

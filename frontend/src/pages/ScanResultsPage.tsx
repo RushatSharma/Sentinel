@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import axios from "axios";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import { Doughnut } from "react-chartjs-2";
 import { 
@@ -30,6 +30,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
 export default function ScanResultsPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation(); // --- ADDED: To receive authConfig from DeepScanPage
   const url = searchParams.get("url");
   const mode = searchParams.get("mode") || "quick"; 
 
@@ -55,19 +56,33 @@ export default function ScanResultsPage() {
         return;
     }
 
+    // Grab the auth configuration from the router state
+    const authConfig = location.state?.authConfig;
+
     // --- 1. Logs Animation ---
     setScanLogs([]); 
     
-    const logs = mode === 'deep' ? [
+    // Dynamically build Deep Scan logs based on whether Auth Bypass is active
+    const deepLogs = [
         "Initializing Deep Scan protocols...",
         `Target: ${url}`,
-        "Launching Playwright Headless Engine...",
+        "Launching Playwright Headless Engine..."
+    ];
+
+    if (authConfig) {
+        deepLogs.push("🧠 Engaging Heuristic Auto-Login Engine...");
+        deepLogs.push("🔓 Bypassing authentication walls...");
+    }
+
+    deepLogs.push(
         "Phase 1: Auditing Security Headers (CSP, HSTS)...",
         "Phase 2: Enumerating Sensitive Files (.env, backups)...",
-        "Phase 3: Active Browser Fuzzing...",
+        "Phase 3: Active Browser Fuzzing & OAST Validation...",
         "Analyzing DOM for broken state...",
         "Compiling deep analysis report..."
-    ] : [
+    );
+
+    const logs = mode === 'deep' ? deepLogs : [
         "Initializing heuristic engines...",
         `Resolving host: ${url}`,
         "Scanning page content for PII...",
@@ -109,10 +124,19 @@ export default function ScanResultsPage() {
                 console.log("No active session, performing guest scan.");
             }
     
-            const response = await axios.post(endpoint, { 
+            // Build the dynamic payload
+            const payload: any = { 
                 url, 
                 user_id: userId 
-            });
+            };
+
+            // If we have an authConfig from the DeepScanPage, attach it!
+            if (authConfig && mode === 'deep') {
+                payload.auth_config = authConfig;
+            }
+
+            // Send to the Sentinel Backend
+            const response = await axios.post(endpoint, payload);
             
             const waitTime = mode === 'deep' ? 1000 : 7500; 
             
@@ -133,7 +157,7 @@ export default function ScanResultsPage() {
     }
 
     return () => timeouts.forEach(clearTimeout);
-  }, [url, navigate, mode]);
+  }, [url, navigate, mode, location.state]);
 
   const handleDownload = async (type: 'technical' | 'executive') => {
     if (!report) return;

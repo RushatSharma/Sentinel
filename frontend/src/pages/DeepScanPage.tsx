@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Navbar } from "../components/Navbar";
 import { Button } from "../components/ui/button";
 import { 
-  Zap, Server, ShieldAlert, Clock, Terminal, Layers, AlertTriangle, FileText 
+  Zap, Server, ShieldAlert, Clock, Terminal, Layers, AlertTriangle, FileText, Lock, Radar 
 } from "lucide-react";
 
 export default function DeepScanPage() {
@@ -12,14 +12,27 @@ export default function DeepScanPage() {
   const [loading, setLoading] = useState<boolean>(false);
   const navigate = useNavigate();
 
+  // --- NEW: Simplified Authentication State ---
+  const [isAuthScan, setIsAuthScan] = useState<boolean>(false);
+  const [authConfig, setAuthConfig] = useState({
+    login_url: '',
+    username: '',
+    password: '',
+  });
+
   const handleDeepScan = async () => {
     if (!url) return;
     setLoading(true);
     
+    // Prepare the state to pass to the results page / backend
+    const scanState = isAuthScan 
+      ? { authConfig: { type: 'form', ...authConfig } } 
+      : {};
+
     // Simulate the initialization time of Playwright
     setTimeout(() => {
         setLoading(false);
-        navigate(`/scan-results?url=${encodeURIComponent(url)}&mode=deep`);
+        navigate(`/scan-results?url=${encodeURIComponent(url)}&mode=deep`, { state: scanState });
     }, 2500);
   };
 
@@ -86,6 +99,15 @@ export default function DeepScanPage() {
                       Uses <strong className="text-red-400 font-mono text-sm">Playwright</strong> to type SQLi and XSS payloads into real forms and listen for server crashes.
                     </span>
                   </li>
+                  <li className="flex items-start gap-3">
+                    <div className="mt-1.5 p-1 bg-red-500/10 rounded-md border border-red-500/20">
+                        <Radar className="w-4 h-4 text-sentinel-red" />
+                    </div>
+                    <span>
+                      <strong className="text-foreground block mb-1">Heuristic Auto-Login & OAST</strong>
+                      Algorithmically detects and bypasses login screens, while deploying blind payloads to catch vulnerabilities with <strong className="text-red-400">zero false positives</strong>.
+                    </span>
+                  </li>
                 </ul>
               </div>
             </div>
@@ -144,28 +166,76 @@ export default function DeepScanPage() {
                     {loading && (
                         <div className="absolute inset-0 bg-[#0a0a0a] z-20 flex flex-col justify-center p-6 font-mono text-xs text-red-400 space-y-2">
                             <p className="animate-pulse">{">"} Initializing Playwright...</p>
+                            {isAuthScan && <p className="delay-75 text-yellow-500">{">"} Heuristic Engine detecting login vectors...</p>}
                             <p className="delay-100">{">"} Allocating Chromium [PID: 4922]...</p>
-                            <p className="delay-300">{">"} Injecting SQLi Payloads...</p>
+                            <p className="delay-300">{">"} Injecting SQLi & OAST Payloads...</p>
                             <p className="delay-500 text-red-500 font-bold">{">"} WARN: Intrusive protocols engaged.</p>
                         </div>
                     )}
 
                     <div className={`flex flex-col gap-3 transition-opacity duration-300 ${loading ? 'opacity-0' : 'opacity-100'}`}>
+                      
+                      {/* URL Input */}
                       <div className="relative">
                         <Terminal className="absolute left-4 top-3.5 w-5 h-5 text-gray-300" />
                         <input 
                           type="text" 
-                          placeholder="https://target-app.com"
+                          placeholder="Target URL (e.g., https://app.com/dashboard)"
                           className="w-full bg-white/5 border border-white/5 rounded-lg py-3 pl-12 pr-4 text-sm text-white font-mono focus:outline-none focus:border-red-500/50 focus:bg-red-500/5 transition-all placeholder:text-gray-500"
                           value={url}
                           onChange={(e) => setUrl(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && handleDeepScan()}
                         />
                       </div>
+
+                      {/* --- Authenticated Scan Toggle --- */}
+                      <div className="flex items-center justify-between px-4 py-3 bg-white/5 border border-white/5 rounded-lg">
+                        <div className="flex items-center gap-2 text-sm text-gray-300 font-mono">
+                            <Lock className="w-4 h-4 text-sentinel-red" />
+                            <span>Smart Auth Bypass</span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setIsAuthScan(!isAuthScan)}
+                            className={`w-11 h-6 rounded-full transition-colors relative focus:outline-none ${isAuthScan ? 'bg-red-600' : 'bg-white/10'}`}
+                        >
+                            <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${isAuthScan ? 'translate-x-6' : 'translate-x-1'}`} />
+                        </button>
+                      </div>
+
+                      {/* --- Simplified Authenticated Scan Form --- */}
+                      {isAuthScan && (
+                        <div className="flex flex-col gap-3 p-3 bg-white/[0.02] border border-white/5 rounded-lg animate-in fade-in zoom-in-95 font-mono">
+                            <input
+                                type="text"
+                                placeholder="Login Page URL (e.g. https://app.com/login)"
+                                className="w-full bg-black/50 border border-white/5 rounded-md py-2 px-3 text-xs text-white focus:border-red-500/50 outline-none placeholder:text-gray-600"
+                                value={authConfig.login_url}
+                                onChange={e => setAuthConfig({...authConfig, login_url: e.target.value})}
+                            />
+                            <div className="flex gap-2">
+                                 <input
+                                    type="text"
+                                    placeholder="Username / Email"
+                                    className="w-1/2 bg-black/50 border border-white/5 rounded-md py-2 px-3 text-xs text-white focus:border-red-500/50 outline-none placeholder:text-gray-600"
+                                    value={authConfig.username}
+                                    onChange={e => setAuthConfig({...authConfig, username: e.target.value})}
+                                />
+                                <input
+                                    type="password"
+                                    placeholder="Password"
+                                    className="w-1/2 bg-black/50 border border-white/5 rounded-md py-2 px-3 text-xs text-white focus:border-red-500/50 outline-none placeholder:text-gray-600"
+                                    value={authConfig.password}
+                                    onChange={e => setAuthConfig({...authConfig, password: e.target.value})}
+                                />
+                            </div>
+                        </div>
+                      )}
+
                       <Button 
                         onClick={handleDeepScan}
                         disabled={loading || !url}
-                        className="w-full bg-red-600 hover:bg-red-500 text-white font-mono text-sm tracking-wider h-12 shadow-[0_0_20px_rgba(220,38,38,0.9)] transition-all"
+                        className="w-full bg-red-600 hover:bg-red-500 text-white font-mono text-sm tracking-wider h-12 shadow-[0_0_20px_rgba(220,38,38,0.9)] transition-all mt-2"
                       >
                         <Zap className="w-4 h-4 mr-2 fill-current" />
                         LAUNCH_DEEP_ANALYSIS
@@ -176,7 +246,6 @@ export default function DeepScanPage() {
               </div>
             </div>
           </motion.div>
-
         </div>
       </div>
     </div>
