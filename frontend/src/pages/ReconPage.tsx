@@ -77,13 +77,24 @@ export default function ReconPage() {
   return (
     <div className="min-h-screen bg-background relative flex flex-col overflow-hidden pb-10">
       <Navbar />
-      <div className="absolute inset-0 w-full h-full grid-background pointer-events-none opacity-30" />
+      
+      {/* Background grid fade-in animation */}
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 0.3 }}
+        transition={{ duration: 1.5 }}
+        className="absolute inset-0 w-full h-full grid-background pointer-events-none" 
+      />
       
       <div className="container relative z-10 mx-auto px-4 pt-8 max-w-[1600px] flex flex-col flex-grow">
         
-        {/* --- CENTERED HERO SECTION --- */}
-        <div className="flex flex-col items-center text-center mb-8 w-full max-w-6xl mx-auto shrink-0">
-            
+        {/* --- CENTERED HERO SECTION (Animated) --- */}
+        <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="flex flex-col items-center text-center mb-8 w-full max-w-6xl mx-auto shrink-0"
+        >
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-sentinel-blue/10 border border-sentinel-blue/20 mb-4">
                 <Radar className="w-4 h-4 text-sentinel-blue animate-pulse" />
                 <span className="text-sm font-medium text-sentinel-blue uppercase tracking-wider">Passive Intelligence</span>
@@ -98,7 +109,12 @@ export default function ReconPage() {
             </p>
 
             <form onSubmit={handleScan} className="w-full relative max-w-3xl mx-auto">
-                <div className="relative flex items-center bg-card border border-border rounded-xl shadow-lg overflow-hidden focus-within:border-sentinel-blue/50 transition-colors h-14">
+                <motion.div 
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}
+                    className="relative flex items-center bg-card border border-border rounded-xl shadow-lg overflow-hidden focus-within:border-sentinel-blue/50 transition-colors h-14"
+                >
                     <Search className="w-6 h-6 text-muted-foreground ml-4 shrink-0" />
                     <input
                         type="text"
@@ -115,20 +131,31 @@ export default function ReconPage() {
                     >
                         {isScanning ? 'AGGREGATING...' : 'LAUNCH RECON'}
                     </Button>
-                </div>
+                </motion.div>
             </form>
-        </div>
+        </motion.div>
 
         {/* Error State */}
-        {error && (
-            <div className="bg-red-500/10 border border-red-500/30 text-red-500 p-4 rounded-xl font-mono text-sm flex items-center justify-center gap-3 mb-6 max-w-3xl mx-auto w-full">
-                <AlertTriangle className="w-5 h-5" /> {error}
-            </div>
-        )}
+        <AnimatePresence>
+            {error && (
+                <motion.div 
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="bg-red-500/10 border border-red-500/30 text-red-500 p-4 rounded-xl font-mono text-sm flex items-center justify-center gap-3 mb-6 max-w-3xl mx-auto w-full overflow-hidden"
+                >
+                    <AlertTriangle className="w-5 h-5 shrink-0" /> {error}
+                </motion.div>
+            )}
+        </AnimatePresence>
 
-        {/* --- 3-PANE WORKSPACE --- */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full min-h-[600px] lg:h-[700px]">
-            
+        {/* --- 3-PANE WORKSPACE (Animated Slide Up) --- */}
+        <motion.div 
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.3, ease: "easeOut" }}
+            className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full min-h-[500px] lg:h-[600px]"
+        >
             {/* PANE 1: Live Terminal */}
             <div className="lg:col-span-3 bg-card border border-sentinel-blue/50 rounded-xl shadow-sm flex flex-col h-full overflow-hidden">
                 <div className="bg-muted/30 px-4 py-4 border-b border-sentinel-blue/20 flex items-center gap-2 shrink-0">
@@ -181,7 +208,7 @@ export default function ReconPage() {
 
                     {results?.infrastructure.map((node: any, idx: number) => {
                         const isActive = activeNodeIdx === idx;
-                        const nodeRisk = node.intel?.risk || "Low"; // Extract the specific risk for this node
+                        const nodeRisk = node.intel?.risk || "Low";
                         
                         return (
                             <button 
@@ -196,7 +223,6 @@ export default function ReconPage() {
                             >
                                 <div className="flex justify-between items-start w-full gap-2">
                                     <div className="flex items-center gap-2 overflow-hidden">
-                                        {/* --- NEW: SEVERITY LED INDICATOR --- */}
                                         <div className={cn(
                                             "w-2 h-2 rounded-full shrink-0",
                                             nodeRisk === "Critical" ? "bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.8)]" :
@@ -226,7 +252,6 @@ export default function ReconPage() {
                                         <span className="text-[12px] text-muted-foreground font-mono flex items-center gap-1.5">
                                             <Activity className="w-3.5 h-3.5" /> {node.ip}
                                         </span>
-                                        {/* --- NEW: SEVERITY TEXT BADGE --- */}
                                         <span className={cn(
                                             "text-[9px] font-bold uppercase tracking-widest",
                                             nodeRisk === "Critical" ? "text-red-500" :
@@ -331,7 +356,7 @@ export default function ReconPage() {
                 </div>
             </div>
 
-        </div>
+        </motion.div>
       </div>
     </div>
   );
