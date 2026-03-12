@@ -11,6 +11,7 @@ from port_scanner import scan_ports
 from reporter import generate_report
 from deep_scanner import run_deep_scan
 from database import save_scan_result
+import recon_engine # Add this near your other logic imports
 # IMPORT THE NEW KNOWLEDGE BASE
 from vuln_kb import VULN_DB
 
@@ -230,6 +231,22 @@ def download_report():
     except Exception as e:
         print(f"[!] PDF Generation Error: {e}")
         return jsonify({"error": "PDF generation failed"}), 500
+
+@app.route('/api/recon', methods=['POST'])
+def handle_recon():
+    data = request.json
+    domain = data.get('domain')
+    
+    if not domain:
+        return jsonify({"error": "No domain provided"}), 400
+        
+    try:
+        report = recon_engine.run_recon(domain)
+        return jsonify(report)
+    except Exception as e:
+        print(f"[!] Recon engine failed: {e}")
+        return jsonify({"error": "OSINT mapping failed"}), 500
+
 
 # --- HEALTH CHECK (Keep-Alive) ---
 @app.route('/', methods=['GET'])

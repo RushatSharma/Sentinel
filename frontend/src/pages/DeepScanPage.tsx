@@ -58,7 +58,7 @@ export default function DeepScanPage() {
              {/* Time Warning Badge */}
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/10 border border-red-500/20 mb-8">
               <Clock className="w-4 h-4 text-sentinel-red animate-pulse" />
-              <span className="text-sm font-medium text-red-400">Deep Scan Duration: ~45-90 seconds</span>
+              <span className="text-sm font-medium text-red-400">Deep Scan Duration: ~ 1-5 minutes</span>
             </div>
 
             {/* Heading */}

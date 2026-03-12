@@ -335,3 +335,66 @@ VULN_DB = {
         "code_fix": "# Nginx\nssl_protocols TLSv1.2 TLSv1.3;"
     }
 }
+
+
+# --- RECONNAISSANCE & OSINT KNOWLEDGE BASE ---
+# This maps subdomain keywords and server statuses to actionable threat intelligence.
+
+
+RECON_KB = {
+    "staging_dev": {
+        "keywords": ["stage", "dev", "test", "uat", "sandbox", "qa", "beta"],
+        "title": "Staging / Development Environment",
+        "risk": "High",
+        "playbook": "Attackers heavily target staging servers. Developers often clone production databases here for testing, but forget to enable Web Application Firewalls (WAFs), leave 'Debug Mode' on, or use default credentials like 'admin/password'. A compromised dev server is often a backdoor into the main network.",
+        "remediation": "Never expose staging environments to the public internet. Restrict access via strict IP whitelisting or an internal corporate VPN. Ensure production data is heavily anonymized before being used in QA.",
+        "next_step": "Copy this URL and run a Sentinel Deep Scan to hunt for exposed debug endpoints or weak login portals."
+    },
+    "api_endpoints": {
+        "keywords": ["api", "graphql", "rest", "v1", "v2", "v3", "ws", "socket"],
+        "title": "Exposed API Infrastructure",
+        "risk": "Medium",
+        "playbook": "Finding an API subdomain tells an attacker the application relies on programmatic data exchange. Hackers will hunt for the API documentation (Swagger/OpenAPI files) and test for BOLA (Broken Object Level Authorization)—e.g., changing '?user_id=1' to '?user_id=2' to steal other users' data.",
+        "remediation": "Implement strict rate limiting, ensure all endpoints require JWT or OAuth token validation, and regularly audit for Shadow APIs (undocumented endpoints).",
+        "next_step": "Feed this endpoint into a specialized API Fuzzer to test for authentication bypass and mass assignment vulnerabilities."
+    },
+    "admin_panels": {
+        "keywords": ["admin", "portal", "cpanel", "manage", "dashboard", "backoffice", "staff"],
+        "title": "Administrative / Employee Portal",
+        "risk": "Critical",
+        "playbook": "This is the holy grail for threat actors. If an attacker can brute-force, bypass, or phish credentials for an admin portal, they gain total control over the application, user data, and potentially the underlying server.",
+        "remediation": "Admin portals must be hidden behind a VPN, require enforcing Multi-Factor Authentication (MFA), and have strict account lockout policies after failed login attempts.",
+        "next_step": "Run a Deep Scan with 'Smart Auth Bypass' enabled to test for SQL injection on the login fields."
+    },
+    "vpn_remote": {
+        "keywords": ["vpn", "citrix", "remote", "webmail", "sso", "auth", "login"],
+        "title": "Remote Access / Authentication Gateway",
+        "risk": "Critical",
+        "playbook": "VPN and SSO subdomains are prime targets for Ransomware gangs. Attackers will use credential stuffing (using passwords leaked from other breaches) or exploit known CVEs in VPN software (like Fortinet or Pulse Secure) to gain an initial foothold into the corporate intranet.",
+        "remediation": "Ensure the VPN appliance firmware is strictly patched. Enforce MFA for all remote access. Monitor logs for impossible travel anomalies (e.g., a login from India and Russia within 10 minutes).",
+        "next_step": "Audit the service for known CVEs based on the software version exposed in the HTTP headers."
+    },
+    "cloud_storage": {
+        "keywords": ["s3", "bucket", "storage", "assets", "cdn", "media", "cloud"],
+        "title": "Cloud Storage / CDN Asset",
+        "risk": "Low",
+        "playbook": "Often points to an AWS S3 bucket or Azure Blob. Hackers will attempt to access this URL directly using cloud enumeration tools to see if the bucket permissions are misconfigured (e.g., allowing anonymous users to list or upload files).",
+        "remediation": "Ensure cloud storage buckets block public access by default. Use strict IAM policies to ensure only authorized applications can read/write to the bucket.",
+        "next_step": "Attempt to browse the root URL. If it returns an XML list of files, you have an exposed bucket."
+    },
+    "subdomain_takeover": {
+        "keywords": ["_unreachable_"], # Triggered by status, not keyword
+        "title": "Potential Subdomain Takeover",
+        "risk": "Critical",
+        "playbook": "If a subdomain resolves to an IP but is 'Unreachable' or returns a 404/NXDOMAIN, it might be pointing to a discontinued cloud service (like an old GitHub Page, Heroku app, or AWS bucket). A hacker can register that exact abandoned bucket name, effectively taking control of the 'target.com' subdomain to launch highly-trusted phishing attacks.",
+        "remediation": "Regularly audit DNS records. If a cloud service is no longer in use, immediately delete the CNAME or A record pointing to it from your DNS registrar.",
+        "next_step": "Check the CNAME record of this subdomain. If it points to a third-party service, verify if the resource is still actively claimed."
+    },
+    "default": {
+        "title": "Standard Web Infrastructure",
+        "risk": "Low",
+        "playbook": "This appears to be standard web infrastructure. Attackers will map it, scan for open ports (like SSH 22 or RDP 3389), and fingerprint the web server version to hunt for outdated software.",
+        "remediation": "Keep all server software (Nginx, Apache, IIS) up to date. Close all non-essential ports via a strict firewall configuration.",
+        "next_step": "Run a standard vulnerability scan to check for outdated headers and basic misconfigurations."
+    },
+}

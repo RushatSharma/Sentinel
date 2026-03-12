@@ -55,12 +55,38 @@ def create_vuln(v_key, url, custom_details, severity="Medium"):
         "est_cost": cost
     }
 
-# --- OAST HELPER FUNCTIONS ---
-def generate_oast_id():
-    return str(uuid.uuid4()).replace("-", "")[:12]
+# --- OAST HELPER FUNCTIONS (WEBHOOK.SITE INTEGRATION) ---
+def generate_oast_token():
+    """Dynamically provisions a unique listener URL via Webhook.site for OAST tracking."""
+    try:
+        print("[*] 🌐 Provisioning OAST listener via Webhook.site...")
+        response = requests.post("https://webhook.site/token", timeout=10)
+        if response.status_code in [200, 201]:
+            token = response.json().get('uuid')
+            print(f"[*] 🎯 OAST Listener established: webhook.site/{token}")
+            return token
+    except Exception as e:
+        print(f"[!] Failed to provision OAST: {e}")
+    return None
 
-def check_oast_interactions(oast_id):
-    print(f"[*] 📡 Polling OAST server for ID: {oast_id}...")
+def check_oast_interactions(token):
+    """Polls the Webhook.site API to see if our payloads forced the target to reach out."""
+    if not token:
+        return False
+        
+    print(f"[*] 📡 Polling OAST server for token: {token}...")
+    try:
+        response = requests.get(f"https://webhook.site/token/{token}/requests", timeout=10)
+        if response.status_code == 200:
+            interactions = response.json().get('data', [])
+            if len(interactions) > 0:
+                print(f"[*] 🚨 OAST CALLBACK DETECTED! {len(interactions)} external interactions recorded.")
+                return True
+            else:
+                print("[*] ✅ No out-of-band interactions detected.")
+    except Exception as e:
+        print(f"[!] OAST Polling Error: {e}")
+        
     return False
 
 # --- MODULE 1: Header & SSL Analysis ---
@@ -106,8 +132,10 @@ def scan_sensitive_files(target_url):
 # --- MODULE 3: Active Playwright Scanner ---
 def scan_active_playwright(target_url, auth_config=None):
     alerts = []
-    oast_id = generate_oast_id()
-    oast_domain = f"{oast_id}.interact.sh" 
+    
+    # Fetch a real, live OAST token from the internet
+    oast_token = generate_oast_token()
+    oast_domain = f"webhook.site/{oast_token}" if oast_token else "webhook.site/fallback-test-123"
 
     sql_errors = [
         "check the manual that corresponds to your mysql",
@@ -121,8 +149,8 @@ def scan_active_playwright(target_url, auth_config=None):
         {"key": "XSS_REFLECTED", "payload": "<img src=x onerror=alert('SENTINEL')>", "check": []},
         {"key": "SSTI", "payload": "{{7*7}}", "check": ["49"]},
         {"key": "OPEN_REDIRECT", "payload": "http://google.com", "check": []},
-        {"key": "BLIND_XSS", "payload": f"\"><script src='http://{oast_domain}'></script>", "check": []},
-        {"key": "BLIND_SSRF", "payload": f"http://{oast_domain}", "check": []}
+        {"key": "BLIND_XSS", "payload": f"\"><script src='https://{oast_domain}'></script>", "check": []},
+        {"key": "BLIND_SSRF", "payload": f"https://{oast_domain}", "check": []}
     ]
 
     try:
@@ -131,7 +159,7 @@ def scan_active_playwright(target_url, auth_config=None):
             browser = p.chromium.launch(headless=True, slow_mo=100)
             context = browser.new_context(ignore_https_errors=True)
             
-            # --- NEW: HEURISTIC AUTO-LOGIN ENGINE ---
+            # --- HEURISTIC AUTO-LOGIN ENGINE ---
             if auth_config and auth_config.get('type') == 'form':
                 try:
                     print("[*] 🧠 Engaging Heuristic Auto-Login Engine...")
@@ -222,9 +250,10 @@ def scan_active_playwright(target_url, auth_config=None):
             
             browser.close()
             
+            # --- OAST VALIDATION (Zero False Positive Check) ---
             print("[*] ⏳ Waiting 5 seconds for asynchronous OAST callbacks...")
             time.sleep(5)
-            if check_oast_interactions(oast_id):
+            if check_oast_interactions(oast_token):
                 alerts.append(create_vuln("BLIND_XSS", target_url, f"CONFIRMED OAST INTERACTION: Payload pinged {oast_domain}. Zero false positive.", "Critical"))
 
     except Exception as e:
