@@ -96,7 +96,6 @@ export function Navbar() {
     { name: 'Deep Scan', href: '/deep-scan', icon: <ShieldCheck className="w-4 h-4 mr-2" /> },
     { name: 'Recon', href: '/recon', icon: <ScanSearch className="w-4 h-4 mr-2" /> },
     { name: 'API Fuzzer', href: '/api-fuzzer', icon: <ShieldCheck className="w-4 h-4 mr-2" /> },
-    { name: 'About Protocol', href: '/about', icon: <Info className="w-4 h-4 mr-2" /> },
   ];
 
   return (

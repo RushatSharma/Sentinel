@@ -13,10 +13,8 @@ export default function ReconPage() {
   const [logs, setLogs] = useState<string[]>([]);
   const [isDownloading, setIsDownloading] = useState(false);
   
-  // State for the Master-Detail view
   const [activeNodeIdx, setActiveNodeIdx] = useState<number | null>(null);
 
-  // Simulates terminal output while the backend is doing heavy lifting
   useEffect(() => {
     if (!isScanning) return;
     
@@ -33,7 +31,7 @@ export default function ReconPage() {
     ];
 
     const timeouts: NodeJS.Timeout[] = [];
-    let delay = 1000;
+    let delay = 1200; 
 
     sequence.forEach((log) => {
         timeouts.push(setTimeout(() => setLogs(prev => [...prev, log]), delay));
@@ -72,7 +70,6 @@ export default function ReconPage() {
     }
   };
 
-  // --- NEW: Download PDF Function ---
   const handleDownload = async () => {
     if (!results) return;
     setIsDownloading(true);
@@ -81,13 +78,11 @@ export default function ReconPage() {
         const response = await fetch('http://127.0.0.1:5000/api/download-report', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            // Attach 'recon' as the report_type so the backend knows which PDF to draw
             body: JSON.stringify({ ...results, report_type: 'recon' }),
         });
 
         if (!response.ok) throw new Error('Failed to generate report.');
 
-        // Download the binary PDF blob
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -111,20 +106,25 @@ export default function ReconPage() {
     <div className="min-h-screen bg-background relative flex flex-col overflow-hidden pb-10">
       <Navbar />
       
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 0.3 }}
-        transition={{ duration: 1.5 }}
-        className="absolute inset-0 w-full h-full grid-background pointer-events-none" 
-      />
+      {/* --- FOCUSED GRID BACKGROUND (Matched to Landing Page) --- */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 1.5 }}
+            className="absolute inset-0 grid-background opacity-50 dark:opacity-100" 
+        />
+        {/* Gradient overlay to create the spotlight focus effect */}
+        <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
+      </div>
       
       <div className="container relative z-10 mx-auto px-4 pt-8 max-w-[1600px] flex flex-col flex-grow">
         
         {/* --- CENTERED HERO SECTION --- */}
         <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
+            initial={{ opacity: 0, scale: 0.9, filter: 'blur(10px)' }}
+            animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
             className="flex flex-col items-center text-center mb-8 w-full max-w-6xl mx-auto shrink-0"
         >
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-sentinel-blue/10 border border-sentinel-blue/20 mb-4">
@@ -142,9 +142,9 @@ export default function ReconPage() {
 
             <form onSubmit={handleScan} className="w-full relative max-w-3xl mx-auto">
                 <motion.div 
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
                     className="relative flex items-center bg-card border border-border rounded-xl shadow-lg overflow-hidden focus-within:border-sentinel-blue/50 transition-colors h-14"
                 >
                     <Search className="w-6 h-6 text-muted-foreground ml-4 shrink-0" />
@@ -167,9 +167,8 @@ export default function ReconPage() {
             </form>
         </motion.div>
 
-        {/* Error State */}
-        <AnimatePresence>
-            {error && (
+        {error && (
+            <AnimatePresence>
                 <motion.div 
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
@@ -178,18 +177,19 @@ export default function ReconPage() {
                 >
                     <AlertTriangle className="w-5 h-5 shrink-0" /> {error}
                 </motion.div>
-            )}
-        </AnimatePresence>
+            </AnimatePresence>
+        )}
 
         {/* --- 3-PANE WORKSPACE --- */}
-        <motion.div 
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.3, ease: "easeOut" }}
-            className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full min-h-[500px] lg:h-[550px]"
-        >
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full min-h-[500px] lg:h-[550px] overflow-hidden">
+            
             {/* PANE 1: Live Terminal */}
-            <div className="lg:col-span-3 bg-card border border-sentinel-blue/50 rounded-xl shadow-sm flex flex-col h-full overflow-hidden">
+            <motion.div 
+                initial={{ opacity: 0, x: -40 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.7, delay: 0.4, ease: "easeOut" }}
+                className="lg:col-span-3 bg-card border border-sentinel-blue/50 rounded-xl shadow-sm flex flex-col h-full overflow-hidden"
+            >
                 <div className="bg-muted/30 px-4 py-4 border-b border-sentinel-blue/20 flex items-center gap-2 shrink-0">
                     <TerminalIcon className="w-5 h-5 text-sentinel-blue" />
                     <span className="text-sm font-mono font-bold text-foreground">recon_engine.log</span>
@@ -209,10 +209,15 @@ export default function ReconPage() {
                          </div>
                     )}
                 </div>
-            </div>
+            </motion.div>
 
-            {/* PANE 2: Target List with PDF Download Button */}
-            <div className="lg:col-span-4 bg-card border border-sentinel-blue/50 rounded-xl shadow-sm flex flex-col h-full overflow-hidden">
+            {/* PANE 2: Target List */}
+            <motion.div 
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.6, ease: "easeOut" }}
+                className="lg:col-span-4 bg-card border border-sentinel-blue/50 rounded-xl shadow-sm flex flex-col h-full overflow-hidden"
+            >
                 <div className="bg-muted/30 px-5 py-3 border-b border-sentinel-blue/20 flex justify-between items-center shrink-0">
                     <span className="text-base font-mono text-foreground font-bold flex items-center gap-2">
                         <Map className="w-5 h-5 text-sentinel-blue" /> ASSET INVENTORY
@@ -222,7 +227,6 @@ export default function ReconPage() {
                             <span className="text-xs bg-sentinel-blue/10 px-2 py-1 rounded text-sentinel-blue font-mono border border-sentinel-blue/20">
                                 {results.total_found} TARGETS
                             </span>
-                            {/* --- NEW DOWNLOAD BUTTON --- */}
                             <Button
                                 onClick={handleDownload}
                                 disabled={isDownloading}
@@ -313,10 +317,15 @@ export default function ReconPage() {
                         );
                     })}
                 </div>
-            </div>
+            </motion.div>
 
             {/* PANE 3: Intelligence Dossier */}
-            <div className="lg:col-span-5 bg-card border border-sentinel-blue/50 rounded-xl shadow-sm flex flex-col h-full overflow-hidden relative">
+            <motion.div 
+                initial={{ opacity: 0, x: 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.7, delay: 0.8, ease: "easeOut" }}
+                className="lg:col-span-5 bg-card border border-sentinel-blue/50 rounded-xl shadow-sm flex flex-col h-full overflow-hidden relative"
+            >
                 <div className="bg-muted/30 px-5 py-4 border-b border-sentinel-blue/20 flex items-center gap-2 shrink-0">
                     <Crosshair className="w-5 h-5 text-sentinel-blue" />
                     <span className="text-base font-mono text-foreground font-bold">INTELLIGENCE DOSSIER</span>
@@ -332,10 +341,10 @@ export default function ReconPage() {
                         <AnimatePresence mode="wait">
                             <motion.div 
                                 key={activeNode.subdomain}
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -20 }}
-                                transition={{ duration: 0.2 }}
+                                initial={{ opacity: 0, filter: 'blur(5px)', scale: 0.95 }}
+                                animate={{ opacity: 1, filter: 'blur(0px)', scale: 1 }}
+                                exit={{ opacity: 0, filter: 'blur(5px)', scale: 0.95 }}
+                                transition={{ duration: 0.3, type: 'spring', bounce: 0.3 }}
                                 className="p-6 md:p-8 space-y-8"
                             >
                                 {/* Header / Risk Level */}
@@ -399,9 +408,9 @@ export default function ReconPage() {
                         </AnimatePresence>
                     )}
                 </div>
-            </div>
+            </motion.div>
 
-        </motion.div>
+        </div>
       </div>
     </div>
   );

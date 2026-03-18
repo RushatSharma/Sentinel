@@ -15,11 +15,10 @@ export default function ApiFuzzerPage() {
 
   const [activeTab, setActiveTab] = useState<'terminal' | 'findings'>('terminal');
 
-  // Slowed down the terminal simulation to match the new cinematic bootup
   useEffect(() => {
     if (!isScanning) return;
     
-    setLogs([]); // Clear previous logs
+    setLogs([]);
     const sequence = [
         "[SYSTEM] Initializing OpenAPI/Swagger Engine...",
         `[NETWORK] Fetching blueprint from: ${swaggerUrl}`,
@@ -33,11 +32,11 @@ export default function ApiFuzzerPage() {
     ];
 
     const timeouts: NodeJS.Timeout[] = [];
-    let delay = 1500; // Wait 1.5s for the UI to fully "boot" before logging
+    let delay = 1500; 
 
     sequence.forEach((log) => {
         timeouts.push(setTimeout(() => setLogs(prev => [...prev, log]), delay));
-        delay += 1200 + Math.random() * 1000; // Slower typing effect
+        delay += 1200 + Math.random() * 1000; 
     });
 
     return () => timeouts.forEach(clearTimeout);
@@ -64,7 +63,7 @@ export default function ApiFuzzerPage() {
       
       setResults(data);
       if (data.vulnerabilities && data.vulnerabilities.length > 0) {
-          setTimeout(() => setActiveTab('findings'), 1500); // Slower tab switch
+          setTimeout(() => setActiveTab('findings'), 1500); 
       }
     } catch (err: any) {
       setError(err.message || 'Connection failed. Ensure backend is running.');
@@ -133,20 +132,23 @@ export default function ApiFuzzerPage() {
     <div className="min-h-screen bg-background relative flex flex-col pb-16 font-sans">
       <Navbar />
       
-      {/* Background Pulse Animation */}
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: [0.05, 0.15, 0.05] }}
-        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }} // Slower pulse
-        className="absolute inset-0 w-full h-full grid-background pointer-events-none dark:opacity-10" 
-      />
+      {/* --- FOCUSED GRID BACKGROUND (Matched to Landing Page) --- */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 1.5 }}
+            className="absolute inset-0 grid-background opacity-50 dark:opacity-100" 
+        />
+        {/* Gradient overlay to create the spotlight focus effect */}
+        <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
+      </div>
       
       {/* Perspective wrapper for 3D flip effects */}
       <div className="container relative z-10 mx-auto px-4 pt-12 max-w-7xl flex flex-col gap-6 [perspective:1000px]">
         
         {/* --- HEADER (HUD BOOTUP ANIMATION) --- */}
         <motion.div 
-            // Slower duration: 1.5s, less bounce
             initial={{ opacity: 0, rotateX: -30, y: -40, filter: 'blur(15px)', scale: 0.95 }}
             animate={{ opacity: 1, rotateX: 0, y: 0, filter: 'blur(0px)', scale: 1 }}
             transition={{ duration: 1.5, type: 'spring', bounce: 0.2 }}
@@ -168,7 +170,6 @@ export default function ApiFuzzerPage() {
             <form onSubmit={handleScan} className="w-full max-w-3xl relative group">
                 <div className="absolute -inset-1 bg-gradient-to-r from-purple-600/20 to-indigo-600/20 rounded-full blur opacity-50 group-hover:opacity-100 transition duration-1000" />
                 <motion.div 
-                    // Slower search bar expansion
                     initial={{ width: "60%" }}
                     animate={{ width: "100%" }}
                     transition={{ duration: 1.2, delay: 0.6, type: 'spring', bounce: 0.2 }}
@@ -194,9 +195,8 @@ export default function ApiFuzzerPage() {
             </form>
         </motion.div>
 
-        {/* Error State */}
-        <AnimatePresence>
-            {error && (
+        {error && (
+            <AnimatePresence>
                 <motion.div 
                     initial={{ opacity: 0, height: 0, filter: 'blur(5px)' }}
                     animate={{ opacity: 1, height: 'auto', filter: 'blur(0px)' }}
@@ -206,8 +206,8 @@ export default function ApiFuzzerPage() {
                 >
                     <AlertTriangle className="w-5 h-5 shrink-0" /> {error}
                 </motion.div>
-            )}
-        </AnimatePresence>
+            </AnimatePresence>
+        )}
 
         {/* --- TELEMETRY METRICS ROW --- */}
         <AnimatePresence>
@@ -220,7 +220,6 @@ export default function ApiFuzzerPage() {
                         hidden: { opacity: 0 },
                         visible: {
                             opacity: 1,
-                            // Much slower stagger between cards (0.3s instead of 0.15s)
                             transition: { staggerChildren: 0.3, delayChildren: 0.2 } 
                         }
                     }}
@@ -264,7 +263,6 @@ export default function ApiFuzzerPage() {
         <AnimatePresence>
             {(isScanning || results) && (
                 <motion.div 
-                    // Slower grid reveal (1.5s)
                     initial={{ opacity: 0, rotateX: 20, y: 80, scale: 0.95, filter: 'blur(15px)' }}
                     animate={{ opacity: 1, rotateX: 0, y: 0, scale: 1, filter: 'blur(0px)' }}
                     exit={{ opacity: 0, rotateX: -20, y: 80, scale: 0.95, filter: 'blur(15px)' }}
@@ -285,7 +283,6 @@ export default function ApiFuzzerPage() {
                             )}
                             {results?.endpoint_list?.map((ep: any, idx: number) => (
                                 <motion.div 
-                                    // Slower list pop-in
                                     initial={{ opacity: 0, x: -20 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     transition={{ duration: 0.5, delay: 1.0 + (idx * 0.08) }} 
@@ -394,7 +391,6 @@ export default function ApiFuzzerPage() {
                                 ) : (
                                     results.vulnerabilities.map((vuln: any, idx: number) => (
                                         <motion.div 
-                                            // Slower ticket reveal
                                             initial={{ opacity: 0, scale: 0.95, y: 30 }}
                                             animate={{ opacity: 1, scale: 1, y: 0 }}
                                             transition={{ duration: 0.6, delay: idx * 0.15, type: 'spring', bounce: 0.2 }}

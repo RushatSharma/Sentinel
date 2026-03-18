@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Navbar } from "../components/Navbar";
 import { Button } from "../components/ui/button";
 import { 
@@ -12,7 +12,7 @@ export default function DeepScanPage() {
   const [loading, setLoading] = useState<boolean>(false);
   const navigate = useNavigate();
 
-  // --- NEW: Simplified Authentication State ---
+  // --- Simplified Authentication State ---
   const [isAuthScan, setIsAuthScan] = useState<boolean>(false);
   const [authConfig, setAuthConfig] = useState({
     login_url: '',
@@ -36,41 +36,68 @@ export default function DeepScanPage() {
     }, 2500);
   };
 
+  // SLOWED DOWN: Animation variants for the left column (Holographic Unfold)
+  const unfoldVariants = {
+    hidden: { opacity: 0, x: -40, filter: "blur(10px)" },
+    visible: { 
+        opacity: 1, 
+        x: 0, 
+        filter: "blur(0px)",
+        // Increased duration from 0.8 to 1.5 for a slower reveal
+        transition: { type: "spring", bounce: 0.2, duration: 1.5 } 
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background relative flex flex-col overflow-hidden">
       <Navbar />
       
-      {/* Background Effects */}
-      <div className="absolute inset-0 w-full h-full grid-background pointer-events-none" />
-      <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background pointer-events-none" />
+      {/* --- FOCUSED GRID BACKGROUND (Exact match to Landing Page) --- */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 1.5 }}
+            className="absolute inset-0 grid-background opacity-50 dark:opacity-100" 
+        />
+        {/* Gradient overlay to create the spotlight focus effect */}
+        <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
+      </div>
 
       {/* Main Container */}
       <div className="container relative z-10 mx-auto px-4 pt-20 pb-6 flex-grow flex items-center justify-center">
         <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 items-start w-full"> 
           
-         {/* --- LEFT COLUMN: INFORMATION & WARNINGS --- */}
+         {/* --- LEFT COLUMN: INFORMATION & WARNINGS (Holographic Unfold) --- */}
         <motion.div 
-          initial={{ opacity: 0, x: -30 }} 
-          animate={{ opacity: 1, x: 0 }} 
-          transition={{ duration: 0.8 }}
+          initial="hidden"
+          animate="visible"
+          variants={{
+              hidden: { opacity: 0 },
+              visible: {
+                  opacity: 1,
+                  // SLOWED DOWN: Increased stagger from 0.15 to 0.3 for a slower cascading effect
+                  transition: { staggerChildren: 0.3 } 
+              }
+          }}
           className="lg:col-span-7 text-left lg:-mt-12" 
         >
              {/* Time Warning Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/10 border border-red-500/20 mb-8">
+            <motion.div variants={unfoldVariants} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/10 border border-red-500/20 mb-8">
               <Clock className="w-4 h-4 text-sentinel-red animate-pulse" />
               <span className="text-sm font-medium text-red-400">Deep Scan Duration: ~ 1-5 minutes</span>
-            </div>
+            </motion.div>
 
             {/* Heading */}
-            <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6 leading-tight">
+            <motion.h1 variants={unfoldVariants} className="font-display text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6 leading-tight">
               <span className="text-foreground">Active Heuristic</span><br />
               <span className="bg-gradient-to-r from-sentinel-red to-red-600 bg-clip-text text-transparent">
                 Warfare Engine
               </span>
-            </h1>
+            </motion.h1>
 
             {/* Description */}
-            <div className="text-lg md:text-xl text-muted-foreground mb-10 max-w-3xl">
+            <motion.div variants={unfoldVariants} className="text-lg md:text-xl text-muted-foreground mb-10 max-w-3xl">
               <p className="mb-8 leading-relaxed">
                 This is not a passive scan. Sentinel launches a <strong>headless browser instance</strong> to interact with your application, injecting payloads into forms and analyzing dynamic DOM responses.
               </p>
@@ -110,14 +137,15 @@ export default function DeepScanPage() {
                   </li>
                 </ul>
               </div>
-            </div>
+            </motion.div>
           </motion.div>
 
-          {/* --- RIGHT COLUMN: CONSOLE SCANNER (DEEP SCAN) --- */}
+          {/* --- RIGHT COLUMN: CONSOLE SCANNER (Tactical Drop Slam) --- */}
           <motion.div 
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2, duration: 0.8 }}
+            // SLOWED DOWN: Longer delay, longer duration, smoother bounce
+            initial={{ opacity: 0, y: -100, scale: 0.85, rotateZ: 3, filter: 'blur(12px)' }}
+            animate={{ opacity: 1, y: 0, scale: 1, rotateZ: 0, filter: 'blur(0px)' }}
+            transition={{ delay: 0.8, duration: 1.5, type: "spring", bounce: 0.2 }}
             className="lg:col-span-5 relative w-full max-w-[600px] mx-auto lg:mr-0 lg:ml-auto lg:-mt-18"
           >
             {/* Console Container */}
