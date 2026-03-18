@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Navbar } from '../components/Navbar';
 import { Button } from '../components/ui/button';
-import { Radar, Search, Server, Activity, AlertTriangle, ShieldCheck, Terminal as TerminalIcon, Map, Crosshair, ArrowRight, ShieldAlert, Info } from 'lucide-react';
+import { Radar, Search, Server, Activity, AlertTriangle, ShieldCheck, Terminal as TerminalIcon, Map, Crosshair, ArrowRight, ShieldAlert, Info, Download } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export default function ReconPage() {
@@ -11,6 +11,7 @@ export default function ReconPage() {
   const [results, setResults] = useState<any>(null);
   const [error, setError] = useState('');
   const [logs, setLogs] = useState<string[]>([]);
+  const [isDownloading, setIsDownloading] = useState(false);
   
   // State for the Master-Detail view
   const [activeNodeIdx, setActiveNodeIdx] = useState<number | null>(null);
@@ -49,7 +50,7 @@ export default function ReconPage() {
     setIsScanning(true);
     setResults(null);
     setError('');
-    setActiveNodeIdx(null); // Reset selection on new scan
+    setActiveNodeIdx(null);
 
     try {
       const response = await fetch('http://127.0.0.1:5000/api/recon', {
@@ -62,12 +63,44 @@ export default function ReconPage() {
       const data = await response.json();
       setResults(data);
       if (data.infrastructure && data.infrastructure.length > 0) {
-          setActiveNodeIdx(0); // Auto-select the first result
+          setActiveNodeIdx(0); 
       }
     } catch (err: any) {
       setError(err.message || 'Connection failed. Ensure backend is running.');
     } finally {
       setIsScanning(false);
+    }
+  };
+
+  // --- NEW: Download PDF Function ---
+  const handleDownload = async () => {
+    if (!results) return;
+    setIsDownloading(true);
+    
+    try {
+        const response = await fetch('http://127.0.0.1:5000/api/download-report', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            // Attach 'recon' as the report_type so the backend knows which PDF to draw
+            body: JSON.stringify({ ...results, report_type: 'recon' }),
+        });
+
+        if (!response.ok) throw new Error('Failed to generate report.');
+
+        // Download the binary PDF blob
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Sentinel_OSINT_Report_${results.target}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+        setError("Report generation failed: " + err.message);
+    } finally {
+        setIsDownloading(false);
     }
   };
 
@@ -78,7 +111,6 @@ export default function ReconPage() {
     <div className="min-h-screen bg-background relative flex flex-col overflow-hidden pb-10">
       <Navbar />
       
-      {/* Background grid fade-in animation */}
       <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 0.3 }}
@@ -88,7 +120,7 @@ export default function ReconPage() {
       
       <div className="container relative z-10 mx-auto px-4 pt-8 max-w-[1600px] flex flex-col flex-grow">
         
-        {/* --- CENTERED HERO SECTION (Animated) --- */}
+        {/* --- CENTERED HERO SECTION --- */}
         <motion.div 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -149,12 +181,12 @@ export default function ReconPage() {
             )}
         </AnimatePresence>
 
-        {/* --- 3-PANE WORKSPACE (Animated Slide Up) --- */}
+        {/* --- 3-PANE WORKSPACE --- */}
         <motion.div 
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.3, ease: "easeOut" }}
-            className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full min-h-[500px] lg:h-[600px]"
+            className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full min-h-[500px] lg:h-[550px]"
         >
             {/* PANE 1: Live Terminal */}
             <div className="lg:col-span-3 bg-card border border-sentinel-blue/50 rounded-xl shadow-sm flex flex-col h-full overflow-hidden">
@@ -179,16 +211,29 @@ export default function ReconPage() {
                 </div>
             </div>
 
-            {/* PANE 2: Target List */}
+            {/* PANE 2: Target List with PDF Download Button */}
             <div className="lg:col-span-4 bg-card border border-sentinel-blue/50 rounded-xl shadow-sm flex flex-col h-full overflow-hidden">
-                <div className="bg-muted/30 px-5 py-4 border-b border-sentinel-blue/20 flex justify-between items-center shrink-0">
+                <div className="bg-muted/30 px-5 py-3 border-b border-sentinel-blue/20 flex justify-between items-center shrink-0">
                     <span className="text-base font-mono text-foreground font-bold flex items-center gap-2">
                         <Map className="w-5 h-5 text-sentinel-blue" /> ASSET INVENTORY
                     </span>
                     {results && (
-                        <span className="text-xs bg-sentinel-blue/10 px-2 py-1 rounded text-sentinel-blue font-mono border border-sentinel-blue/20">
-                            {results.total_found} TARGETS
-                        </span>
+                        <div className="flex items-center gap-3">
+                            <span className="text-xs bg-sentinel-blue/10 px-2 py-1 rounded text-sentinel-blue font-mono border border-sentinel-blue/20">
+                                {results.total_found} TARGETS
+                            </span>
+                            {/* --- NEW DOWNLOAD BUTTON --- */}
+                            <Button
+                                onClick={handleDownload}
+                                disabled={isDownloading}
+                                variant="outline"
+                                size="sm"
+                                className="h-7 px-3 text-xs border-sentinel-blue/50 text-sentinel-blue hover:bg-sentinel-blue/10 transition-colors"
+                            >
+                                <Download className="w-3 h-3 mr-2" />
+                                {isDownloading ? 'GENERATING...' : 'EXPORT PDF'}
+                            </Button>
+                        </div>
                     )}
                 </div>
                 

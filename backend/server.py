@@ -11,7 +11,8 @@ from port_scanner import scan_ports
 from reporter import generate_report
 from deep_scanner import run_deep_scan
 from database import save_scan_result
-import recon_engine # Add this near your other logic imports
+import recon_engine 
+import api_fuzzer 
 # IMPORT THE NEW KNOWLEDGE BASE
 from vuln_kb import VULN_DB
 
@@ -247,7 +248,24 @@ def handle_recon():
         print(f"[!] Recon engine failed: {e}")
         return jsonify({"error": "OSINT mapping failed"}), 500
 
-
+@app.route('/api/fuzz-api', methods=['POST'])
+def handle_api_fuzz():
+    data = request.json
+    swagger_url = data.get('swagger_url')
+    
+    if not swagger_url:
+        return jsonify({"error": "No Swagger URL provided"}), 400
+        
+    try:
+        report = api_fuzzer.fuzz_api(swagger_url)
+        if "error" in report:
+            return jsonify({"error": report["error"]}), 400
+        return jsonify(report)
+    except Exception as e:
+        print(f"[!] API Fuzzer failed: {e}")
+        return jsonify({"error": "API Fuzzing engine failed"}), 500
+    
+    
 # --- HEALTH CHECK (Keep-Alive) ---
 @app.route('/', methods=['GET'])
 @app.route('/health', methods=['GET'])

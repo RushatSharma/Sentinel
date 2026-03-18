@@ -76,27 +76,22 @@ class AdvancedPDF(FPDF):
         self.set_text_color(100, 116, 139)
         self.cell(w, 5, f"THREAT LANDSCAPE: {int((summary['high']/total)*100)}% CRITICAL | {int((summary['medium']/total)*100)}% MODERATE | {int((summary['low']/total)*100)}% LOW", 0, 0, 'C')
 
-    # --- NEW: Code Snippet Renderer ---
     def draw_code_block(self, code_text):
         self.set_font('Courier', '', 8)
-        self.set_fill_color(245, 247, 250) # Light Slate/Grey background
-        self.set_draw_color(226, 232, 240) # Subtle border
+        self.set_fill_color(245, 247, 250) 
+        self.set_draw_color(226, 232, 240) 
         
-        # Calculate height based on lines (approximate 4 units per line + padding)
         lines = code_text.split('\n')
         h = (len(lines) * 4) + 6
         
-        # Draw box
         x = self.get_x()
         y = self.get_y()
         self.rect(x, y, 190, h, 'FD')
         
-        # Draw text inside
         self.set_xy(x + 2, y + 3)
-        self.set_text_color(51, 65, 85) # Dark Slate text
+        self.set_text_color(51, 65, 85) 
         self.multi_cell(186, 4, code_text)
         
-        # Move cursor below the box
         self.set_y(y + h + 2)
 
     def chapter_title(self, label):
@@ -118,23 +113,18 @@ class AdvancedPDF(FPDF):
 
 # --- BUSINESS LOGIC ---
 def calculate_business_metrics(summary, vulnerabilities):
-    # Base Calculation
     financial_risk = (summary['high'] * 75000) + (summary['medium'] * 15000) + (summary['low'] * 2000)
     
-    # Dynamic Multipliers based on specific findings
     vuln_types = [v.get('type', '').lower() for v in vulnerabilities]
     
-    # Multiplier: Database Breach Risk
     if any("sql" in v for v in vuln_types):
-        financial_risk *= 2.5 # SQLi is expensive (data dump)
+        financial_risk *= 2.5 
         
-    # Multiplier: PII (GDPR Fines)
     if any("pii" in v for v in vuln_types):
         financial_risk *= 1.5 
         
-    # Multiplier: Infrastructure Compromise
     if any("secret" in v or "env" in v for v in vuln_types):
-        financial_risk *= 3.0 # Full takeover risk
+        financial_risk *= 3.0 
 
     hours = (summary['high'] * 12) + (summary['medium'] * 6) + (summary['low'] * 2)
     dev_days = max(1, math.ceil(hours / 8))
@@ -164,7 +154,6 @@ def generate_dynamic_summary(report_data):
     vuln_types = [v.get('type', '') for v in vulns]
     target = report_data.get('target', 'Target System')
 
-    # 1. OPENING STATEMENT
     text = f"Sentinel Intelligence performed a deep-dive security audit on {target}. "
     if summary['high'] > 0:
         text += f"The system is currently in a CRITICAL state, with {summary['high']} high-severity vulnerabilities identified that pose an immediate threat to business continuity. "
@@ -173,7 +162,6 @@ def generate_dynamic_summary(report_data):
     else:
         text += "The system demonstrates a strong security posture with no immediate critical threats detected. "
 
-    # 2. SPECIFIC THREAT HIGHLIGHTS
     highlights = []
     
     if any("SQL" in t for t in vuln_types):
@@ -193,7 +181,6 @@ def generate_dynamic_summary(report_data):
     else:
         text += "\n\nRoutine hygiene upgrades are recommended to maintain this status."
 
-    # 3. CLOSING
     text += "\n\nIt is recommended to distribute the attached Technical Findings Matrix to the engineering team immediately."
     return text
 
@@ -220,8 +207,83 @@ def generate_dynamic_actions(vulns):
         
     return actions
 
+
+# --- OSINT RECON GENERATOR ---
+def generate_recon_report(report_data):
+    """Generates an Enterprise Intelligence Report for OSINT data using ReportLab."""
+    from reportlab.lib.pagesizes import letter
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib import colors
+
+    target = report_data.get('target', 'Unknown Domain')
+    infra = report_data.get('infrastructure', [])
+    
+    # Ensure reports directory exists
+    if not os.path.exists("reports"):
+        os.makedirs("reports")
+        
+    filename = f"reports/Sentinel_OSINT_Report_{int(time.time())}.pdf"
+    filepath = os.path.join(os.getcwd(), filename)
+    
+    doc = SimpleDocTemplate(filepath, pagesize=letter)
+    styles = getSampleStyleSheet()
+    elements = []
+    
+    # Custom Styles
+    title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=22, textColor=colors.HexColor('#2563eb'), spaceAfter=15)
+    header_style = ParagraphStyle('Header', parent=styles['Heading2'], textColor=colors.HexColor('#333333'))
+    playbook_style = ParagraphStyle('Playbook', parent=styles['Normal'], leftIndent=20, textColor=colors.HexColor('#555555'))
+    
+    # Title Block
+    elements.append(Paragraph("CONFIDENTIAL INTELLIGENCE AUDIT", title_style))
+    elements.append(Paragraph(f"<b>Target Scope:</b> {target}", styles['Normal']))
+    elements.append(Paragraph(f"<b>Total Assets Discovered:</b> {len(infra)}", styles['Normal']))
+    elements.append(Spacer(1, 20))
+    elements.append(Paragraph("1. Attack Surface Matrix", header_style))
+    elements.append(Spacer(1, 10))
+    
+    # Loop through the discovered infrastructure and build the Dossiers
+    for idx, node in enumerate(infra, 1):
+        subdomain = node.get('subdomain', 'N/A')
+        ip = node.get('ip', 'N/A')
+        status = node.get('status', 'Offline')
+        intel = node.get('intel', {})
+        risk = intel.get('risk', 'Low')
+        
+        elements.append(Paragraph(f"{idx}. {subdomain}", styles['Heading3']))
+        
+        status_text = f"<b>Resolution IP:</b> {ip} | <b>HTTP Status:</b> {status} | "
+        if risk == "Critical":
+            elements.append(Paragraph(status_text + f"<font color='red'><b>Risk: {risk}</b></font>", styles['Normal']))
+        elif risk == "High":
+            elements.append(Paragraph(status_text + f"<font color='orange'><b>Risk: {risk}</b></font>", styles['Normal']))
+        else:
+            elements.append(Paragraph(status_text + f"<b>Risk: {risk}</b>", styles['Normal']))
+            
+        elements.append(Paragraph(f"<b>Classification:</b> {intel.get('title', 'Unknown Node')}", styles['Normal']))
+        elements.append(Spacer(1, 5))
+        
+        elements.append(Paragraph("<b>The Hacker's Playbook:</b>", styles['Normal']))
+        elements.append(Paragraph(intel.get('playbook', 'Standard network node. Monitor for exposed ports.'), playbook_style))
+        elements.append(Spacer(1, 5))
+        
+        elements.append(Paragraph("<b>DevSecOps Remediation:</b>", styles['Normal']))
+        elements.append(Paragraph(intel.get('remediation', 'Ensure standard firewall and patch management policies apply.'), playbook_style))
+        
+        elements.append(Spacer(1, 25))
+        
+    doc.build(elements)
+    return filepath
+
+
 # --- MAIN GENERATOR ---
 def generate_report(report_data, report_type='technical'):
+    # 1. IMMEDIATE ROUTING: If it's a Recon scan, divert directly to the ReportLab engine.
+    if report_type == 'recon':
+        return generate_recon_report(report_data)
+        
+    # 2. DAST REPORT GENERATION: Proceed with FPDF for Executive/Technical scans
     pdf = AdvancedPDF()
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)

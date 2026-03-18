@@ -398,3 +398,80 @@ RECON_KB = {
         "next_step": "Run a standard vulnerability scan to check for outdated headers and basic misconfigurations."
     },
 }
+
+# --- API SECURITY KNOWLEDGE BASE (OWASP API TOP 10) ---
+# --- API SECURITY KNOWLEDGE BASE (OWASP API TOP 10) ---
+API_KB = {
+    "BOLA": {
+        "title": "Broken Object Level Authorization (BOLA)",
+        "severity": "Critical",
+        "description": "The API endpoint does not properly validate if the current user has permission to access the requested object ID.",
+        "impact": "Attackers can manipulate IDs in the API request to view, edit, or delete data belonging to other users.",
+        "remediation": "Implement strict authorization checks at the code level. Ensure the server verifies that the currently authenticated user owns the requested object ID before returning data.",
+        "code_fix": "if requested_user_id != current_jwt_user_id:\n    return abort(403, 'Unauthorized Access')"
+    },
+    "BFLA": {
+        "title": "Broken Function Level Authorization",
+        "severity": "High",
+        "description": "The API accepts destructive HTTP methods (like DELETE or PUT) on endpoints where they should not be allowed, or allows standard users to execute admin functions.",
+        "impact": "Attackers can escalate their privileges or delete massive amounts of data by overriding intended HTTP methods.",
+        "remediation": "Strictly define allowed HTTP methods at the router level and explicitly require administrative scopes for state-changing endpoints.",
+        "code_fix": "@app.route('/api/users', methods=['GET']) # Explicitly block DELETE/PUT"
+    },
+    "UNAUTH_ACCESS": {
+        "title": "Missing Authentication on Sensitive Route",
+        "severity": "Critical",
+        "description": "A sensitive API endpoint (e.g., profile, settings, data) returns data without requiring a valid authentication token.",
+        "impact": "Anyone on the internet can interact with this API and scrape its data without logging in.",
+        "remediation": "Enforce strict token validation on all endpoints except public authentication routes (like /login or /register).",
+        "code_fix": "Authorization: Bearer <token>"
+    },
+    "API_SQLI": {
+        "title": "API Data Injection (SQLi/NoSQLi)",
+        "severity": "Critical",
+        "description": "The API endpoint blindly passes JSON payload data or URL parameters directly into a backend database query.",
+        "impact": "Attackers can bypass authentication, read the entire database, or drop tables via the API.",
+        "remediation": "Never concatenate strings to build queries. Use an ORM (Object-Relational Mapper) or Parameterized Queries.",
+        "code_fix": "cursor.execute('SELECT * FROM users WHERE id = %s', (user_id,))"
+    },
+    "MASS_ASSIGNMENT": {
+        "title": "Mass Assignment / Auto-Binding Flaw",
+        "severity": "High",
+        "description": "The API endpoint blindly maps client-provided JSON payloads to internal object models without filtering out protected properties.",
+        "impact": "Attackers can inject hidden fields (e.g., 'is_admin': true, 'role': 'admin') to escalate privileges or overwrite sensitive system configurations.",
+        "remediation": "Use Data Transfer Objects (DTOs) or explicitly whitelist the properties that can be updated by the client.",
+        "code_fix": "allowed_fields = ['email', 'first_name']\nuser.update({k: v for k, v in payload.items() if k in allowed_fields})"
+    },
+    "VERBOSE_ERRORS": {
+        "title": "Security Misconfiguration (Verbose Errors)",
+        "severity": "Medium",
+        "description": "The API returns raw stack traces, database syntax errors, or framework details when sent malformed JSON data.",
+        "impact": "Leaks internal backend logic, directory structures, and database types, giving attackers a blueprint to craft more severe attacks.",
+        "remediation": "Implement a global exception handler that catches all crashes and returns standardized, generic error messages.",
+        "code_fix": "@app.errorhandler(Exception)\ndef handle_error(e):\n    return jsonify({'error': 'An internal error occurred'}), 500"
+    },
+    "SSRF": {
+        "title": "Server-Side Request Forgery (SSRF)",
+        "severity": "Critical",
+        "description": "The API endpoint accepts a URL via parameters and fetches it without validating the destination, allowing access to internal networks.",
+        "impact": "Attackers can force the server to execute internal port scanning, access cloud metadata APIs (like AWS IMDS), or bypass firewalls.",
+        "remediation": "Validate all user-supplied URLs against a strict allowlist. Block requests to internal IP addresses (e.g., 127.0.0.1, 169.254.169.254).",
+        "code_fix": "if is_internal_ip(url):\n    return abort(400, 'Invalid destination URL')"
+    },
+    "BROKEN_AUTH_TOKEN": {
+        "title": "Improper Authentication (Token Bypass)",
+        "severity": "Critical",
+        "description": "The API improperly validates authorization tokens. It accepts forged JWTs using the 'alg: none' vulnerability.",
+        "impact": "Attackers can forge arbitrary authentication tokens to bypass login mechanisms entirely and assume any identity.",
+        "remediation": "Use robust JWT libraries. Strictly enforce the expected signing algorithm (e.g., RS256) and reject tokens with 'alg: none'.",
+        "code_fix": "jwt.decode(token, PUBLIC_KEY, algorithms=['RS256']) # Enforce secure algorithm"
+    },
+    "HTTP_TRACE_ENABLED": {
+        "title": "Insecure HTTP Method Enabled (TRACE)",
+        "severity": "Medium",
+        "description": "The API server allows the HTTP TRACE method, which echoes back the received request entirely.",
+        "impact": "Attackers can exploit this via Cross-Site Tracing (XST) to steal sensitive HTTP headers, including HttpOnly authorization cookies.",
+        "remediation": "Disable the TRACE and TRACK methods at the web server or application proxy level.",
+        "code_fix": "# Nginx config:\nif ($request_method = TRACE) {\n    return 405;\n}"
+    }
+}
