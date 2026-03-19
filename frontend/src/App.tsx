@@ -18,6 +18,7 @@ import AboutPage from "./pages/AboutPage";
 import NormalScanPage from "./pages/NormalScanPage"; // IMPORT ADDED
 import ReconPage from './pages/ReconPage';
 import ApiFuzzerPage from './pages/ApiFuzzerPage';
+import InfrastructureScannerPage from "./pages/InfrastructureScannerPage";
 
 
 const queryClient = new QueryClient();
@@ -43,6 +44,7 @@ const App = () => (
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/recon" element={<ReconPage />} />
               <Route path="/api-fuzzer" element={<ApiFuzzerPage />} />
+              <Route path="/infrastructure" element={<InfrastructureScannerPage />} />
               
               {/* 404 Route */}
               <Route path="*" element={<NotFound />} />

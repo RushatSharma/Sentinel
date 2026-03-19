@@ -160,7 +160,7 @@ export default function ApiFuzzerPage() {
             </div>
             
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold text-foreground mb-6 tracking-tight">
-                Advanced API Blueprint <span className="text-purple-600 dark:text-purple-500">Fuzzer</span>
+               API Blueprint <span className="text-purple-600 dark:text-purple-500">Fuzzer</span>
             </h1>
             
             <p className="text-base md:text-lg text-muted-foreground max-w-4xl mb-10 leading-relaxed">

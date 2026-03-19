@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom'; // Added useLocation
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { 
   Menu, 
@@ -12,7 +12,8 @@ import {
   ShieldCheck, 
   ScanSearch, 
   Info, 
-  Home // Added Home icon
+  Home,
+  Server // Added Server icon for the new page
 } from 'lucide-react'; 
 import { cn } from '@/lib/utils';
 // --- APPWRITE IMPORT ---
@@ -24,7 +25,7 @@ export function Navbar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const navigate = useNavigate();
-  const location = useLocation(); // Hook to get current path
+  const location = useLocation(); 
   const profileRef = useRef<HTMLDivElement>(null);
   
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -85,7 +86,6 @@ export function Navbar() {
   const toggleTheme = () => setIsDarkMode(prev => !prev);
 
   // UPDATED NAVIGATION LINKS
-  // We conditionally add the "Home" link if the current path is NOT "/"
   const navLinks = [
     ...(location.pathname !== '/' ? [{ 
       name: 'Home', 
@@ -96,6 +96,8 @@ export function Navbar() {
     { name: 'Deep Scan', href: '/deep-scan', icon: <ShieldCheck className="w-4 h-4 mr-2" /> },
     { name: 'Recon', href: '/recon', icon: <ScanSearch className="w-4 h-4 mr-2" /> },
     { name: 'API Fuzzer', href: '/api-fuzzer', icon: <ShieldCheck className="w-4 h-4 mr-2" /> },
+    { name: 'Infra Scanner', href: '/infrastructure', icon: <Server className="w-4 h-4 mr-2" /> }, // Added this line!
+    
   ];
 
   return (
@@ -129,13 +131,13 @@ export function Navbar() {
           </div>
 
           {/* --- DESKTOP NAVIGATION --- */}
-          <nav className="hidden lg:flex absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 items-center space-x-8">
+          <nav className="hidden lg:flex absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 items-center space-x-6">
             {navLinks.map((item) => (
               <Link
                 key={item.name}
                 to={item.href}
                 className={cn(
-                  "flex items-center font-medium text-base text-muted-foreground transition-colors hover:text-sentinel-blue py-2 relative",
+                  "flex items-center font-medium text-sm lg:text-base text-muted-foreground transition-colors hover:text-sentinel-blue py-2 relative",
                   "after:content-[''] after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-full after:origin-center after:scale-x-0 after:bg-sentinel-blue after:transition-transform after:duration-300 hover:after:scale-x-100"
                 )}
               >
