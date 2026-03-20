@@ -15,6 +15,7 @@ from database import save_scan_result
 import recon_engine 
 import api_fuzzer 
 from vuln_kb import VULN_DB
+import quarantine
 
 app = Flask(__name__)
 CORS(app)
@@ -224,15 +225,34 @@ def handle_api_fuzz():
 def port_scan_api():
     data = request.json
     target = data.get('target')
+    is_aggressive = data.get('aggressive', False) # <--- NEW: Read the flag from the frontend
+    
     if not target: return jsonify({"error": "Target is required"}), 400
         
     try:
-        # Aggressive=False scans top 1000 critical ports
-        results = run_infrastructure_scan(target, aggressive=False) 
+        # NEW: Pass is_aggressive to the engine
+        results = run_infrastructure_scan(target, aggressive=is_aggressive) 
         if "error" in results: return jsonify(results), 400
         return jsonify(results)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500    
+        return jsonify({"error": str(e)}), 500  
+
+@app.route('/api/quarantine', methods=['POST'])
+def handle_quarantine():
+    data = request.json
+    artifact = data.get('artifact')
+    scan_type = data.get('type')
+
+    if not artifact or not scan_type:
+        return jsonify({"error": "Artifact and scan type are required"}), 400
+
+    try:
+        report = quarantine.analyze_artifact(artifact, scan_type)
+        if "error" in report:
+            return jsonify(report), 400
+        return jsonify(report)
+    except Exception as e:
+        return jsonify({"error": f"Quarantine engine failed: {str(e)}"}), 500
 
 @app.route('/', methods=['GET'])
 @app.route('/health', methods=['GET'])

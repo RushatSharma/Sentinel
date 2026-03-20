@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { ShieldBan } from 'lucide-react';
 import { 
   Menu, 
   X, 
@@ -96,7 +97,8 @@ export function Navbar() {
     { name: 'Deep Scan', href: '/deep-scan', icon: <ShieldCheck className="w-4 h-4 mr-2" /> },
     { name: 'Recon', href: '/recon', icon: <ScanSearch className="w-4 h-4 mr-2" /> },
     { name: 'API Fuzzer', href: '/api-fuzzer', icon: <ShieldCheck className="w-4 h-4 mr-2" /> },
-    { name: 'Infra Scanner', href: '/infrastructure', icon: <Server className="w-4 h-4 mr-2" /> }, // Added this line!
+    { name: 'Infra Scanner', href: '/infrastructure', icon: <Server className="w-4 h-4 mr-2" /> },
+    { name: 'Quarantine', href: '/quarantine', icon: <ShieldBan className="w-4 h-4 mr-2" /> }, // Added this line!
     
   ];
 
