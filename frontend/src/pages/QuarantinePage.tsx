@@ -81,7 +81,8 @@ export default function QuarantinePage() {
                 malicious_count: results.malicious_count,
                 total_engines: results.total_engines,
                 engine_results: results.engine_results || [],
-                report_type: 'quarantine' // NEW: Telling the backend to format this differently
+                threat_explanation: results.threat_explanation, 
+                report_type: 'quarantine' 
             }),
         });
 
@@ -109,39 +110,35 @@ export default function QuarantinePage() {
       isMalicious: results ? i < (results.malicious_count || 0) : false
   }));
 
-  // --- DYNAMIC THEME LOGIC ---
+  // Default is Green (Clean/Waiting). Only becomes Orange if malicious is > 0.
   const isMalicious = results && results.malicious_count > 0;
-  const isClean = results && results.malicious_count === 0;
 
-  // Map tailwind classes so they don't break during compilation
   const theme = {
-      color: isMalicious ? "red" : isClean ? "emerald" : "orange",
-      text: isMalicious ? "text-red-500" : isClean ? "text-emerald-500" : "text-orange-500",
-      bgLight: isMalicious ? "bg-red-500/10" : isClean ? "bg-emerald-500/10" : "bg-orange-500/10",
-      borderLight: isMalicious ? "border-red-500/20" : isClean ? "border-emerald-500/20" : "border-orange-500/20",
-      button: isMalicious ? "bg-red-600 hover:bg-red-700" : isClean ? "bg-emerald-600 hover:bg-emerald-700" : "bg-orange-600 hover:bg-orange-700",
-      glow: isMalicious ? "from-red-600/20 to-rose-600/20" : isClean ? "from-emerald-600/20 to-teal-600/20" : "from-orange-600/20 to-red-600/20",
+      text: isMalicious ? "text-orange-500" : "text-emerald-500",
+      bgLight: isMalicious ? "bg-orange-500/10" : "bg-emerald-500/10",
+      borderLight: isMalicious ? "border-orange-500/20" : "border-emerald-500/20",
+      button: isMalicious ? "bg-orange-600 hover:bg-orange-700" : "bg-emerald-600 hover:bg-emerald-700",
+      glow: isMalicious ? "from-orange-600/20 to-red-600/20" : "from-emerald-600/20 to-teal-600/20",
   };
 
   return (
-    <div className="min-h-screen bg-background relative flex flex-col pb-16 font-sans overflow-x-hidden transition-colors duration-1000">
+    // Removed slow transition-colors duration-1000 so theme toggling matches Home.tsx exactly
+    <div className="min-h-screen bg-background relative flex flex-col pb-12 font-sans overflow-x-hidden">
       <Navbar />
       
-      {/* DYNAMIC BACKGROUND TINT */}
+      {/* Exact match to Home.tsx Background Grid */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1.5 }} className="absolute inset-0 grid-background opacity-50 dark:opacity-100" />
         <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
-        <div className={cn("absolute inset-0 transition-colors duration-1000", isMalicious ? "bg-red-500/5" : isClean ? "bg-emerald-500/5" : "bg-transparent")} />
       </div>
       
-      <div className="container relative z-10 mx-auto px-4 pt-12 max-w-7xl flex flex-col gap-8 [perspective:1200px]">
+      <main className="container relative z-8 mx-auto px-4 pt-6 pb-6 max-w-7xl flex flex-col gap-8 [perspective:1200px] flex-grow">
         
-        {/* HERO SECTION */}
-        <motion.div initial={{ opacity: 0, y: -30, filter: 'blur(10px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} className="flex flex-col items-center text-center mb-4 mt-2">
+        <motion.div initial={{ opacity: 0, scale: 0.9, filter: 'blur(10px)' }} animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }} transition={{ duration: 0.7 }} className="flex flex-col items-center text-center mb-4 mt-2">
             <div className={cn("inline-flex items-center gap-2 px-3 py-1 rounded-full border mb-6 transition-colors", theme.bgLight, theme.borderLight)}>
-                {isClean ? <ShieldCheck className={cn("w-3 h-3", theme.text)} /> : <ShieldBan className={cn("w-3 h-3", theme.text, isScanning && "animate-pulse")} />}
+                {isMalicious ? <ShieldBan className={cn("w-3 h-3 text-orange-500", isScanning && "animate-pulse")} /> : <ShieldCheck className={cn("w-3 h-3 text-emerald-500", isScanning && "animate-pulse")} />}
                 <span className={cn("text-[10px] font-bold uppercase tracking-widest", theme.text)}>
-                    {isMalicious ? "THREAT DETECTED" : isClean ? "CLEAN ARTIFACT" : "Biohazard Containment"}
+                    {isMalicious ? "THREAT DETECTED" : isScanning ? "ANALYZING..." : "SYSTEM SECURE"}
                 </span>
             </div>
             
@@ -192,7 +189,6 @@ export default function QuarantinePage() {
             </form>
         </motion.div>
 
-        {/* MAIN SCANNER AREA */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
             <motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} className="lg:col-span-4 flex flex-col gap-6">
@@ -232,32 +228,46 @@ export default function QuarantinePage() {
 
             <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} className="lg:col-span-8 bg-card border border-border rounded-2xl flex-1 overflow-hidden flex flex-col min-h-[500px] shadow-xl relative">
                 <div className="bg-muted/30 px-6 py-4 border-b border-border flex justify-between items-center z-10">
-                    <span className="text-sm font-bold flex items-center gap-2 uppercase tracking-tighter">
+                    <span className="text-sm font-bold flex items-center gap-2 uppercase tracking-tighter text-foreground">
                         <Activity className={cn("w-4 h-4", theme.text)} /> Analysis Engines
                     </span>
                     {results && (
-                        <Button onClick={handleDownload} disabled={isDownloading} variant="outline" size="sm" className={cn("h-7 text-xs border transition-colors", theme.borderLight, theme.text, theme.bgLight)}>
+                        <Button onClick={handleDownload} disabled={isDownloading} variant="outline" size="sm" className={cn("h-7 text-xs border transition-colors hover:bg-muted", theme.borderLight, theme.text, theme.bgLight)}>
                             <Download className="w-3 h-3 mr-2" /> {isDownloading ? 'GENERATING...' : 'EXPORT REPORT'}
                         </Button>
                     )}
                 </div>
                 
-                <div className="flex-1 p-8 flex flex-col items-center justify-center bg-[#0a0a0a] relative overflow-y-auto custom-scrollbar">
+                {/* Changed to bg-muted/20 to natively adapt to light/dark themes smoothly */}
+                <div className="flex-1 p-8 flex flex-col items-center justify-center bg-muted/20 relative overflow-y-auto custom-scrollbar">
+                    
                     <div className="absolute inset-0 flex items-center justify-center opacity-5 pointer-events-none">
-                         <ShieldBan className={cn("w-64 h-64", theme.text)} />
+                         {isMalicious ? <ShieldBan className={cn("w-64 h-64 text-orange-500")} /> : <ShieldCheck className={cn("w-64 h-64 text-emerald-500")} />}
                     </div>
 
                     {!results && !isScanning && (
-                        <div className="flex flex-col items-center justify-center text-muted-foreground/40 italic text-sm z-10 h-full">
+                        <div className="flex flex-col items-center justify-center text-muted-foreground/50 italic text-sm z-10 h-full">
                             Enter an artifact to begin global engine analysis.
                         </div>
                     )}
 
-                    {error && <div className="p-4 text-red-500 bg-red-500/10 border border-red-500/20 rounded-xl text-sm mb-4 z-10">{error}</div>}
+                    {error && <div className="p-4 text-orange-500 bg-orange-500/10 border border-orange-500/20 rounded-xl text-sm mb-4 z-10">{error}</div>}
 
                     {(isScanning || results) && (
                         <div className="flex flex-col items-center w-full z-10">
-                            <div className="grid grid-cols-8 md:grid-cols-12 gap-2 md:gap-3 mb-8">
+                            
+                            {results?.threat_explanation && (
+                                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className={cn("w-full max-w-3xl bg-card border rounded-xl p-5 mb-8 text-left shadow-lg", theme.borderLight)}>
+                                    <h3 className={cn("text-xs font-bold uppercase tracking-widest mb-2 flex items-center gap-2", theme.text)}>
+                                        <Activity className="w-4 h-4" /> Intelligence Summary
+                                    </h3>
+                                    <p className={cn("text-sm leading-relaxed", isMalicious ? "text-orange-700 dark:text-orange-200" : "text-emerald-700 dark:text-emerald-200")}>
+                                        {results.threat_explanation}
+                                    </p>
+                                </motion.div>
+                            )}
+
+                            <div className="grid grid-cols-8 md:grid-cols-12 gap-2 md:gap-3 mb-8 w-full max-w-3xl place-items-center">
                                 <AnimatePresence>
                                     {dummyEngines.map((engine, idx) => {
                                         const delay = isScanning ? 0 : idx * 0.02;
@@ -267,16 +277,16 @@ export default function QuarantinePage() {
                                                 initial={false}
                                                 animate={
                                                     isScanning 
-                                                        ? { backgroundColor: "rgba(249, 115, 22, 0.2)", scale: [1, 1.1, 1], rotateY: 0 } 
+                                                        ? { backgroundColor: "rgba(16, 185, 129, 0.4)", scale: [1, 1.1, 1], rotateY: 0 } 
                                                         : { 
-                                                            backgroundColor: engine.isMalicious ? "rgba(239, 68, 68, 0.9)" : "rgba(16, 185, 129, 0.2)", 
+                                                            backgroundColor: engine.isMalicious ? "rgba(249, 115, 22, 0.9)" : "rgba(16, 185, 129, 0.2)", 
                                                             rotateY: 180, 
                                                             scale: engine.isMalicious ? 1.1 : 1,
-                                                            boxShadow: engine.isMalicious ? "0 0 15px rgba(239, 68, 68, 0.8)" : "none"
+                                                            boxShadow: engine.isMalicious ? "0 0 15px rgba(249, 115, 22, 0.8)" : "none"
                                                           }
                                                 }
                                                 transition={{ duration: isScanning ? 1.5 : 0.6, repeat: isScanning ? Infinity : 0, delay: isScanning ? Math.random() * 2 : delay }}
-                                                className="w-6 h-6 md:w-8 md:h-8 rounded-md border border-white/10 flex items-center justify-center"
+                                                className="w-6 h-6 md:w-8 md:h-8 rounded-md border border-foreground/10 flex items-center justify-center"
                                             >
                                                 {!isScanning && engine.isMalicious && (
                                                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: delay + 0.3 }} style={{ rotateY: 180 }}>
@@ -289,17 +299,17 @@ export default function QuarantinePage() {
                                 </AnimatePresence>
                             </div>
 
-                            {/* DYNAMIC THREAT DETAILS LOG */}
+                            {/* Threat Signatures block with standard bg-card adaptiveness */}
                             {isMalicious && results?.engine_results?.length > 0 && (
-                                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.5 }} className="w-full max-w-2xl bg-black/50 border border-red-500/30 rounded-xl p-4 mt-4">
-                                    <h3 className="text-xs font-bold text-red-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.5 }} className="w-full max-w-3xl bg-card border border-orange-500/30 rounded-xl p-4 mt-4 shadow-lg">
+                                    <h3 className="text-xs font-bold text-orange-500 uppercase tracking-widest mb-4 flex items-center gap-2">
                                         <ShieldAlert className="w-4 h-4" /> Threat Signatures Detected
                                     </h3>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-48 overflow-y-auto custom-scrollbar pr-2">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-48 overflow-y-auto custom-scrollbar pr-2">
                                         {results.engine_results.map((engine: any, idx: number) => (
-                                            <div key={idx} className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 flex flex-col gap-1">
+                                            <div key={idx} className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-3 flex flex-col gap-1">
                                                 <span className="text-xs font-bold text-foreground/90">{engine.engine}</span>
-                                                <span className="text-[10px] font-mono text-red-400 break-all">{engine.result}</span>
+                                                <span className="text-[10px] font-mono text-orange-600 dark:text-orange-400 break-all">{engine.result}</span>
                                             </div>
                                         ))}
                                     </div>
@@ -310,7 +320,7 @@ export default function QuarantinePage() {
                 </div>
             </motion.div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

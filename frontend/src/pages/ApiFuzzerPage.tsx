@@ -145,7 +145,7 @@ export default function ApiFuzzerPage() {
       </div>
       
       {/* Perspective wrapper for 3D flip effects */}
-      <div className="container relative z-10 mx-auto px-4 pt-12 max-w-7xl flex flex-col gap-6 [perspective:1000px]">
+      <div className="container relative z-10 mx-auto px-4 pt-6 max-w-7xl flex flex-col gap-6 [perspective:1000px]">
         
         {/* --- HEADER (HUD BOOTUP ANIMATION) --- */}
         <motion.div 

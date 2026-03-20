@@ -277,11 +277,98 @@ def generate_recon_report(report_data):
     return filepath
 
 
+# --- QUARANTINE REPORT GENERATOR ---
+def generate_quarantine_report(report_data):
+    target = report_data.get('target', 'Unknown Artifact')
+    malicious_count = report_data.get('malicious_count', 0)
+    total_engines = report_data.get('total_engines', 72)
+    engines = report_data.get('engine_results', [])
+    explanation = report_data.get('threat_explanation', 'No threat intelligence summary provided.')
+    scan_type = report_data.get('scanType', 'hash')
+    
+    pdf = AdvancedPDF()
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    
+    # Title
+    pdf.set_font('Arial', 'B', 24)
+    pdf.set_text_color(15, 23, 42)
+    pdf.cell(0, 10, "QUARANTINE CONTAINMENT REPORT", 0, 1, 'L')
+    
+    pdf.set_font('Arial', '', 10)
+    pdf.set_text_color(100, 116, 139)
+    pdf.cell(0, 6, f"Analyzed Artifact: {target}", 0, 1, 'L')
+    pdf.cell(0, 6, f"Artifact Type: {scan_type.upper()}", 0, 1, 'L')
+    pdf.cell(0, 6, f"Report Date: {time.strftime('%Y-%m-%d %H:%M:%S')}", 0, 1, 'L')
+    pdf.ln(10)
+    
+    # Status Scorecard
+    is_malicious = malicious_count > 0
+    status_text = "MALICIOUS ARTIFACT" if is_malicious else "CLEAN ARTIFACT"
+    color = (220, 38, 38) if is_malicious else (22, 163, 74)
+    
+    pdf.set_fill_color(248, 250, 252)
+    pdf.set_draw_color(*color)
+    pdf.rect(10, pdf.get_y(), 190, 30, 'FD')
+    
+    pdf.set_xy(15, pdf.get_y() + 8)
+    pdf.set_font('Arial', 'B', 18)
+    pdf.set_text_color(*color)
+    pdf.cell(80, 10, status_text, 0, 0, 'L')
+    
+    pdf.set_font('Arial', 'B', 12)
+    pdf.set_text_color(15, 23, 42)
+    pdf.cell(100, 10, f"Detection Ratio: {malicious_count} / {total_engines} Engines", 0, 1, 'R')
+    pdf.ln(15)
+    
+    # Intelligence Summary
+    pdf.chapter_title("Threat Intelligence Summary")
+    if is_malicious:
+        pdf.set_text_color(220, 38, 38)
+    else:
+        pdf.set_text_color(22, 163, 74)
+    pdf.set_font('Arial', '', 11)
+    pdf.multi_cell(0, 6, explanation)
+    pdf.ln(10)
+    
+    # Engine Signatures
+    pdf.chapter_title("Detailed Security Signatures")
+    if engines:
+        for i, e in enumerate(engines, 1):
+            if pdf.get_y() > 250: pdf.add_page()
+            
+            pdf.set_fill_color(254, 242, 242)
+            pdf.rect(10, pdf.get_y(), 190, 8, 'F')
+            
+            pdf.set_font('Arial', 'B', 10)
+            pdf.set_text_color(15, 23, 42)
+            pdf.cell(10, 8, str(i), 0, 0, 'C')
+            pdf.cell(60, 8, e.get('engine', 'Unknown Engine'), 0, 0)
+            
+            pdf.set_font('Courier', 'B', 9)
+            pdf.set_text_color(220, 38, 38)
+            pdf.cell(110, 8, e.get('result', 'Malicious'), 0, 1)
+            pdf.ln(2)
+    else:
+        pdf.set_font('Arial', '', 10)
+        pdf.set_text_color(51, 65, 85)
+        pdf.body_text("No malicious signatures were triggered during analysis.")
+        
+    if not os.path.exists("reports"):
+        os.makedirs("reports")
+        
+    filename = f"reports/Sentinel_Quarantine_{int(time.time())}.pdf"
+    pdf.output(filename)
+    return filename
+
+
 # --- MAIN GENERATOR ---
 def generate_report(report_data, report_type='technical'):
-    # 1. IMMEDIATE ROUTING: If it's a Recon scan, divert directly to the ReportLab engine.
+    # 1. IMMEDIATE ROUTING: Divert specialized reports directly to their engines
     if report_type == 'recon':
         return generate_recon_report(report_data)
+    elif report_type == 'quarantine':
+        return generate_quarantine_report(report_data)
         
     # 2. DAST REPORT GENERATION: Proceed with FPDF for Executive/Technical scans
     pdf = AdvancedPDF()
