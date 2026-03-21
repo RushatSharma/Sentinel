@@ -361,6 +361,126 @@ def generate_quarantine_report(report_data):
     pdf.output(filename)
     return filename
 
+# --- SSL / CRYPTOGRAPHY REPORT GENERATOR ---
+def generate_ssl_report(report_data):
+    target = report_data.get('target', 'Unknown Domain')
+    grade = report_data.get('grade', 'F')
+    cert = report_data.get('cert_details', {})
+    protocols = report_data.get('supported_protocols', [])
+    vulns = report_data.get('vulnerabilities', [])
+    
+    pdf = AdvancedPDF()
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    
+    # Title
+    pdf.set_font('Arial', 'B', 24)
+    pdf.set_text_color(15, 23, 42)
+    pdf.cell(0, 10, "CRYPTOGRAPHIC AUDIT REPORT", 0, 1, 'L')
+    
+    pdf.set_font('Arial', '', 10)
+    pdf.set_text_color(100, 116, 139)
+    pdf.cell(0, 6, f"Target Asset: {target}", 0, 1, 'L')
+    pdf.cell(0, 6, f"Audit Date: {time.strftime('%Y-%m-%d %H:%M:%S')}", 0, 1, 'L')
+    pdf.ln(10)
+    
+    # Grade Scorecard
+    if grade == 'A':
+        grade_color = (22, 163, 74)
+        grade_text = "EXCELLENT: Strong Cryptography"
+    elif grade == 'B':
+        grade_color = (234, 179, 8)
+        grade_text = "GOOD: Meets Industry Standards"
+    elif grade == 'C':
+        grade_color = (249, 115, 22)
+        grade_text = "WARNING: Weaknesses Detected"
+    else:
+        grade_color = (220, 38, 38)
+        grade_text = "CRITICAL: Severe Cryptographic Flaws"
+
+    pdf.set_fill_color(248, 250, 252)
+    pdf.set_draw_color(*grade_color)
+    pdf.rect(10, pdf.get_y(), 190, 30, 'FD')
+    
+    pdf.set_xy(15, pdf.get_y() + 8)
+    pdf.set_font('Arial', 'B', 28)
+    pdf.set_text_color(*grade_color)
+    pdf.cell(20, 12, grade, 0, 0, 'L')
+    
+    pdf.set_font('Arial', 'B', 14)
+    pdf.set_text_color(15, 23, 42)
+    pdf.cell(100, 12, grade_text, 0, 1, 'L')
+    pdf.ln(15)
+
+    # Core Cryptographic Metrics
+    pdf.chapter_title("1. Core Cryptographic Profile")
+    pdf.set_font('Arial', 'B', 10)
+    pdf.set_text_color(51, 65, 85)
+    
+    pdf.cell(50, 8, "Public Key Algorithm:", 0, 0)
+    pdf.set_font('Courier', '', 10)
+    pdf.cell(0, 8, f"{cert.get('key_type', 'N/A')} ({cert.get('key_size', '0')}-bit)", 0, 1)
+    
+    pdf.set_font('Arial', 'B', 10)
+    pdf.cell(50, 8, "Negotiated Cipher:", 0, 0)
+    pdf.set_font('Courier', '', 10)
+    pdf.cell(0, 8, cert.get('negotiated_cipher', 'N/A'), 0, 1)
+    pdf.ln(5)
+
+    # Certificate Details
+    pdf.chapter_title("2. X.509 Certificate Metadata")
+    
+    details = [
+        ("Issuer", cert.get('issuer', 'N/A')),
+        ("Subject (Domain)", cert.get('subject', 'N/A')),
+        ("Valid From", cert.get('valid_from', 'N/A')),
+        ("Expires On", cert.get('valid_to', 'N/A')),
+        ("Days Remaining", str(cert.get('days_remaining', 0)))
+    ]
+    
+    for label, val in details:
+        pdf.set_font('Arial', 'B', 9)
+        pdf.set_text_color(100, 116, 139)
+        pdf.cell(40, 6, f"{label}:", 0, 0)
+        pdf.set_font('Arial', '', 9)
+        pdf.set_text_color(15, 23, 42)
+        pdf.multi_cell(0, 6, val)
+    
+    pdf.ln(5)
+
+    # Protocols & SANs
+    pdf.chapter_title("3. Infrastructure Mapping")
+    pdf.set_font('Arial', 'B', 9)
+    pdf.cell(0, 6, f"Supported TLS Protocols: {', '.join(protocols) if protocols else 'None detected'}", 0, 1)
+    
+    sans = cert.get('sans', [])
+    if sans:
+        pdf.cell(0, 6, "Subject Alternative Names (SANs):", 0, 1)
+        pdf.set_font('Courier', '', 8)
+        pdf.multi_cell(0, 5, ", ".join(sans))
+    pdf.ln(5)
+
+    # Findings
+    pdf.chapter_title("4. Cryptographic Findings & Vulnerabilities")
+    for v in vulns:
+        if "CRITICAL" in v or "VULNERABILITY" in v:
+            pdf.set_text_color(220, 38, 38)
+        elif "WARNING" in v:
+            pdf.set_text_color(234, 179, 8)
+        else:
+            pdf.set_text_color(22, 163, 74)
+            
+        pdf.set_font('Arial', 'B', 10)
+        pdf.multi_cell(0, 6, f"- {v}")
+        pdf.ln(2)
+
+    if not os.path.exists("reports"):
+        os.makedirs("reports")
+        
+    filename = f"reports/Sentinel_CryptoAudit_{int(time.time())}.pdf"
+    pdf.output(filename)
+    return filename
+
 
 # --- MAIN GENERATOR ---
 def generate_report(report_data, report_type='technical'):
@@ -369,6 +489,8 @@ def generate_report(report_data, report_type='technical'):
         return generate_recon_report(report_data)
     elif report_type == 'quarantine':
         return generate_quarantine_report(report_data)
+    elif report_type == 'ssl':                             
+        return generate_ssl_report(report_data)            
         
     # 2. DAST REPORT GENERATION: Proceed with FPDF for Executive/Technical scans
     pdf = AdvancedPDF()

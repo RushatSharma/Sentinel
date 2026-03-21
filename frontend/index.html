@@ -40,10 +40,76 @@
       })();
     </script>
 
+    <style>
+      /* Ensure the body background matches the theme immediately before React loads */
+      body { margin: 0; background-color: #000; }
+      html:not(.dark) body { background-color: hsl(36, 100%, 98%); } /* Matches your --background Pearl White */
+
+      #sentinel-initial-loader {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 99999;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+
+      .loader-text {
+        font-size: 18px; /* <-- INCREASED FROM 14px to 18px */
+        font-weight: 700;
+        letter-spacing: 0.3em;
+        color: #ffffff;
+        margin-bottom: 20px;
+        animation: pulse-text 2s ease-in-out infinite;
+      }
+
+      html:not(.dark) .loader-text { color: #000000; }
+
+      .loader-progress-track {
+        width: 240px;
+        height: 2px;
+        background: rgba(255, 255, 255, 0.1);
+        position: relative;
+        overflow: hidden;
+      }
+
+      html:not(.dark) .loader-progress-track { background: rgba(0, 0, 0, 0.1); }
+
+      .loader-progress-bar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 30%;
+        background: #dc2626; /* Sentinel Red */
+        box-shadow: 0 0 10px #dc2626, 0 0 20px #dc2626;
+        animation: scan-line 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+      }
+
+      @keyframes scan-line {
+        0% { left: -30%; }
+        100% { left: 100%; }
+      }
+
+      @keyframes pulse-text {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
+      }
+    </style>
   </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="sentinel-initial-loader">
+        <div class="loader-text">INITIALIZING SENTINEL</div>
+        <div class="loader-progress-track">
+          <div class="loader-progress-bar"></div>
+        </div>
+      </div>
+    </div>
+    
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

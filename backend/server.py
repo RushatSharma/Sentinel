@@ -16,6 +16,7 @@ import recon_engine
 import api_fuzzer 
 from vuln_kb import VULN_DB
 import quarantine
+import ssl_scanner
 
 app = Flask(__name__)
 CORS(app)
@@ -225,17 +226,19 @@ def handle_api_fuzz():
 def port_scan_api():
     data = request.json
     target = data.get('target')
-    is_aggressive = data.get('aggressive', False) # <--- NEW: Read the flag from the frontend
+    
+    # THIS LINE IS CRITICAL: It reads the checkbox state
+    is_aggressive = data.get('aggressive', False) 
     
     if not target: return jsonify({"error": "Target is required"}), 400
         
     try:
-        # NEW: Pass is_aggressive to the engine
+        # Passes the flag directly into the engine
         results = run_infrastructure_scan(target, aggressive=is_aggressive) 
         if "error" in results: return jsonify(results), 400
         return jsonify(results)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500  
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/quarantine', methods=['POST'])
 def handle_quarantine():
@@ -258,6 +261,22 @@ def handle_quarantine():
 @app.route('/health', methods=['GET'])
 def health_check():
     return jsonify({"status": "active", "message": "Sentinel Backend is Running"}), 200
+
+@app.route('/api/ssl-scan', methods=['POST'])
+def handle_ssl_scan():
+    data = request.json
+    target = data.get('target')
+    
+    if not target: 
+        return jsonify({"error": "Target domain is required"}), 400
+        
+    try:
+        report = ssl_scanner.analyze_ssl(target)
+        if "error" in report:
+            return jsonify(report), 400
+        return jsonify(report)
+    except Exception as e:
+        return jsonify({"error": f"Crypto Engine Failed: {str(e)}"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

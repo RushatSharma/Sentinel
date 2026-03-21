@@ -20,7 +20,7 @@ import ReconPage from './pages/ReconPage';
 import ApiFuzzerPage from './pages/ApiFuzzerPage';
 import InfrastructureScannerPage from "./pages/InfrastructureScannerPage";
 import QuarantinePage from "./pages/QuarantinePage";
-
+import SslScannerPage from "./pages/SslScannerPage";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +47,7 @@ const App = () => (
               <Route path="/api-fuzzer" element={<ApiFuzzerPage />} />
               <Route path="/infrastructure" element={<InfrastructureScannerPage />} />
               <Route path="/quarantine" element={<QuarantinePage />} />
+              <Route path="/ssl-scan" element={<SslScannerPage />} />
               
               {/* 404 Route */}
               <Route path="*" element={<NotFound />} />

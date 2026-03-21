@@ -2,7 +2,6 @@ import socket
 import concurrent.futures
 
 # --- CONFIGURATION & CONSTANTS ---
-# Map common port numbers to service names for quick identification
 COMMON_PORTS = {
     21: "ftp", 22: "ssh", 23: "telnet", 25: "smtp", 53: "dns",
     80: "http", 110: "pop3", 111: "rpc", 135: "msrpc", 139: "netbios",
@@ -13,16 +12,12 @@ COMMON_PORTS = {
 }
 
 def grab_banner(ip, port):
-    """
-    Attempts to retrieve service version information (Banner Grabbing).
-    """
+    """Attempts to retrieve service version information (Banner Grabbing)."""
     try:
-        # Create a socket for banner grabbing with a short timeout
         s = socket.socket()
-        s.settimeout(1.5)
+        s.settimeout(1.0) # Shortened timeout for banner grab
         s.connect((ip, port))
         
-        # For web ports, send a basic probe to trigger a response header
         if port in [80, 443, 8080, 8443]:
             s.send(b"GET / HTTP/1.1\r\nHost: target\r\n\r\n")
             
@@ -30,25 +25,20 @@ def grab_banner(ip, port):
         s.close()
         
         if data:
-            # Extract common server headers if present
             for line in data.split('\n'):
                 if any(x in line for x in ["Server:", "SSH-", "vsFTPd", "banner"]):
                     return line.replace('\r', '').strip()
-            # Return first line of raw data if no header is matched
             return data.split('\n')[0][:50].strip()
         return "Version Hidden"
     except:
         return "Version Hidden"
 
-def scan_port(ip, port):
-    """
-    Checks if a specific TCP port is open.
-    """
+def scan_port(ip, port, timeout=0.5):
+    """Checks if a specific TCP port is open with dynamic timeout."""
     try:
-        # Use AF_INET for IPv4 and SOCK_STREAM for TCP
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.settimeout(0.5)  # Fast timeout for high-speed scanning
-        result = s.connect_ex((ip, port))  # Returns 0 if port is open
+        s.settimeout(timeout) 
+        result = s.connect_ex((ip, port))
         s.close()
         
         if result == 0:
@@ -64,15 +54,12 @@ def scan_port(ip, port):
     return None
 
 def scan_ports(target_host):
-    """
-    Function used by Quick Scan to check a specific set of critical ports.
-    """
+    """Function used by Quick Scan to check critical ports."""
     open_ports = []
     try:
         ip = socket.gethostbyname(target_host)
-        # Scan only highly critical common ports defined in our map
         for port in COMMON_PORTS.keys():
-            res = scan_port(ip, port)
+            res = scan_port(ip, port, timeout=0.5)
             if res:
                 open_ports.append(port)
     except:
@@ -80,38 +67,34 @@ def scan_ports(target_host):
     return open_ports
 
 def run_infrastructure_scan(target, aggressive=False):
-    """
-    Main entry point for the dedicated Infrastructure Scanner page.
-    Supports aggressive scanning of the full port range (1-65535).
-    """
+    """Main entry point for the Infrastructure Scanner page."""
     open_ports = []
     
-    # Resolve target hostname to IP address
     try:
         ip = socket.gethostbyname(target)
     except socket.gaierror:
         return {"error": "Failed to resolve hostname or invalid IP."}
 
-    # Determine range: Full scan (65k) or Top Vulnerable ports (~1200)
+    # --- AGGRESSIVE OPTIMIZATIONS ---
     if aggressive:
         ports_to_scan = range(1, 65536)
-        max_workers = 500  # Higher threading for full range
+        max_workers = 1000  # High concurrency
+        scan_timeout = 0.1  # Very fast timeout to prevent network lockup on 65k ports
     else:
-        # Scan common ports + typical dev ranges (8000-9000)
         ports_to_scan = list(COMMON_PORTS.keys()) + list(range(8000, 9100))
-        max_workers = 200
+        max_workers = 300
+        scan_timeout = 0.5  # Standard timeout
 
-    # Multi-threaded execution for high performance
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        # Submit all port scanning tasks to the thread pool
-        future_to_port = {executor.submit(scan_port, ip, port): port for port in ports_to_scan}
+        # Pass the dynamic scan_timeout to the worker
+        future_to_port = {executor.submit(scan_port, ip, port, scan_timeout): port for port in ports_to_scan}
         
         for future in concurrent.futures.as_completed(future_to_port):
             result = future.result()
             if result:
                 open_ports.append(result)
                 
-    # Sort results numerically for the frontend
+    # Sort results numerically
     open_ports = sorted(open_ports, key=lambda x: x['port'])
     
     return {

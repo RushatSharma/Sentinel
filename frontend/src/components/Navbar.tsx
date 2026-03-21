@@ -13,6 +13,7 @@ import {
   ShieldCheck, 
   ScanSearch, 
   Info, 
+  Lock,
   Home,
   Server // Added Server icon for the new page
 } from 'lucide-react'; 
@@ -97,7 +98,7 @@ export function Navbar() {
     { name: 'Deep Scan', href: '/deep-scan', icon: <ShieldCheck className="w-4 h-4 mr-2" /> },
     { name: 'Recon', href: '/recon', icon: <ScanSearch className="w-4 h-4 mr-2" /> },
     { name: 'API Fuzzer', href: '/api-fuzzer', icon: <ShieldCheck className="w-4 h-4 mr-2" /> },
-    { name: 'Infra Scanner', href: '/infrastructure', icon: <Server className="w-4 h-4 mr-2" /> },
+    { name: 'SSL / TLS', href: '/ssl-scan', icon: <Lock className="w-4 h-4 mr-2" /> },
     { name: 'Quarantine', href: '/quarantine', icon: <ShieldBan className="w-4 h-4 mr-2" /> }, // Added this line!
     
   ];

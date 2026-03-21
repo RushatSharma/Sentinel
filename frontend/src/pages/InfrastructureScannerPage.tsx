@@ -83,7 +83,7 @@ export default function InfrastructureScannerPage() {
         <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
       </div>
       
-      <div className="container relative z-10 mx-auto px-4 pt-12 max-w-7xl flex flex-col gap-8 [perspective:1200px]">
+      <div className="container relative z-10 mx-auto px-4 pt-8 max-w-7xl flex flex-col gap-8 [perspective:1200px]">
         
         {/* --- HERO SECTION --- */}
         <motion.div 
