@@ -1,46 +1,50 @@
 import { motion } from "framer-motion";
-import { Search, Scale, Wrench, FileCheck, Shield,} from "lucide-react";
+import { Search, Key, LineChart, Network, Zap } from "lucide-react";
 
 const features = [
+  {
+    title: "SSL/TLS Crypto Analyzer",
+    description:
+      "Extracts X.509 chains, evaluates cipher strength, and detects obsolete protocols. Includes a rigorous A-F security grading engine.",
+    icon: Key,
+    color: "blue" as const,
+    size: "large" as const,
+    code: `[SYSTEM] Initializing Crypto Handshake...
+[NETWORK] Resolving target: sentinel.local
+[CRYPTO] Extracting X.509 Certificate Chain...
+[PROBE] Downgrade Attack Simulation: FAILED (Secure)
+[RESULT] Cipher Suite: TLS_AES_256_GCM_SHA384
+============================================
+[SECURITY GRADE] : A 
+============================================`,
+  },
   {
     title: "Shadow API Hunter",
     description:
       "Crawls your JavaScript bundles to discover hidden /api/ endpoints that traditional scanners miss.",
     icon: Search,
-    color: "blue" as const,
-    size: "large" as const,
-    code: `// Found hidden endpoint
-fetch('/api/admin/users')
-  .then(r => r.json())
-  // ⚠️ Unauthenticated access`,
-  },
-  {
-    title: "Legal Mapping",
-    description:
-      "Automatically maps vulnerabilities like SQLi to GDPR Art. 32, PCI-DSS 6.5, and more.",
-    icon: Scale,
     color: "red" as const,
     size: "medium" as const,
   },
   {
-    title: "Instant Fixes",
-    description: "AI-generated code patches ready for your developers to review and ship.",
-    icon: Wrench,
+    title: "Financial Risk Scoring",
+    description: "Translates technical CVSS metrics into estimated financial impact to prioritize critical patching.",
+    icon: LineChart,
     color: "blue" as const,
     size: "medium" as const,
   },
   {
-    title: "Executive Reports",
+    title: "OSINT Reconnaissance",
     description:
-      "Generate polished PDF reports that separate business risk from technical details.",
-    icon: FileCheck,
+      "Map your external attack surface and discover hidden subdomains before threat actors do.",
+    icon: Network,
     color: "red" as const,
     size: "small" as const,
   },
   {
-    title: "Real-time Monitoring",
-    description: "Continuous scanning with instant alerts when new vulnerabilities emerge.",
-    icon: Shield,
+    title: "Swagger Fuzzing",
+    description: "Ingest Swagger UI docs to automatically fuzz API endpoints and uncover injection flaws.",
+    icon: Zap,
     color: "blue" as const,
     size: "small" as const,
   },
@@ -67,7 +71,7 @@ export const BentoGrid = () => {
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             A complete security suite that bridges the gap between red team
-            reconnaissance and blue team compliance.
+            reconnaissance and blue team remediation.
           </p>
         </motion.div>
 
@@ -86,7 +90,7 @@ export const BentoGrid = () => {
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
                 className={`
-                  ${isLarge ? "lg:col-span-2" : ""} {/* REMOVED: lg:row-span-2 */}
+                  ${isLarge ? "lg:col-span-2" : ""}
                   ${isBlue ? "feature-card-blue" : "feature-card-red"}
                   group cursor-pointer flex flex-col
                 `}
@@ -122,15 +126,17 @@ export const BentoGrid = () => {
                   {/* Right Side: Console (Only for Large cards) */}
                   {isLarge && feature.code && (
                     <div className="terminal-window w-full h-fit shadow-lg mt-0">
-                      <div className="terminal-header">
-                        <div className="terminal-dot bg-destructive" />
-                        <div className="terminal-dot bg-terminal-yellow" />
-                        <div className="terminal-dot bg-terminal-green" />
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          scan-result.js
+                      <div className="terminal-header border-b border-white/10 pb-2 mb-2">
+                        <div className="flex gap-2">
+                          <div className="w-3 h-3 rounded-full bg-red-500" />
+                          <div className="w-3 h-3 rounded-full bg-yellow-500" />
+                          <div className="w-3 h-3 rounded-full bg-green-500" />
+                        </div>
+                        <span className="ml-2 text-xs text-muted-foreground font-mono">
+                          crypto_engine.log
                         </span>
                       </div>
-                      <pre className="p-4 text-sm text-terminal-text overflow-x-auto bg-black/50">
+                      <pre className="p-2 text-xs md:text-sm text-cyan-400 overflow-x-auto bg-black/50 font-mono">
                         <code>{feature.code}</code>
                       </pre>
                     </div>

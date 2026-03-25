@@ -4,8 +4,11 @@ import { Navbar } from '../components/Navbar';
 import { Button } from '../components/ui/button';
 import { Network, Search, AlertTriangle, ShieldCheck, Terminal as TerminalIcon, Route, Bug, Activity, CheckCircle2, ChevronRight, FileJson, Zap, ShieldAlert, Globe, ServerCrash, Download } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { useAuth } from '../context/AuthContext';
 
 export default function ApiFuzzerPage() {
+  const { user } = useAuth();
+  
   const [swaggerUrl, setSwaggerUrl] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [results, setResults] = useState<any>(null);
@@ -55,7 +58,10 @@ export default function ApiFuzzerPage() {
       const response = await fetch('http://127.0.0.1:5000/api/fuzz-api', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ swagger_url: swaggerUrl }),
+        body: JSON.stringify({ 
+            swagger_url: swaggerUrl,
+            user_id: user?.$id
+        }),
       });
 
       const data = await response.json();

@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ShieldBan } from 'lucide-react';
 import { 
   Menu, 
   X, 
@@ -15,7 +14,9 @@ import {
   Info, 
   Lock,
   Home,
-  Server // Added Server icon for the new page
+  Server,
+  ShieldBan,
+  LayoutDashboard // Added LayoutDashboard icon
 } from 'lucide-react'; 
 import { cn } from '@/lib/utils';
 // --- APPWRITE IMPORT ---
@@ -94,13 +95,13 @@ export function Navbar() {
       href: '/', 
       icon: <Home className="w-4 h-4 mr-2" /> 
     }] : []),
+    { name: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard className="w-4 h-4 mr-2" /> }, // Added Dashboard link
     { name: 'Quick Scan', href: '/scan', icon: <ScanSearch className="w-4 h-4 mr-2" /> },
     { name: 'Deep Scan', href: '/deep-scan', icon: <ShieldCheck className="w-4 h-4 mr-2" /> },
     { name: 'Recon', href: '/recon', icon: <ScanSearch className="w-4 h-4 mr-2" /> },
     { name: 'API Fuzzer', href: '/api-fuzzer', icon: <ShieldCheck className="w-4 h-4 mr-2" /> },
     { name: 'SSL / TLS', href: '/ssl-scan', icon: <Lock className="w-4 h-4 mr-2" /> },
-    { name: 'Quarantine', href: '/quarantine', icon: <ShieldBan className="w-4 h-4 mr-2" /> }, // Added this line!
-    
+    { name: 'Quarantine', href: '/quarantine', icon: <ShieldBan className="w-4 h-4 mr-2" /> },
   ];
 
   return (
@@ -115,18 +116,6 @@ export function Navbar() {
           {/* --- LOGO SECTION --- */}
           <div className="flex-1 flex justify-start">
             <Link to="/" className="flex items-center gap-3 group">
-              <div className="relative w-12 h-12"> 
-                <img 
-                    src="/LogoBlack.png" 
-                    alt="Sentinel Logo" 
-                    className="absolute inset-0 w-full h-full object-contain block dark:hidden transition-transform duration-300 group-hover:scale-110" 
-                />
-                <img 
-                    src="/LogoWhite.png" 
-                    alt="Sentinel Logo" 
-                    className="absolute inset-0 w-full h-full object-contain hidden dark:block transition-transform duration-300 group-hover:scale-110" 
-                />
-              </div>
               <span className="text-2xl font-bold font-display tracking-tight text-foreground">
                 SENTINEL
               </span>

@@ -4,8 +4,11 @@ import { Navbar } from '../components/Navbar';
 import { Button } from '../components/ui/button';
 import { Radar, Search, Server, Activity, AlertTriangle, ShieldCheck, Terminal as TerminalIcon, Map, Crosshair, ArrowRight, ShieldAlert, Info, Download } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { useAuth } from '../context/AuthContext';
 
 export default function ReconPage() {
+  const { user } = useAuth();
+  
   const [domain, setDomain] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [results, setResults] = useState<any>(null);
@@ -54,7 +57,10 @@ export default function ReconPage() {
       const response = await fetch('http://127.0.0.1:5000/api/recon', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain }),
+        body: JSON.stringify({ 
+            domain: domain,
+            user_id: user?.$id 
+        }),
       });
 
       if (!response.ok) throw new Error('Failed to fetch OSINT data.');

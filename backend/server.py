@@ -202,10 +202,23 @@ def download_report():
 def handle_recon():
     data = request.json
     domain = data.get('domain')
+    user_id = data.get('user_id') 
+    
     if not domain: return jsonify({"error": "No domain provided"}), 400
         
     try:
-        return jsonify(recon_engine.run_recon(domain))
+        report = recon_engine.run_recon(domain)
+        
+        # Save to database
+        if user_id:
+            try:
+                save_scan_result(
+                    user_id=user_id, target_url=domain, mode="OSINT Recon",
+                    risk_score=0, vulns_found=0, report_json=report
+                )
+            except Exception as e: print(f"[!] History Sync Error (Recon): {e}")
+
+        return jsonify(report)
     except Exception as e:
         return jsonify({"error": "OSINT mapping failed"}), 500
 
@@ -213,11 +226,25 @@ def handle_recon():
 def handle_api_fuzz():
     data = request.json
     swagger_url = data.get('swagger_url')
+    user_id = data.get('user_id') 
+    
     if not swagger_url: return jsonify({"error": "No Swagger URL provided"}), 400
         
     try:
         report = api_fuzzer.fuzz_api(swagger_url)
         if "error" in report: return jsonify({"error": report["error"]}), 400
+        
+        # Save to database
+        if user_id:
+            try:
+                vulns = len(report.get("vulnerabilities", []))
+                risk_score = min(100, vulns * 15) 
+                save_scan_result(
+                    user_id=user_id, target_url=swagger_url, mode="API Fuzzer",
+                    risk_score=risk_score, vulns_found=vulns, report_json=report
+                )
+            except Exception as e: print(f"[!] History Sync Error (Fuzzer): {e}")
+
         return jsonify(report)
     except Exception as e:
         return jsonify({"error": "API Fuzzing engine failed"}), 500
@@ -227,13 +254,11 @@ def port_scan_api():
     data = request.json
     target = data.get('target')
     
-    # THIS LINE IS CRITICAL: It reads the checkbox state
     is_aggressive = data.get('aggressive', False) 
     
     if not target: return jsonify({"error": "Target is required"}), 400
         
     try:
-        # Passes the flag directly into the engine
         results = run_infrastructure_scan(target, aggressive=is_aggressive) 
         if "error" in results: return jsonify(results), 400
         return jsonify(results)
@@ -245,6 +270,7 @@ def handle_quarantine():
     data = request.json
     artifact = data.get('artifact')
     scan_type = data.get('type')
+    user_id = data.get('user_id') 
 
     if not artifact or not scan_type:
         return jsonify({"error": "Artifact and scan type are required"}), 400
@@ -253,6 +279,18 @@ def handle_quarantine():
         report = quarantine.analyze_artifact(artifact, scan_type)
         if "error" in report:
             return jsonify(report), 400
+        
+        # Save to database
+        if user_id:
+            try:
+                is_malicious = report.get("status") == "Malicious"
+                risk = 100 if is_malicious else 0
+                save_scan_result(
+                    user_id=user_id, target_url=artifact, mode="Quarantine",
+                    risk_score=risk, vulns_found=1 if is_malicious else 0, report_json=report
+                )
+            except Exception as e: print(f"[!] History Sync Error (Quarantine): {e}")
+
         return jsonify(report)
     except Exception as e:
         return jsonify({"error": f"Quarantine engine failed: {str(e)}"}), 500
@@ -266,6 +304,7 @@ def health_check():
 def handle_ssl_scan():
     data = request.json
     target = data.get('target')
+    user_id = data.get('user_id')
     
     if not target: 
         return jsonify({"error": "Target domain is required"}), 400
@@ -274,6 +313,21 @@ def handle_ssl_scan():
         report = ssl_scanner.analyze_ssl(target)
         if "error" in report:
             return jsonify(report), 400
+        
+        # Save to database
+        if user_id:
+            try:
+                grade = report.get("grade", "F")
+                risk_map = {"A": 0, "B": 25, "C": 50, "F": 100}
+                risk_score = risk_map.get(grade, 50)
+                vulns = len(report.get("vulnerabilities", []))
+                
+                save_scan_result(
+                    user_id=user_id, target_url=target, mode="SSL Analyzer",
+                    risk_score=risk_score, vulns_found=vulns, report_json=report
+                )
+            except Exception as e: print(f"[!] History Sync Error (SSL): {e}")
+
         return jsonify(report)
     except Exception as e:
         return jsonify({"error": f"Crypto Engine Failed: {str(e)}"}), 500

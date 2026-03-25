@@ -7,7 +7,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/context/AuthContext";
 
 // Pages
-import Home from "./pages/Home";
+import DashboardPage from "./pages/DashboardPage"; // REPLACED Home WITH DashboardPage
 import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
@@ -15,7 +15,7 @@ import ProfilePage from "./pages/ProfilePage";
 import DeepScanPage from "./pages/DeepScanPage";
 import ScanResultsPage from "./pages/ScanResultsPage";
 import AboutPage from "./pages/AboutPage"; 
-import NormalScanPage from "./pages/NormalScanPage"; // IMPORT ADDED
+import NormalScanPage from "./pages/NormalScanPage"; 
 import ReconPage from './pages/ReconPage';
 import ApiFuzzerPage from './pages/ApiFuzzerPage';
 import InfrastructureScannerPage from "./pages/InfrastructureScannerPage";
@@ -37,8 +37,8 @@ const App = () => (
               <Route path="/about" element={<AboutPage />} />
               
               {/* Protected/App Routes */}
-              <Route path="/dashboard" element={<Home />} />
-              <Route path="/scan" element={<NormalScanPage />} /> {/* NEW ROUTE ADDED */}
+              <Route path="/dashboard" element={<DashboardPage />} /> {/* UPDATED TO DASHBOARD PAGE */}
+              <Route path="/scan" element={<NormalScanPage />} /> 
               <Route path="/deep-scan" element={<DeepScanPage />} />
               
               <Route path="/scan-results" element={<ScanResultsPage />} />

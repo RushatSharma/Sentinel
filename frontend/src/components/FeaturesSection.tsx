@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { FeatureCard } from "./FeatureCard";
-import { Radar, ShieldCheck, FileText, Search, Lock, Zap } from "lucide-react";
+import { Radar, Key, Network, Zap, LineChart, ShieldCheck } from "lucide-react";
 
 const features = [
   {
@@ -8,41 +8,41 @@ const features = [
     title: "Shadow API Hunter",
     description:
       "Automatically crawl JavaScript files to discover hidden /api/ endpoints that bypass traditional security controls. Find what attackers find first.",
+    accentColor: "blue" as const,
+  },
+  {
+    icon: Key,
+    title: "SSL/TLS Crypto Analyzer",
+    description:
+      "Extract X.509 certificate chains, evaluate cipher suite strength, and detect obsolete protocols vulnerable to downgrade attacks.",
     accentColor: "red" as const,
+  },
+  {
+    icon: Network,
+    title: "OSINT Reconnaissance",
+    description:
+      "Map your external attack surface. Discover hidden subdomains and external infrastructure footprints before threat actors do.",
+    accentColor: "blue" as const,
+  },
+  {
+    icon: Zap,
+    title: "Swagger API Fuzzing",
+    description:
+      "Ingest Swagger UI documentation to automatically fuzz API endpoints, uncovering broken access controls and deep injection flaws.",
+    accentColor: "red" as const,
+  },
+  {
+    icon: LineChart,
+    title: "Financial Risk Scoring",
+    description:
+      "Translate technical CVSS metrics into estimated financial impact to help executives and board members prioritize critical patching.",
+    accentColor: "blue" as const,
   },
   {
     icon: ShieldCheck,
     title: "Automated Compliance",
     description:
-      "Map every vulnerability to GDPR Art. 32 and PCI-DSS Req. 6.5 violations automatically. Stay audit-ready without manual compliance mapping.",
-    accentColor: "blue" as const,
-  },
-  {
-    icon: FileText,
-    title: "Executive Reporting",
-    description:
-      "Generate PDF reports that separate technical findings from business risk. Give executives the insights they need, developers the details they want.",
-    accentColor: "blue" as const,
-  },
-  {
-    icon: Search,
-    title: "Deep Vulnerability Scanning",
-    description:
-      "Go beyond surface-level scans with intelligent crawling that understands modern JavaScript frameworks and API patterns.",
-    accentColor: "red" as const,
-  },
-  {
-    icon: Lock,
-    title: "Remediation Workflows",
-    description:
-      "Bridge Red and Blue teams with actionable remediation steps, priority scoring, and integrated ticketing for seamless handoffs.",
-    accentColor: "blue" as const,
-  },
-  {
-    icon: Zap,
-    title: "Real-time Monitoring",
-    description:
-      "Continuous security posture assessment with instant alerts when new vulnerabilities or exposed endpoints are detected.",
+      "Map every vulnerability to GDPR Art. 32 and PCI-DSS violations automatically. Stay audit-ready without manual compliance mapping.",
     accentColor: "red" as const,
   },
 ];

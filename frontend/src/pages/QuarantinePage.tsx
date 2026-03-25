@@ -4,8 +4,11 @@ import { Navbar } from '../components/Navbar';
 import { Button } from '../components/ui/button';
 import { ShieldAlert, ShieldCheck, Terminal as TerminalIcon, Download, Search, FileDigit, Globe, Link2, Activity, ShieldBan } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { useAuth } from '../context/AuthContext';
 
 export default function QuarantinePage() {
+  const { user } = useAuth();
+
   const [artifact, setArtifact] = useState('');
   const [scanType, setScanType] = useState<'hash' | 'ip' | 'url'>('hash');
   const [isScanning, setIsScanning] = useState(false);
@@ -51,7 +54,11 @@ export default function QuarantinePage() {
       const response = await fetch('http://127.0.0.1:5000/api/quarantine', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ artifact, type: scanType }),
+        body: JSON.stringify({ 
+            artifact, 
+            type: scanType,
+            user_id: user?.$id
+        }),
       });
 
       const data = await response.json();
