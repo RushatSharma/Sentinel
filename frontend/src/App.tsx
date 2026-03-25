@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/context/AuthContext";
+import ScrollToTop from './components/ScrollToTop';
 
 // Pages
 import DashboardPage from "./pages/DashboardPage"; // REPLACED Home WITH DashboardPage
@@ -30,6 +31,7 @@ const App = () => (
       <AuthProvider>
         <TooltipProvider>
           <BrowserRouter>
+          <ScrollToTop />
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<LandingPage />} />

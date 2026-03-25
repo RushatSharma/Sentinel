@@ -95,7 +95,6 @@ export function Navbar() {
       href: '/', 
       icon: <Home className="w-4 h-4 mr-2" /> 
     }] : []),
-    { name: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard className="w-4 h-4 mr-2" /> }, // Added Dashboard link
     { name: 'Quick Scan', href: '/scan', icon: <ScanSearch className="w-4 h-4 mr-2" /> },
     { name: 'Deep Scan', href: '/deep-scan', icon: <ShieldCheck className="w-4 h-4 mr-2" /> },
     { name: 'Recon', href: '/recon', icon: <ScanSearch className="w-4 h-4 mr-2" /> },
