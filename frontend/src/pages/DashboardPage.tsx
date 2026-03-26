@@ -6,15 +6,18 @@ import { Button } from '../components/ui/button';
 import { 
     Activity, ShieldAlert, History, Radar, Lock, 
     Zap, Network, Search, ChevronRight, FileText, 
-    AlertTriangle, Server, ShieldCheck, Filter, ArrowUpDown, ArrowUp, ArrowDown, ArrowRight 
+    AlertTriangle, Server, ShieldCheck, Filter, 
+    ArrowUpDown, ArrowUp, ArrowDown, Terminal, ArrowRight,
+    Download, Trash2, Briefcase, Loader2
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { account, databases } from '../lib/appwrite';
 import { Query } from 'appwrite';
-import { AuroraTextEffect } from '../components/AuroraTextEffect'; // Imported Aurora effect
 
 const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID;
 const COLLECTION_ID = import.meta.env.VITE_APPWRITE_COLLECTION_ID;
+// NOTE: Add your backend URL to your .env file, or hardcode it here for now (e.g., 'http://localhost:5000')
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function DashboardPage() {
   const [history, setHistory] = useState<any[]>([]);
@@ -25,6 +28,9 @@ export default function DashboardPage() {
   const [searchTarget, setSearchTarget] = useState('');
   const [filterEngine, setFilterEngine] = useState('all');
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'date', direction: 'desc' });
+  
+  const [activeDownloadMenu, setActiveDownloadMenu] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState<string | null>(null); // Tracks which specific report is generating
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -69,6 +75,71 @@ export default function DashboardPage() {
 
     fetchDashboardData();
   }, []);
+
+  const handleDeleteScan = async (id: string) => {
+    if (!window.confirm("Are you sure you want to permanently delete this scan record?")) return;
+    
+    try {
+        await databases.deleteDocument(DATABASE_ID, COLLECTION_ID, id);
+        setHistory(prev => prev.filter(item => item.$id !== id));
+    } catch (error) {
+        console.error("Failed to delete scan:", error);
+        alert("Failed to delete the record. Please try again.");
+    }
+  };
+
+  // --- REAL BACKEND PDF DOWNLOAD LOGIC ---
+  const handleDownloadReport = async (scan: any, type: 'executive' | 'technical') => {
+      const downloadId = `${scan.$id}-${type}`;
+      setIsDownloading(downloadId); // Show loading spinner on the specific button
+      
+      try {
+          // Send request to your Flask/Node backend to generate the PDF
+          // Adjust the endpoint URL ('/api/reports/generate') to match your actual backend route!
+          const response = await fetch(`${API_BASE_URL}/api/reports/generate`, {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+                  // Add Authorization headers here if your backend requires a JWT or Appwrite session token
+              },
+              body: JSON.stringify({
+                  scanId: scan.$id,
+                  targetUrl: scan.target_url,
+                  scanMode: scan.scan_mode,
+                  reportType: type,
+                  // Pass any other data your PDF generator needs...
+              }),
+          });
+
+          if (!response.ok) {
+              throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
+          }
+
+          // Convert the response to a binary Blob (PDF format)
+          const blob = await response.blob();
+          
+          // Create a hidden link and trigger the browser download
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `Sentinel_${type}_Report_${scan.target_url.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          
+          // Cleanup
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+          
+          // Close the menu only on success
+          setActiveDownloadMenu(null);
+          
+      } catch (error) {
+          console.error("PDF Generation Failed:", error);
+          alert(`Failed to generate the ${type} report. Please check if your backend server is running.`);
+      } finally {
+          setIsDownloading(null); // Stop loading spinner
+      }
+  };
 
   const processedHistory = useMemo(() => {
     let result = [...history];
@@ -129,8 +200,8 @@ export default function DashboardPage() {
   const getSortIcon = (key: string) => {
       if (sortConfig.key !== key) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-50 group-hover:opacity-100 transition-opacity" />;
       return sortConfig.direction === 'asc' 
-        ? <ArrowUp className="w-3 h-3 ml-1 text-sentinel-blue" /> 
-        : <ArrowDown className="w-3 h-3 ml-1 text-sentinel-blue" />;
+        ? <ArrowUp className="w-3 h-3 ml-1 text-cyan-500" /> 
+        : <ArrowDown className="w-3 h-3 ml-1 text-cyan-500" />;
   };
 
   const tools = [
@@ -163,42 +234,57 @@ export default function DashboardPage() {
         
         {/* HEADER SECTION */}
         <motion.div 
-            initial={{ opacity: 0, y: -40, rotateX: 30 }} 
-            animate={{ opacity: 1, y: 0, rotateX: 0 }} 
-            transition={{ duration: 0.8, type: 'spring', bounce: 0.3 }} 
-            className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-4"
+            initial={{ opacity: 0, y: -40, filter: 'blur(10px)' }} 
+            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} 
+            transition={{ duration: 0.8, ease: "easeOut" }} 
+            className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-4 border-b border-border/50 pb-6"
         >
-            <div>
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border mb-4 bg-sentinel-blue/10 border-sentinel-blue/30 text-sentinel-blue">
-                    <Activity className="w-3 h-3 animate-pulse" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Unified Command Center</span>
-                </div>
-                <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-foreground tracking-tight flex flex-wrap items-center gap-x-3">
-                    Welcome back, 
-                    <AuroraTextEffect 
-                        text={user?.name?.split(' ')[0] || 'Operator'} 
-                        textClassName="font-display font-bold"
-                    />
-                </h1>
+            <div className="flex items-center gap-6">
+                 <div className="hidden sm:flex relative w-20 h-20 bg-card border border-cyan-500/30 items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.15)] group">
+                     <div className="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-cyan-500 transition-all duration-300 group-hover:-translate-x-1 group-hover:-translate-y-1"></div>
+                     <div className="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-cyan-500 transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1"></div>
+                     <div className="absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 border-cyan-500 transition-all duration-300 group-hover:-translate-x-1 group-hover:translate-y-1"></div>
+                     <div className="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-cyan-500 transition-all duration-300 group-hover:translate-x-1 group-hover:translate-y-1"></div>
+                     <Terminal className="w-8 h-8 text-cyan-400 opacity-80" />
+                 </div>
+
+                 <div>
+                     <div className="inline-flex items-center gap-2 px-3 py-1 bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 mb-3 shadow-[0_0_10px_rgba(6,182,212,0.2)]">
+                         <Activity className="w-3 h-3 animate-pulse" />
+                         <span className="text-[10px] font-mono font-bold uppercase tracking-widest">Active Session: Secured</span>
+                     </div>
+                     <h1 className="text-3xl md:text-5xl font-display font-bold text-foreground tracking-tight uppercase">
+                        Operator <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-teal-500 drop-shadow-[0_0_15px_rgba(6,182,212,0.4)]">{user?.name?.split(' ')[0] || 'Unknown'}</span>
+                     </h1>
+                     <div className="flex items-center gap-3 mt-3">
+                        <span className="font-mono text-[11px] text-muted-foreground bg-muted/50 px-2 py-1 border border-border rounded uppercase">
+                            ID: <span className="text-foreground">{user?.$id?.substring(0,8) || '0x000000'}</span>
+                        </span>
+                        <span className="font-mono text-[11px] text-emerald-500 bg-emerald-500/10 px-2 py-1 border border-emerald-500/20 rounded uppercase font-bold tracking-widest">
+                            CLEARANCE: ROOT
+                        </span>
+                     </div>
+                 </div>
             </div>
+
             <div className="flex items-center gap-3">
-                <div className="px-4 py-2 bg-card/80 backdrop-blur-md border border-border/80 rounded-lg shadow-sm flex items-center gap-3">
-                    <Server className="w-4 h-4 text-emerald-500" />
+                <div className="px-5 py-3 bg-card/80 backdrop-blur-md border border-border/80 rounded-lg shadow-sm flex items-center gap-3">
+                    <Server className="w-5 h-5 text-emerald-500 animate-pulse" />
                     <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Engine Status</span>
-                        <span className="text-xs font-mono text-emerald-500">ONLINE & SYNCED</span>
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Central Intel Engine</span>
+                        <span className="text-xs font-mono text-emerald-500 font-bold">ONLINE & SYNCED</span>
                     </div>
                 </div>
             </div>
         </motion.div>
 
-        {/* METRICS ROW - ADDED BORDERS */}
+        {/* METRICS ROW */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-card/80 backdrop-blur-md border border-border/80 hover:border-border transition-colors rounded-2xl p-6 shadow-xl relative overflow-hidden group">
-                <div className="absolute inset-0 bg-gradient-to-br from-sentinel-blue/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 <div className="flex justify-between items-start mb-4 relative z-10">
-                    <div className="p-3 rounded-xl bg-sentinel-blue/10 border border-sentinel-blue/20">
-                        <History className="w-6 h-6 text-sentinel-blue" />
+                    <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20">
+                        <History className="w-6 h-6 text-cyan-500" />
                     </div>
                 </div>
                 <h3 className="text-4xl font-display font-bold text-foreground mb-1 relative z-10">{loading ? '-' : metrics.totalScans}</h3>
@@ -233,10 +319,10 @@ export default function DashboardPage() {
             </motion.div>
         </div>
 
-        {/* QUICK LAUNCH HUB - ADDED BORDERS */}
+        {/* QUICK LAUNCH HUB */}
         <div className="mt-4">
             <h2 className="text-lg font-bold font-display mb-4 flex items-center gap-2 text-foreground">
-                <Zap className="w-5 h-5 text-sentinel-blue" /> Quick Launch Hub
+                <Zap className="w-5 h-5 text-cyan-500" /> Quick Launch Hub
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 {tools.map((tool, idx) => (
@@ -253,10 +339,10 @@ export default function DashboardPage() {
                             <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center mb-4 transition-colors", `bg-${tool.color}-500/10 text-${tool.color}-500 group-hover:bg-${tool.color}-500 group-hover:text-white`)}>
                                 <tool.icon className="w-5 h-5" />
                             </div>
-                            <h3 className="font-bold text-foreground text-sm mb-2 group-hover:text-sentinel-blue transition-colors flex items-center justify-between">
+                            <h3 className="font-bold text-foreground text-sm mb-2 group-hover:text-cyan-400 transition-colors flex items-center justify-between">
                                 {tool.name} <ArrowRight className="w-3 h-3 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
                             </h3>
-                            <p className="text-xs text-muted-foreground leading-relaxed">{tool.desc}</p>
+                            <p className="text-xs text-muted-foreground leading-relaxed font-mono">{tool.desc}</p>
                         </motion.div>
                     </Link>
                 ))}
@@ -264,11 +350,11 @@ export default function DashboardPage() {
         </div>
 
         {/* FIXED HEIGHT ACTIVITY STREAM WITH STICKY HEADER */}
-        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="mt-4 bg-card/80 backdrop-blur-md border border-border/80 rounded-2xl shadow-xl overflow-hidden flex flex-col h-[550px]">
+        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="mt-4 bg-card/80 sm:backdrop-blur-md border border-border/80 rounded-2xl shadow-xl overflow-hidden flex flex-col h-[550px]">
             
             <div className="bg-muted/30 px-6 py-4 border-b border-border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0">
                 <span className="text-sm font-bold flex items-center gap-2 uppercase tracking-tighter text-foreground">
-                    <FileText className="w-4 h-4 text-sentinel-blue" /> Operation History
+                    <FileText className="w-4 h-4 text-cyan-500" /> Operation History
                 </span>
                 
                 <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
@@ -277,7 +363,7 @@ export default function DashboardPage() {
                         <input 
                             type="text" 
                             placeholder="Search targets..." 
-                            className="w-full bg-background border border-border rounded-lg pl-9 pr-4 py-1.5 text-sm focus:outline-none focus:border-sentinel-blue/50 transition-colors font-mono"
+                            className="w-full bg-background border border-border rounded-lg pl-9 pr-4 py-1.5 text-sm focus:outline-none focus:border-cyan-500/50 transition-colors font-mono"
                             value={searchTarget}
                             onChange={(e) => setSearchTarget(e.target.value)}
                         />
@@ -285,7 +371,7 @@ export default function DashboardPage() {
                     <div className="relative w-full sm:w-auto">
                         <Filter className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                         <select 
-                            className="w-full sm:w-auto appearance-none bg-background border border-border rounded-lg pl-9 pr-8 py-1.5 text-sm focus:outline-none focus:border-sentinel-blue/50 transition-colors font-mono cursor-pointer"
+                            className="w-full sm:w-auto appearance-none bg-background border border-border rounded-lg pl-9 pr-8 py-1.5 text-sm focus:outline-none focus:border-cyan-500/50 transition-colors font-mono cursor-pointer"
                             value={filterEngine}
                             onChange={(e) => setFilterEngine(e.target.value)}
                         >
@@ -300,36 +386,36 @@ export default function DashboardPage() {
             </div>
             
             {/* Scrollable Container */}
-            <div className="flex-1 overflow-auto custom-scrollbar relative">
+            <div className="flex-1 overflow-auto custom-scrollbar relative pb-16">
                 <table className="w-full text-left border-collapse min-w-[800px]">
-                    <thead className="sticky top-0 z-10 bg-muted/95 backdrop-blur-md shadow-sm border-b border-border">
-                        <tr className="text-muted-foreground text-[10px] uppercase tracking-widest select-none">
+                    <thead className="sticky top-0 z-20 bg-muted/95 backdrop-blur-md shadow-sm border-b border-border">
+                        <tr className="text-muted-foreground text-[10px] uppercase tracking-widest select-none font-mono">
                             <th className="px-6 py-4">
-                                <button onClick={() => handleSort('date')} className="flex items-center font-bold hover:text-foreground transition-colors group">
+                                <button onClick={() => handleSort('date')} className="flex items-center font-bold hover:text-cyan-400 transition-colors group">
                                     Date & Time {getSortIcon('date')}
                                 </button>
                             </th>
                             <th className="px-6 py-4">
-                                <button onClick={() => handleSort('target')} className="flex items-center font-bold hover:text-foreground transition-colors group">
+                                <button onClick={() => handleSort('target')} className="flex items-center font-bold hover:text-cyan-400 transition-colors group">
                                     Target {getSortIcon('target')}
                                 </button>
                             </th>
                             <th className="px-6 py-4">
-                                <button onClick={() => handleSort('engine')} className="flex items-center font-bold hover:text-foreground transition-colors group">
+                                <button onClick={() => handleSort('engine')} className="flex items-center font-bold hover:text-cyan-400 transition-colors group">
                                     Engine Type {getSortIcon('engine')}
                                 </button>
                             </th>
                             <th className="px-6 py-4">
-                                <button onClick={() => handleSort('findings')} className="flex items-center font-bold hover:text-foreground transition-colors group">
+                                <button onClick={() => handleSort('findings')} className="flex items-center font-bold hover:text-cyan-400 transition-colors group">
                                     Findings {getSortIcon('findings')}
                                 </button>
                             </th>
                             <th className="px-6 py-4">
-                                <button onClick={() => handleSort('risk')} className="flex items-center font-bold hover:text-foreground transition-colors group">
-                                    Risk Assessment {getSortIcon('risk')}
+                                <button onClick={() => handleSort('risk')} className="flex items-center font-bold hover:text-cyan-400 transition-colors group">
+                                    Risk Level {getSortIcon('risk')}
                                 </button>
                             </th>
-                            <th className="px-6 py-4 text-right font-bold cursor-default">Action</th>
+                            <th className="px-6 py-4 text-right font-bold cursor-default">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="text-sm divide-y divide-border">
@@ -344,10 +430,10 @@ export default function DashboardPage() {
                                 <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
                                     <div className="flex flex-col items-center justify-center gap-3">
                                         <History className="w-10 h-10 opacity-20" />
-                                        <p>No operations match your filters.</p>
+                                        <p className="font-mono text-xs">No operations match your filters.</p>
                                         {(searchTarget || filterEngine !== 'all') && (
-                                            <Button variant="outline" size="sm" onClick={() => { setSearchTarget(''); setFilterEngine('all'); }}>
-                                                Clear Filters
+                                            <Button variant="outline" size="sm" onClick={() => { setSearchTarget(''); setFilterEngine('all'); }} className="mt-2 text-xs border-cyan-500/30 text-cyan-500 hover:bg-cyan-500/10">
+                                                CLEAR FILTERS
                                             </Button>
                                         )}
                                     </div>
@@ -359,11 +445,13 @@ export default function DashboardPage() {
                                     <td className="px-6 py-4 font-mono text-xs text-muted-foreground whitespace-nowrap">
                                         {new Date(scan.$createdAt).toLocaleDateString()} <span className="opacity-50 ml-1">{new Date(scan.$createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                                     </td>
-                                    <td className="px-6 py-4 font-mono text-foreground font-medium truncate max-w-[200px]">
+                                    
+                                    <td className="px-6 py-4 font-mono text-foreground font-medium break-all whitespace-normal min-w-[200px]">
                                         {scan.target_url}
                                     </td>
+
                                     <td className="px-6 py-4">
-                                        <span className="px-2.5 py-1 rounded bg-secondary border border-border text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">
+                                        <span className="px-2.5 py-1 rounded bg-secondary border border-border text-[10px] font-bold uppercase tracking-wider whitespace-nowrap font-mono">
                                             {scan.scan_mode}
                                         </span>
                                     </td>
@@ -379,14 +467,82 @@ export default function DashboardPage() {
                                         )}
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className={cn("px-2.5 py-1 rounded border text-[10px] font-bold uppercase tracking-wider whitespace-nowrap", getRiskColor(scan.risk_score))}>
+                                        <span className={cn("px-2.5 py-1 rounded border text-[10px] font-bold uppercase tracking-wider whitespace-nowrap font-mono", getRiskColor(scan.risk_score))}>
                                             Risk: {scan.risk_score}
                                         </span>
                                     </td>
+                                    
                                     <td className="px-6 py-4 text-right">
-                                        <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground hover:text-sentinel-blue opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap">
-                                            View Logs <ChevronRight className="w-3 h-3 ml-1" />
-                                        </Button>
+                                        <div className="flex items-center justify-end gap-1 sm:gap-2">
+                                            
+                                            {/* PDF DOWNLOAD BUTTON & MENU */}
+                                            <div className="relative">
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    onClick={() => setActiveDownloadMenu(activeDownloadMenu === scan.$id ? null : scan.$id)} 
+                                                    className={cn("h-8 w-8 text-muted-foreground hover:text-cyan-400 hover:bg-cyan-500/10", activeDownloadMenu === scan.$id && "bg-cyan-500/10 text-cyan-400")}
+                                                    title="Download Reports"
+                                                >
+                                                    <Download className="w-4 h-4" />
+                                                </Button>
+
+                                                {/* The Popover Menu */}
+                                                {activeDownloadMenu === scan.$id && (
+                                                    <>
+                                                        <div 
+                                                            className="fixed inset-0 z-40" 
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setActiveDownloadMenu(null);
+                                                            }} 
+                                                        />
+                                                        
+                                                        <div className="absolute right-0 top-full mt-2 w-48 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95">
+                                                            <div className="px-3 py-2 border-b border-border/50 bg-muted/30 text-left">
+                                                                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground font-mono">Select Format</span>
+                                                            </div>
+                                                            <div className="p-1 flex flex-col relative z-50">
+                                                                <button 
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleDownloadReport(scan, 'executive');
+                                                                    }}
+                                                                    disabled={isDownloading === `${scan.$id}-executive`}
+                                                                    className="flex items-center gap-2 px-3 py-2.5 text-xs font-medium hover:bg-cyan-500/10 hover:text-cyan-400 rounded-lg transition-colors text-left text-foreground font-mono disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                >
+                                                                    {isDownloading === `${scan.$id}-executive` ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Briefcase className="w-3.5 h-3.5" />} 
+                                                                    {isDownloading === `${scan.$id}-executive` ? 'Generating...' : 'Executive Summary'}
+                                                                </button>
+                                                                <button 
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleDownloadReport(scan, 'technical');
+                                                                    }}
+                                                                    disabled={isDownloading === `${scan.$id}-technical`}
+                                                                    className="flex items-center gap-2 px-3 py-2.5 text-xs font-medium hover:bg-cyan-500/10 hover:text-cyan-400 rounded-lg transition-colors text-left text-foreground font-mono disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                >
+                                                                    {isDownloading === `${scan.$id}-technical` ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Terminal className="w-3.5 h-3.5" />} 
+                                                                     {isDownloading === `${scan.$id}-technical` ? 'Generating...' : 'Technical Details'}
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+
+                                            {/* DELETE BUTTON */}
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                onClick={() => handleDeleteScan(scan.$id)} 
+                                                className="h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-500/10" 
+                                                title="Delete Scan Record"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                            
+                                        </div>
                                     </td>
                                 </tr>
                             ))
