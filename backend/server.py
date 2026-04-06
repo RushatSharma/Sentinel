@@ -89,86 +89,27 @@ def scan_page_content(url):
     except: pass
     return findings
 
-# --- QUICK SCAN ORCHESTRATOR ---
-def perform_quick_scan(target_url):
-    report = {
-        "target": target_url,
-        "vulnerabilities": [],
-        "summary": {"high": 0, "medium": 0, "low": 0},
-        "financial_risk_total": 0
-    }
-
-    # 1. PII Scan
-    pii_results = scan_page_content(target_url)
-    for result in pii_results:
-        entry = build_vuln_entry("PII_EXPOSURE", target_url, custom_details=result)
-        report["vulnerabilities"].append(entry)
-
-    # 2. Port Scan (with protocol stripper fix)
-    try:
-        raw_host = target_url.replace("https://", "").replace("http://", "").split('/')[0]
-        open_ports = list(scan_ports(raw_host))
-        if open_ports:
-            details = f"Infrastructure points detected: {', '.join(map(str, open_ports))}. Potential entry vectors identified."
-            entry = build_vuln_entry("NETWORK_EXPOSURE", target_url, custom_details=details)
-            report["vulnerabilities"].append(entry)
-    except Exception as e:
-        print(f"[!] Port scan error: {e}")
-
-    # 3. SQL Injection
-    sqli = scanner_logic.scan_sql_injection(target_url)
-    if sqli:
-        cvss, cost = calculate_dynamic_risk(sqli['type'], sqli['severity'])
-        sqli.update({"cvss": cvss, "est_cost": cost})
-        report["vulnerabilities"].append(sqli)
-
-    # 4. XSS
-    xss = scanner_logic.scan_xss(target_url)
-    if xss:
-        cvss, cost = calculate_dynamic_risk(xss['type'], xss['severity'])
-        xss.update({"cvss": cvss, "est_cost": cost})
-        report["vulnerabilities"].append(xss)
-
-    # 5. Shadow APIs
-    for s in scanner_logic.scan_shadow_apis(target_url):
-        cvss, cost = calculate_dynamic_risk(s['type'], s['severity'])
-        s.update({"cvss": cvss, "est_cost": cost})
-        report["vulnerabilities"].append(s)
-
-    for vuln in report["vulnerabilities"]:
-        report["financial_risk_total"] += vuln.get("est_cost", 0)
-        sev = vuln["severity"]
-        if sev in ["Critical", "High"]: report["summary"]["high"] += 1
-        elif sev == "Medium": report["summary"]["medium"] += 1
-        else: report["summary"]["low"] += 1
-
-    return report
 
 # --- API ROUTES ---
-
+# ✅ PASTE THIS OVER YOUR OLD /api/scan ROUTE
 @app.route('/api/scan', methods=['POST'])
 def run_quick_scan_api():
     data = request.json
     target_url = data.get('url')
-    user_id = data.get('user_id') 
-
-    if not target_url: return jsonify({"error": "No URL provided"}), 400
-    if not target_url.startswith('http'): target_url = 'https://' + target_url
-
-    report = perform_quick_scan(target_url)
-
-    if user_id:
-        try:
-            high, med = report['summary']['high'], report['summary']['medium']
-            risk_score = min(100, (high * 25) + (med * 10))
-            save_scan_result(
-                user_id=user_id, target_url=target_url, mode="Quick",
-                risk_score=risk_score, vulns_found=len(report['vulnerabilities']),
-                report_json=report
-            )
-        except Exception as e: print(f"[!] History Sync Error: {e}")
-
-    return jsonify(report)
+    
+    if not target_url:
+        return jsonify({"error": "No target URL provided."}), 400
+        
+    try:
+        print(f"[*] API received Quick Scan request for: {target_url}")
+        
+        # Pass the URL directly into the new Quick Scan Orchestrator
+        report = scanner_logic.run_quick_scan(target_url)
+        
+        return jsonify(report)
+    except Exception as e:
+        print(f"[!] Server Error during Quick Scan: {e}")
+        return jsonify({"error": "An internal error occurred during the scan."}), 500
 
 @app.route('/api/deep-scan', methods=['POST'])
 def handle_deep_scan():
