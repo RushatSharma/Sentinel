@@ -426,6 +426,7 @@ def scan_active_playwright(target_url, context, oast_domain):
     finally: page.close() 
         
     return alerts
+
 # --- ORCHESTRATOR ---
 def run_deep_scan(target_url, user_id=None, auth_config=None):
 
@@ -479,15 +480,8 @@ def run_deep_scan(target_url, user_id=None, auth_config=None):
             # --- SYNCHRONIZE SESSIONS FOR API/REQUESTS ---
             req_cookies = {cookie['name']: cookie['value'] for cookie in context.cookies()}
 
-            # --- FAST DEV MODE / RECONNAISSANCE ---
-            print("[*] ⚡ FAST DEV MODE ACTIVATED: Testing New Modules...")
-            endpoints_to_attack = [
-                "http://localhost:8080/",                                 # Triggers the Sensitive File Fuzzer (finds phpinfo.php)
-                "http://localhost:8080/vulnerabilities/sqli/?id=1&Submit=Submit", 
-                "http://localhost:8080/vulnerabilities/xss_s/",
-                "https://tls-v1-0.badssl.com/",                           # Triggers the Weak SSL connection drop
-                "https://juice-shop.herokuapp.com/"            # Tests Blind XSS (Requires DVWA)
-            ]
+            # --- 2. RECONNAISSANCE PHASE (The Spider) ---
+            endpoints_to_attack = run_heavy_spider(target_url, context, max_pages=15)
             
             # --- 3. EXPLOITATION PHASE ---
             for endpoint in endpoints_to_attack:
