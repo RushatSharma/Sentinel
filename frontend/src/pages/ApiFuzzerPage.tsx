@@ -6,6 +6,13 @@ import { Network, Search, AlertTriangle, ShieldCheck, Terminal as TerminalIcon, 
 import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
 
+// --- NEW IMPORTS FOR DIRECT DATABASE SAVING ---
+import { databases } from '../lib/appwrite';
+import { ID } from 'appwrite';
+
+const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID;
+const COLLECTION_ID = import.meta.env.VITE_APPWRITE_COLLECTION_ID;
+
 export default function ApiFuzzerPage() {
   const { user } = useAuth();
   
@@ -71,6 +78,22 @@ export default function ApiFuzzerPage() {
       if (data.vulnerabilities && data.vulnerabilities.length > 0) {
           setTimeout(() => setActiveTab('findings'), 1500); 
       }
+
+      // --- NEW SAVE LOGIC ---
+      if (user?.$id && DATABASE_ID && COLLECTION_ID) {
+          const vulns = data.vulnerabilities?.length || 0;
+          databases.createDocument(DATABASE_ID, COLLECTION_ID, ID.unique(), {
+              user_id: user.$id,
+              target_url: swaggerUrl,
+              scan_mode: "API Fuzzer",
+              risk_score: Math.min(100, vulns * 15),
+              vulnerabilities_found: vulns,
+              report_json: JSON.stringify(data)
+          })
+          .then(() => console.log("[+] API Scan successfully saved to dashboard via frontend."))
+          .catch(e => console.error("Failed to save history:", e));
+      }
+
     } catch (err: any) {
       setError(err.message || 'Connection failed. Ensure backend is running.');
     } finally {

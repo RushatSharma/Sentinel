@@ -6,6 +6,13 @@ import { Radar, Search, Server, Activity, AlertTriangle, ShieldCheck, Terminal a
 import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
 
+// --- NEW IMPORTS FOR DIRECT DATABASE SAVING ---
+import { databases } from '../lib/appwrite';
+import { ID } from 'appwrite';
+
+const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID;
+const COLLECTION_ID = import.meta.env.VITE_APPWRITE_COLLECTION_ID;
+
 export default function ReconPage() {
   const { user } = useAuth();
   
@@ -64,11 +71,31 @@ export default function ReconPage() {
       });
 
       if (!response.ok) throw new Error('Failed to fetch OSINT data.');
+      
       const data = await response.json();
       setResults(data);
+      
       if (data.infrastructure && data.infrastructure.length > 0) {
           setActiveNodeIdx(0); 
       }
+
+      // --- NEW DIRECT FRONTEND SAVE LOGIC ---
+      if (user?.$id && DATABASE_ID && COLLECTION_ID) {
+          try {
+              await databases.createDocument(DATABASE_ID, COLLECTION_ID, ID.unique(), {
+                  user_id: user.$id,
+                  target_url: domain,
+                  scan_mode: "OSINT Recon",
+                  risk_score: 0,
+                  vulnerabilities_found: 0,
+                  report_json: JSON.stringify(data)
+              });
+              console.log("[+] Recon Scan successfully saved to dashboard via frontend.");
+          } catch (e) { 
+              console.error("Failed to save history:", e); 
+          }
+      }
+      
     } catch (err: any) {
       setError(err.message || 'Connection failed. Ensure backend is running.');
     } finally {

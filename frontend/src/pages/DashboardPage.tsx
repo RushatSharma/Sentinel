@@ -8,7 +8,7 @@ import {
     Zap, Network, Search, ChevronRight, FileText, 
     AlertTriangle, Server, ShieldCheck, Filter, 
     ArrowUpDown, ArrowUp, ArrowDown, Terminal, ArrowRight,
-    Download, Trash2, Briefcase, Loader2
+    Download, Trash2, Briefcase, Loader2, Globe, FileSearch
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { account, databases } from '../lib/appwrite';
@@ -16,8 +16,7 @@ import { Query } from 'appwrite';
 
 const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID;
 const COLLECTION_ID = import.meta.env.VITE_APPWRITE_COLLECTION_ID;
-// NOTE: Add your backend URL to your .env file, or hardcode it here for now (e.g., 'http://localhost:5000')
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000';
 
 export default function DashboardPage() {
   const [history, setHistory] = useState<any[]>([]);
@@ -30,7 +29,7 @@ export default function DashboardPage() {
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'date', direction: 'desc' });
   
   const [activeDownloadMenu, setActiveDownloadMenu] = useState<string | null>(null);
-  const [isDownloading, setIsDownloading] = useState<string | null>(null); // Tracks which specific report is generating
+  const [isDownloading, setIsDownloading] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -57,7 +56,9 @@ export default function DashboardPage() {
             
             docs.forEach((doc: any) => {
                 totalRisk += doc.risk_score || 0;
-                if (doc.risk_score > 75) criticalThreats += doc.vulnerabilities_found || 0;
+                // Handle the schema difference: vulns_found vs vulnerabilities_found
+                const vulns = doc.vulns_found ?? doc.vulnerabilities_found ?? 0;
+                if (doc.risk_score > 75) criticalThreats += vulns;
             });
 
             setMetrics({
@@ -88,26 +89,33 @@ export default function DashboardPage() {
     }
   };
 
-  // --- REAL BACKEND PDF DOWNLOAD LOGIC ---
   const handleDownloadReport = async (scan: any, type: 'executive' | 'technical') => {
       const downloadId = `${scan.$id}-${type}`;
-      setIsDownloading(downloadId); // Show loading spinner on the specific button
+      setIsDownloading(downloadId); 
       
       try {
-          // Send request to your Flask/Node backend to generate the PDF
-          // Adjust the endpoint URL ('/api/reports/generate') to match your actual backend route!
-          const response = await fetch(`${API_BASE_URL}/api/reports/generate`, {
+          const rawReportData = typeof scan.report_json === 'string' 
+              ? JSON.parse(scan.report_json) 
+              : (scan.report_json || {});
+
+          // Map the Appwrite engine name to the correct Python PDF template
+          const engine = scan.scan_mode || scan.mode || '';
+          let reportType = type;
+          if (engine === 'OSINT Recon') reportType = 'recon';
+          if (engine === 'SSL Analyzer') reportType = 'ssl';
+          if (engine === 'Quarantine') reportType = 'quarantine';
+
+          const targetUrl = scan.target_url || scan.target || 'Unknown_Target';
+
+          const response = await fetch(`${API_BASE_URL}/api/download-report`, {
               method: 'POST',
               headers: {
                   'Content-Type': 'application/json',
-                  // Add Authorization headers here if your backend requires a JWT or Appwrite session token
               },
               body: JSON.stringify({
-                  scanId: scan.$id,
-                  targetUrl: scan.target_url,
-                  scanMode: scan.scan_mode,
-                  reportType: type,
-                  // Pass any other data your PDF generator needs...
+                  ...rawReportData, 
+                  target: targetUrl, 
+                  report_type: reportType,
               }),
           });
 
@@ -115,29 +123,23 @@ export default function DashboardPage() {
               throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
           }
 
-          // Convert the response to a binary Blob (PDF format)
           const blob = await response.blob();
-          
-          // Create a hidden link and trigger the browser download
           const url = window.URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = `Sentinel_${type}_Report_${scan.target_url.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+          a.download = `Sentinel_${engine.replace(/\s+/g, '_')}_${new Date().getTime()}.pdf`;
           document.body.appendChild(a);
           a.click();
           
-          // Cleanup
           document.body.removeChild(a);
           window.URL.revokeObjectURL(url);
-          
-          // Close the menu only on success
           setActiveDownloadMenu(null);
           
       } catch (error) {
           console.error("PDF Generation Failed:", error);
-          alert(`Failed to generate the ${type} report. Please check if your backend server is running.`);
+          alert(`Failed to generate report. Please check if your backend server is running.`);
       } finally {
-          setIsDownloading(null); // Stop loading spinner
+          setIsDownloading(null);
       }
   };
 
@@ -145,13 +147,14 @@ export default function DashboardPage() {
     let result = [...history];
 
     if (searchTarget.trim() !== '') {
-        result = result.filter(scan => 
-            scan.target_url?.toLowerCase().includes(searchTarget.toLowerCase())
-        );
+        result = result.filter(scan => {
+            const target = scan.target_url || scan.target || '';
+            return target.toLowerCase().includes(searchTarget.toLowerCase());
+        });
     }
 
     if (filterEngine !== 'all') {
-        result = result.filter(scan => scan.scan_mode === filterEngine);
+        result = result.filter(scan => (scan.scan_mode || scan.mode) === filterEngine);
     }
 
     result.sort((a, b) => {
@@ -163,16 +166,16 @@ export default function DashboardPage() {
                 bVal = new Date(b.$createdAt).getTime();
                 break;
             case 'target':
-                aVal = a.target_url?.toLowerCase() || '';
-                bVal = b.target_url?.toLowerCase() || '';
+                aVal = (a.target_url || a.target || '').toLowerCase();
+                bVal = (b.target_url || b.target || '').toLowerCase();
                 break;
             case 'engine':
-                aVal = a.scan_mode?.toLowerCase() || '';
-                bVal = b.scan_mode?.toLowerCase() || '';
+                aVal = (a.scan_mode || a.mode || '').toLowerCase();
+                bVal = (b.scan_mode || b.mode || '').toLowerCase();
                 break;
             case 'findings':
-                aVal = a.vulnerabilities_found || 0;
-                bVal = b.vulnerabilities_found || 0;
+                aVal = a.vulnerabilities_found ?? a.vulns_found ?? 0;
+                bVal = b.vulnerabilities_found ?? b.vulns_found ?? 0;
                 break;
             case 'risk':
                 aVal = a.risk_score || 0;
@@ -198,10 +201,22 @@ export default function DashboardPage() {
   };
 
   const getSortIcon = (key: string) => {
-      if (sortConfig.key !== key) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-50 group-hover:opacity-100 transition-opacity" />;
+      if (sortConfig.key !== key) return <ArrowUpDown className="w-4 h-4 ml-1 opacity-50 group-hover:opacity-100 transition-opacity" />;
       return sortConfig.direction === 'asc' 
-        ? <ArrowUp className="w-3 h-3 ml-1 text-cyan-500" /> 
-        : <ArrowDown className="w-3 h-3 ml-1 text-cyan-500" />;
+        ? <ArrowUp className="w-4 h-4 ml-1 text-cyan-500" /> 
+        : <ArrowDown className="w-4 h-4 ml-1 text-cyan-500" />;
+  };
+
+  const getIconForMode = (mode: string) => {
+    switch(mode) {
+      case 'Deep Scan': return <ShieldAlert className="w-4 h-4 text-purple-500" />;
+      case 'Quick Scan': return <Zap className="w-4 h-4 text-yellow-500" />;
+      case 'OSINT Recon': return <Globe className="w-4 h-4 text-blue-500" />;
+      case 'API Fuzzer': return <Network className="w-4 h-4 text-emerald-500" />;
+      case 'SSL Analyzer': return <Lock className="w-4 h-4 text-cyan-500" />;
+      case 'Quarantine': return <FileSearch className="w-4 h-4 text-orange-500" />;
+      default: return <Activity className="w-4 h-4 text-gray-500" />;
+    }
   };
 
   const tools = [
@@ -212,7 +227,8 @@ export default function DashboardPage() {
     { name: 'API Fuzzer', path: '/api-fuzzer', icon: Network, color: 'emerald', desc: 'Swagger ingestion & BOLA/IDOR exploitation.' },
   ];
 
-  const uniqueEngines = Array.from(new Set(history.map(item => item.scan_mode))).filter(Boolean);
+  // Map to find all unique engine names gracefully
+  const uniqueEngines = Array.from(new Set(history.map(item => item.scan_mode || item.mode))).filter(Boolean);
 
   const getRiskColor = (score: number) => {
       if (score >= 75) return 'text-red-500 bg-red-500/10 border-red-500/20';
@@ -240,27 +256,27 @@ export default function DashboardPage() {
             className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-4 border-b border-border/50 pb-6"
         >
             <div className="flex items-center gap-6">
-                 <div className="hidden sm:flex relative w-20 h-20 bg-card border border-cyan-500/30 items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.15)] group">
+                 <div className="hidden sm:flex relative w-24 h-24 bg-card border border-cyan-500/30 items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.15)] group">
                      <div className="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-cyan-500 transition-all duration-300 group-hover:-translate-x-1 group-hover:-translate-y-1"></div>
                      <div className="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-cyan-500 transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-1"></div>
                      <div className="absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 border-cyan-500 transition-all duration-300 group-hover:-translate-x-1 group-hover:translate-y-1"></div>
                      <div className="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-cyan-500 transition-all duration-300 group-hover:translate-x-1 group-hover:translate-y-1"></div>
-                     <Terminal className="w-8 h-8 text-cyan-400 opacity-80" />
+                     <Terminal className="w-10 h-10 text-cyan-400 opacity-80" />
                  </div>
 
                  <div>
                      <div className="inline-flex items-center gap-2 px-3 py-1 bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 mb-3 shadow-[0_0_10px_rgba(6,182,212,0.2)]">
-                         <Activity className="w-3 h-3 animate-pulse" />
-                         <span className="text-[10px] font-mono font-bold uppercase tracking-widest">Active Session: Secured</span>
+                         <Activity className="w-4 h-4 animate-pulse" />
+                         <span className="text-xs font-mono font-bold uppercase tracking-widest">Active Session: Secured</span>
                      </div>
-                     <h1 className="text-3xl md:text-5xl font-display font-bold text-foreground tracking-tight uppercase">
+                     <h1 className="text-4xl md:text-6xl font-display font-bold text-foreground tracking-tight uppercase">
                         Operator <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-teal-500 drop-shadow-[0_0_15px_rgba(6,182,212,0.4)]">{user?.name?.split(' ')[0] || 'Unknown'}</span>
                      </h1>
-                     <div className="flex items-center gap-3 mt-3">
-                        <span className="font-mono text-[11px] text-muted-foreground bg-muted/50 px-2 py-1 border border-border rounded uppercase">
+                     <div className="flex items-center gap-3 mt-4">
+                        <span className="font-mono text-sm text-muted-foreground bg-muted/50 px-3 py-1.5 border border-border rounded uppercase">
                             ID: <span className="text-foreground">{user?.$id?.substring(0,8) || '0x000000'}</span>
                         </span>
-                        <span className="font-mono text-[11px] text-emerald-500 bg-emerald-500/10 px-2 py-1 border border-emerald-500/20 rounded uppercase font-bold tracking-widest">
+                        <span className="font-mono text-sm text-emerald-500 bg-emerald-500/10 px-3 py-1.5 border border-emerald-500/20 rounded uppercase font-bold tracking-widest">
                             CLEARANCE: ROOT
                         </span>
                      </div>
@@ -268,11 +284,11 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex items-center gap-3">
-                <div className="px-5 py-3 bg-card/80 backdrop-blur-md border border-border/80 rounded-lg shadow-sm flex items-center gap-3">
-                    <Server className="w-5 h-5 text-emerald-500 animate-pulse" />
+                <div className="px-6 py-4 bg-card/80 backdrop-blur-md border border-border/80 rounded-xl shadow-sm flex items-center gap-4">
+                    <Server className="w-6 h-6 text-emerald-500 animate-pulse" />
                     <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Central Intel Engine</span>
-                        <span className="text-xs font-mono text-emerald-500 font-bold">ONLINE & SYNCED</span>
+                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Central Intel Engine</span>
+                        <span className="text-sm font-mono text-emerald-500 font-bold">ONLINE & SYNCED</span>
                     </div>
                 </div>
             </div>
@@ -280,49 +296,49 @@ export default function DashboardPage() {
 
         {/* METRICS ROW */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-card/80 backdrop-blur-md border border-border/80 hover:border-border transition-colors rounded-2xl p-6 shadow-xl relative overflow-hidden group">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-card/80 backdrop-blur-md border border-border/80 hover:border-border transition-colors rounded-2xl p-8 shadow-xl relative overflow-hidden group">
                 <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                <div className="flex justify-between items-start mb-4 relative z-10">
-                    <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20">
-                        <History className="w-6 h-6 text-cyan-500" />
+                <div className="flex justify-between items-start mb-6 relative z-10">
+                    <div className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/20">
+                        <History className="w-8 h-8 text-cyan-500" />
                     </div>
                 </div>
-                <h3 className="text-4xl font-display font-bold text-foreground mb-1 relative z-10">{loading ? '-' : metrics.totalScans}</h3>
-                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider relative z-10">Total Operations</p>
+                <h3 className="text-5xl md:text-6xl font-display font-bold text-foreground mb-2 relative z-10">{loading ? '-' : metrics.totalScans}</h3>
+                <p className="text-base font-medium text-muted-foreground uppercase tracking-wider relative z-10">Total Operations</p>
             </motion.div>
 
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-card/80 backdrop-blur-md border border-border/80 hover:border-border transition-colors rounded-2xl p-6 shadow-xl relative overflow-hidden group">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-card/80 backdrop-blur-md border border-border/80 hover:border-border transition-colors rounded-2xl p-8 shadow-xl relative overflow-hidden group">
                 <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                <div className="flex justify-between items-start mb-4 relative z-10">
-                    <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20">
-                        <ShieldAlert className="w-6 h-6 text-red-500" />
+                <div className="flex justify-between items-start mb-6 relative z-10">
+                    <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20">
+                        <ShieldAlert className="w-8 h-8 text-red-500" />
                     </div>
                 </div>
-                <h3 className="text-4xl font-display font-bold text-foreground mb-1 relative z-10">{loading ? '-' : metrics.criticalThreats}</h3>
-                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider relative z-10">Critical Threats Found</p>
+                <h3 className="text-5xl md:text-6xl font-display font-bold text-foreground mb-2 relative z-10">{loading ? '-' : metrics.criticalThreats}</h3>
+                <p className="text-base font-medium text-muted-foreground uppercase tracking-wider relative z-10">Critical Threats Found</p>
             </motion.div>
 
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-card/80 backdrop-blur-md border border-border/80 hover:border-border transition-colors rounded-2xl p-6 shadow-xl relative overflow-hidden group flex flex-col justify-between">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-card/80 backdrop-blur-md border border-border/80 hover:border-border transition-colors rounded-2xl p-8 shadow-xl relative overflow-hidden group flex flex-col justify-between">
                  <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 <div>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 relative z-10">Average Security Posture</p>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3 relative z-10">Average Security Posture</p>
                     <div className="flex items-end gap-3 relative z-10">
-                        <span className={cn("text-6xl font-display font-bold leading-none", metrics.totalRisk > 50 ? 'text-orange-500' : 'text-emerald-500')}>
+                        <span className={cn("text-7xl md:text-8xl font-display font-bold leading-none", metrics.totalRisk > 50 ? 'text-orange-500' : 'text-emerald-500')}>
                             {loading ? '-' : metrics.totalRisk > 75 ? 'F' : metrics.totalRisk > 50 ? 'C' : metrics.totalRisk > 25 ? 'B' : 'A'}
                         </span>
-                        <span className="text-sm text-muted-foreground mb-1">Global Grade</span>
+                        <span className="text-base text-muted-foreground mb-2">Global Grade</span>
                     </div>
                 </div>
-                <div className="w-full bg-secondary h-1.5 rounded-full mt-4 relative z-10 overflow-hidden">
-                    <div className={cn("h-full", metrics.totalRisk > 50 ? 'bg-orange-500' : 'bg-emerald-500')} style={{ width: `${Math.max(10, 100 - metrics.totalRisk)}%` }} />
+                <div className="w-full bg-secondary h-2.5 rounded-full mt-6 relative z-10 overflow-hidden">
+                    <div className={cn("h-full transition-all duration-1000", metrics.totalRisk > 50 ? 'bg-orange-500' : 'bg-emerald-500')} style={{ width: `${Math.max(10, 100 - metrics.totalRisk)}%` }} />
                 </div>
             </motion.div>
         </div>
 
         {/* QUICK LAUNCH HUB */}
-        <div className="mt-4">
-            <h2 className="text-lg font-bold font-display mb-4 flex items-center gap-2 text-foreground">
-                <Zap className="w-5 h-5 text-cyan-500" /> Quick Launch Hub
+        <div className="mt-6">
+            <h2 className="text-xl md:text-2xl font-bold font-display mb-6 flex items-center gap-3 text-foreground">
+                <Zap className="w-6 h-6 text-cyan-500" /> Quick Launch Hub
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 {tools.map((tool, idx) => (
@@ -332,17 +348,17 @@ export default function DashboardPage() {
                             animate={{ opacity: 1, scale: 1 }} 
                             transition={{ delay: 0.4 + (idx * 0.1) }}
                             className={cn(
-                                "bg-card/80 backdrop-blur-md border border-border/80 rounded-xl p-5 h-full transition-all duration-300 hover:-translate-y-1 shadow-sm",
+                                "bg-card/80 backdrop-blur-md border border-border/80 rounded-xl p-6 h-full transition-all duration-300 hover:-translate-y-1 shadow-sm",
                                 `hover:border-${tool.color}-500/50 hover:shadow-[0_0_20px_rgba(var(--${tool.color}-500),0.1)]`
                             )}
                         >
-                            <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center mb-4 transition-colors", `bg-${tool.color}-500/10 text-${tool.color}-500 group-hover:bg-${tool.color}-500 group-hover:text-white`)}>
-                                <tool.icon className="w-5 h-5" />
+                            <div className={cn("w-12 h-12 rounded-lg flex items-center justify-center mb-5 transition-colors", `bg-${tool.color}-500/10 text-${tool.color}-500 group-hover:bg-${tool.color}-500 group-hover:text-white`)}>
+                                <tool.icon className="w-6 h-6" />
                             </div>
-                            <h3 className="font-bold text-foreground text-sm mb-2 group-hover:text-cyan-400 transition-colors flex items-center justify-between">
-                                {tool.name} <ArrowRight className="w-3 h-3 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                            <h3 className="font-bold text-foreground text-base mb-3 group-hover:text-cyan-400 transition-colors flex items-center justify-between">
+                                {tool.name} <ArrowRight className="w-4 h-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
                             </h3>
-                            <p className="text-xs text-muted-foreground leading-relaxed font-mono">{tool.desc}</p>
+                            <p className="text-sm text-muted-foreground leading-relaxed font-mono">{tool.desc}</p>
                         </motion.div>
                     </Link>
                 ))}
@@ -350,34 +366,34 @@ export default function DashboardPage() {
         </div>
 
         {/* FIXED HEIGHT ACTIVITY STREAM WITH STICKY HEADER */}
-        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="mt-4 bg-card/80 sm:backdrop-blur-md border border-border/80 rounded-2xl shadow-xl overflow-hidden flex flex-col h-[550px]">
+        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="mt-8 bg-card/80 sm:backdrop-blur-md border border-border/80 rounded-2xl shadow-xl overflow-hidden flex flex-col h-[600px]">
             
-            <div className="bg-muted/30 px-6 py-4 border-b border-border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0">
-                <span className="text-sm font-bold flex items-center gap-2 uppercase tracking-tighter text-foreground">
-                    <FileText className="w-4 h-4 text-cyan-500" /> Operation History
+            <div className="bg-muted/30 px-6 py-5 border-b border-border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-5 shrink-0">
+                <span className="text-lg font-bold flex items-center gap-3 uppercase tracking-tighter text-foreground">
+                    <FileText className="w-5 h-5 text-cyan-500" /> Operation History
                 </span>
                 
-                <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-                    <div className="relative w-full sm:w-64">
-                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+                    <div className="relative w-full sm:w-72">
+                        <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                         <input 
                             type="text" 
                             placeholder="Search targets..." 
-                            className="w-full bg-background border border-border rounded-lg pl-9 pr-4 py-1.5 text-sm focus:outline-none focus:border-cyan-500/50 transition-colors font-mono"
+                            className="w-full bg-background border border-border rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-cyan-500/50 transition-colors font-mono"
                             value={searchTarget}
                             onChange={(e) => setSearchTarget(e.target.value)}
                         />
                     </div>
                     <div className="relative w-full sm:w-auto">
-                        <Filter className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                        <Filter className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                         <select 
-                            className="w-full sm:w-auto appearance-none bg-background border border-border rounded-lg pl-9 pr-8 py-1.5 text-sm focus:outline-none focus:border-cyan-500/50 transition-colors font-mono cursor-pointer"
+                            className="w-full sm:w-auto appearance-none bg-background border border-border rounded-lg pl-10 pr-10 py-2 text-sm focus:outline-none focus:border-cyan-500/50 transition-colors font-mono cursor-pointer"
                             value={filterEngine}
                             onChange={(e) => setFilterEngine(e.target.value)}
                         >
                             <option value="all">All Engines</option>
                             {uniqueEngines.map(engine => (
-                                <option key={engine} value={engine}>{engine}</option>
+                                <option key={engine as string} value={engine as string}>{engine as string}</option>
                             ))}
                         </select>
                         <ChevronRight className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none rotate-90" />
@@ -387,52 +403,52 @@ export default function DashboardPage() {
             
             {/* Scrollable Container */}
             <div className="flex-1 overflow-auto custom-scrollbar relative pb-16">
-                <table className="w-full text-left border-collapse min-w-[800px]">
+                <table className="w-full text-left border-collapse min-w-[900px]">
                     <thead className="sticky top-0 z-20 bg-muted/95 backdrop-blur-md shadow-sm border-b border-border">
-                        <tr className="text-muted-foreground text-[10px] uppercase tracking-widest select-none font-mono">
-                            <th className="px-6 py-4">
+                        <tr className="text-muted-foreground text-sm uppercase tracking-widest select-none font-mono">
+                            <th className="px-6 py-5">
                                 <button onClick={() => handleSort('date')} className="flex items-center font-bold hover:text-cyan-400 transition-colors group">
                                     Date & Time {getSortIcon('date')}
                                 </button>
                             </th>
-                            <th className="px-6 py-4">
+                            <th className="px-6 py-5">
                                 <button onClick={() => handleSort('target')} className="flex items-center font-bold hover:text-cyan-400 transition-colors group">
                                     Target {getSortIcon('target')}
                                 </button>
                             </th>
-                            <th className="px-6 py-4">
+                            <th className="px-6 py-5">
                                 <button onClick={() => handleSort('engine')} className="flex items-center font-bold hover:text-cyan-400 transition-colors group">
                                     Engine Type {getSortIcon('engine')}
                                 </button>
                             </th>
-                            <th className="px-6 py-4">
+                            <th className="px-6 py-5">
                                 <button onClick={() => handleSort('findings')} className="flex items-center font-bold hover:text-cyan-400 transition-colors group">
                                     Findings {getSortIcon('findings')}
                                 </button>
                             </th>
-                            <th className="px-6 py-4">
+                            <th className="px-6 py-5">
                                 <button onClick={() => handleSort('risk')} className="flex items-center font-bold hover:text-cyan-400 transition-colors group">
                                     Risk Level {getSortIcon('risk')}
                                 </button>
                             </th>
-                            <th className="px-6 py-4 text-right font-bold cursor-default">Actions</th>
+                            <th className="px-6 py-5 text-right font-bold cursor-default">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="text-sm divide-y divide-border">
                         {loading ? (
                             <tr>
-                                <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground animate-pulse font-mono">
+                                <td colSpan={6} className="px-6 py-16 text-center text-muted-foreground animate-pulse font-mono text-base">
                                     Fetching telemetry data...
                                 </td>
                             </tr>
                         ) : processedHistory.length === 0 ? (
                             <tr>
-                                <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
-                                    <div className="flex flex-col items-center justify-center gap-3">
-                                        <History className="w-10 h-10 opacity-20" />
-                                        <p className="font-mono text-xs">No operations match your filters.</p>
+                                <td colSpan={6} className="px-6 py-16 text-center text-muted-foreground">
+                                    <div className="flex flex-col items-center justify-center gap-4">
+                                        <History className="w-12 h-12 opacity-20" />
+                                        <p className="font-mono text-sm">No operations match your filters.</p>
                                         {(searchTarget || filterEngine !== 'all') && (
-                                            <Button variant="outline" size="sm" onClick={() => { setSearchTarget(''); setFilterEngine('all'); }} className="mt-2 text-xs border-cyan-500/30 text-cyan-500 hover:bg-cyan-500/10">
+                                            <Button variant="outline" onClick={() => { setSearchTarget(''); setFilterEngine('all'); }} className="mt-2 border-cyan-500/30 text-cyan-500 hover:bg-cyan-500/10">
                                                 CLEAR FILTERS
                                             </Button>
                                         )}
@@ -440,40 +456,46 @@ export default function DashboardPage() {
                                 </td>
                             </tr>
                         ) : (
-                            processedHistory.map((scan, idx) => (
+                            processedHistory.map((scan, idx) => {
+                                const vulns = scan.vulnerabilities_found ?? scan.vulns_found ?? 0;
+                                const engineType = scan.scan_mode || scan.mode || 'Unknown';
+                                const targetUrl = scan.target_url || scan.target || 'Unknown';
+
+                                return (
                                 <tr key={scan.$id || idx} className="hover:bg-muted/30 transition-colors group">
-                                    <td className="px-6 py-4 font-mono text-xs text-muted-foreground whitespace-nowrap">
-                                        {new Date(scan.$createdAt).toLocaleDateString()} <span className="opacity-50 ml-1">{new Date(scan.$createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                    <td className="px-6 py-5 font-mono text-sm text-muted-foreground whitespace-nowrap">
+                                        {new Date(scan.$createdAt).toLocaleDateString()} <span className="opacity-50 ml-2">{new Date(scan.$createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                                     </td>
                                     
-                                    <td className="px-6 py-4 font-mono text-foreground font-medium break-all whitespace-normal min-w-[200px]">
-                                        {scan.target_url}
+                                    <td className="px-6 py-5 font-mono text-base text-foreground font-medium break-all whitespace-normal min-w-[250px]">
+                                        {targetUrl}
                                     </td>
 
-                                    <td className="px-6 py-4">
-                                        <span className="px-2.5 py-1 rounded bg-secondary border border-border text-[10px] font-bold uppercase tracking-wider whitespace-nowrap font-mono">
-                                            {scan.scan_mode}
+                                    <td className="px-6 py-5">
+                                        <span className="flex items-center gap-2 px-3 py-1.5 rounded bg-secondary border border-border text-xs font-bold uppercase tracking-wider whitespace-nowrap font-mono w-max">
+                                            {getIconForMode(engineType)}
+                                            {engineType}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4">
-                                        {scan.vulnerabilities_found > 0 ? (
-                                            <span className="flex items-center gap-1.5 text-red-500 font-bold text-xs whitespace-nowrap">
-                                                <AlertTriangle className="w-3.5 h-3.5" /> {scan.vulnerabilities_found} Threats
+                                    <td className="px-6 py-5">
+                                        {vulns > 0 ? (
+                                            <span className="flex items-center gap-2 text-red-500 font-bold text-sm whitespace-nowrap">
+                                                <AlertTriangle className="w-4 h-4" /> {vulns} Threats
                                             </span>
                                         ) : (
-                                            <span className="flex items-center gap-1.5 text-emerald-500 font-bold text-xs whitespace-nowrap">
-                                                <ShieldCheck className="w-3.5 h-3.5" /> Clean
+                                            <span className="flex items-center gap-2 text-emerald-500 font-bold text-sm whitespace-nowrap">
+                                                <ShieldCheck className="w-4 h-4" /> Clean
                                             </span>
                                         )}
                                     </td>
-                                    <td className="px-6 py-4">
-                                        <span className={cn("px-2.5 py-1 rounded border text-[10px] font-bold uppercase tracking-wider whitespace-nowrap font-mono", getRiskColor(scan.risk_score))}>
+                                    <td className="px-6 py-5">
+                                        <span className={cn("px-3 py-1.5 rounded border text-xs font-bold uppercase tracking-wider whitespace-nowrap font-mono w-max flex items-center justify-center", getRiskColor(scan.risk_score))}>
                                             Risk: {scan.risk_score}
                                         </span>
                                     </td>
                                     
-                                    <td className="px-6 py-4 text-right">
-                                        <div className="flex items-center justify-end gap-1 sm:gap-2">
+                                    <td className="px-6 py-5 text-right">
+                                        <div className="flex items-center justify-end gap-2 sm:gap-3">
                                             
                                             {/* PDF DOWNLOAD BUTTON & MENU */}
                                             <div className="relative">
@@ -481,10 +503,10 @@ export default function DashboardPage() {
                                                     variant="ghost" 
                                                     size="icon" 
                                                     onClick={() => setActiveDownloadMenu(activeDownloadMenu === scan.$id ? null : scan.$id)} 
-                                                    className={cn("h-8 w-8 text-muted-foreground hover:text-cyan-400 hover:bg-cyan-500/10", activeDownloadMenu === scan.$id && "bg-cyan-500/10 text-cyan-400")}
+                                                    className={cn("h-10 w-10 text-muted-foreground hover:text-cyan-400 hover:bg-cyan-500/10", activeDownloadMenu === scan.$id && "bg-cyan-500/10 text-cyan-400")}
                                                     title="Download Reports"
                                                 >
-                                                    <Download className="w-4 h-4" />
+                                                    <Download className="w-5 h-5" />
                                                 </Button>
 
                                                 {/* The Popover Menu */}
@@ -498,33 +520,50 @@ export default function DashboardPage() {
                                                             }} 
                                                         />
                                                         
-                                                        <div className="absolute right-0 top-full mt-2 w-48 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95">
-                                                            <div className="px-3 py-2 border-b border-border/50 bg-muted/30 text-left">
-                                                                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground font-mono">Select Format</span>
+                                                        <div className="absolute right-0 top-full mt-2 w-56 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95">
+                                                            <div className="px-4 py-3 border-b border-border/50 bg-muted/30 text-left">
+                                                                <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground font-mono">Select Format</span>
                                                             </div>
-                                                            <div className="p-1 flex flex-col relative z-50">
-                                                                <button 
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        handleDownloadReport(scan, 'executive');
-                                                                    }}
-                                                                    disabled={isDownloading === `${scan.$id}-executive`}
-                                                                    className="flex items-center gap-2 px-3 py-2.5 text-xs font-medium hover:bg-cyan-500/10 hover:text-cyan-400 rounded-lg transition-colors text-left text-foreground font-mono disabled:opacity-50 disabled:cursor-not-allowed"
-                                                                >
-                                                                    {isDownloading === `${scan.$id}-executive` ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Briefcase className="w-3.5 h-3.5" />} 
-                                                                    {isDownloading === `${scan.$id}-executive` ? 'Generating...' : 'Executive Summary'}
-                                                                </button>
-                                                                <button 
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        handleDownloadReport(scan, 'technical');
-                                                                    }}
-                                                                    disabled={isDownloading === `${scan.$id}-technical`}
-                                                                    className="flex items-center gap-2 px-3 py-2.5 text-xs font-medium hover:bg-cyan-500/10 hover:text-cyan-400 rounded-lg transition-colors text-left text-foreground font-mono disabled:opacity-50 disabled:cursor-not-allowed"
-                                                                >
-                                                                    {isDownloading === `${scan.$id}-technical` ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Terminal className="w-3.5 h-3.5" />} 
-                                                                     {isDownloading === `${scan.$id}-technical` ? 'Generating...' : 'Technical Details'}
-                                                                </button>
+                                                            <div className="p-2 flex flex-col relative z-50 gap-1">
+                                                                {/* Recon, SSL, and Quarantine only have ONE valid report type. We only show "Executive" and "Technical" if it's a Deep or Quick scan. */}
+                                                                {['OSINT Recon', 'SSL Analyzer', 'Quarantine'].includes(engineType) ? (
+                                                                     <button 
+                                                                     onClick={(e) => {
+                                                                         e.stopPropagation();
+                                                                         handleDownloadReport(scan, 'technical');
+                                                                     }}
+                                                                     disabled={isDownloading === `${scan.$id}-technical`}
+                                                                     className="flex items-center gap-3 px-4 py-3 text-sm font-medium hover:bg-cyan-500/10 hover:text-cyan-400 rounded-lg transition-colors text-left text-foreground font-mono disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                 >
+                                                                     {isDownloading === `${scan.$id}-technical` ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} 
+                                                                     {isDownloading === `${scan.$id}-technical` ? 'Generating...' : 'Export Audit Report'}
+                                                                 </button>
+                                                                ) : (
+                                                                    <>
+                                                                    <button 
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleDownloadReport(scan, 'executive');
+                                                                        }}
+                                                                        disabled={isDownloading === `${scan.$id}-executive`}
+                                                                        className="flex items-center gap-3 px-4 py-3 text-sm font-medium hover:bg-cyan-500/10 hover:text-cyan-400 rounded-lg transition-colors text-left text-foreground font-mono disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                    >
+                                                                        {isDownloading === `${scan.$id}-executive` ? <Loader2 className="w-4 h-4 animate-spin" /> : <Briefcase className="w-4 h-4" />} 
+                                                                        {isDownloading === `${scan.$id}-executive` ? 'Generating...' : 'Executive Summary'}
+                                                                    </button>
+                                                                    <button 
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleDownloadReport(scan, 'technical');
+                                                                        }}
+                                                                        disabled={isDownloading === `${scan.$id}-technical`}
+                                                                        className="flex items-center gap-3 px-4 py-3 text-sm font-medium hover:bg-cyan-500/10 hover:text-cyan-400 rounded-lg transition-colors text-left text-foreground font-mono disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                    >
+                                                                        {isDownloading === `${scan.$id}-technical` ? <Loader2 className="w-4 h-4 animate-spin" /> : <Terminal className="w-4 h-4" />} 
+                                                                        {isDownloading === `${scan.$id}-technical` ? 'Generating...' : 'Technical Details'}
+                                                                    </button>
+                                                                    </>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </>
@@ -536,16 +575,16 @@ export default function DashboardPage() {
                                                 variant="ghost" 
                                                 size="icon" 
                                                 onClick={() => handleDeleteScan(scan.$id)} 
-                                                className="h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-500/10" 
+                                                className="h-10 w-10 text-muted-foreground hover:text-red-500 hover:bg-red-500/10" 
                                                 title="Delete Scan Record"
                                             >
-                                                <Trash2 className="w-4 h-4" />
+                                                <Trash2 className="w-5 h-5" />
                                             </Button>
                                             
                                         </div>
                                     </td>
                                 </tr>
-                            ))
+                            )})
                         )}
                     </tbody>
                 </table>

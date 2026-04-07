@@ -6,6 +6,13 @@ import { ShieldAlert, ShieldCheck, Terminal as TerminalIcon, Download, Search, F
 import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
 
+// --- NEW IMPORTS FOR DIRECT DATABASE SAVING ---
+import { databases } from '../lib/appwrite';
+import { ID } from 'appwrite';
+
+const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID;
+const COLLECTION_ID = import.meta.env.VITE_APPWRITE_COLLECTION_ID;
+
 export default function QuarantinePage() {
   const { user } = useAuth();
 
@@ -64,7 +71,25 @@ export default function QuarantinePage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Containment analysis failed.');
       
-      setTimeout(() => setResults(data), 1500);
+      setTimeout(() => {
+          setResults(data);
+
+          // --- NEW SAVE LOGIC ---
+          if (user?.$id && DATABASE_ID && COLLECTION_ID) {
+              const isMalicious = data.malicious_count > 0;
+              databases.createDocument(DATABASE_ID, COLLECTION_ID, ID.unique(), {
+                  user_id: user.$id,
+                  target_url: artifact,
+                  scan_mode: "Quarantine",
+                  risk_score: isMalicious ? 100 : 0,
+                  vulnerabilities_found: isMalicious ? 1 : 0,
+                  report_json: JSON.stringify(data)
+              })
+              .then(() => console.log("[+] Quarantine Scan successfully saved to dashboard via frontend."))
+              .catch(e => console.error("Failed to save history:", e));
+          }
+      }, 1500);
+      
     } catch (err: any) {
       setError(err.message || 'Connection failed. Ensure backend is running.');
       setIsScanning(false);

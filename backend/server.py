@@ -7,7 +7,6 @@ import math
 
 # --- LOGIC IMPORTS ---
 import scanner_logic 
-# Consolidated imports from port_scanner
 from port_scanner import scan_ports, run_infrastructure_scan
 from reporter import generate_report
 from deep_scanner import run_deep_scan
@@ -23,9 +22,6 @@ CORS(app)
 
 # --- HELPER: Risk Calculation ---
 def calculate_dynamic_risk(vuln_type, severity):
-    """
-    Calculates CVSS-based risk scores and estimated financial impact.
-    """
     cvss_map = {
         "SQL Injection (SQLi)": 9.8,
         "Reflected Cross-Site Scripting (XSS)": 6.1,
@@ -54,9 +50,6 @@ def calculate_dynamic_risk(vuln_type, severity):
 
 # --- HELPER: Unified Vulnerability Builder ---
 def build_vuln_entry(kb_key, target_url, custom_details=None):
-    """
-    Merges static KB data with dynamic scan findings.
-    """
     kb_data = VULN_DB.get(kb_key, {})
     title = kb_data.get("title", kb_key)
     severity = kb_data.get("severity", "Low")
@@ -91,21 +84,29 @@ def scan_page_content(url):
 
 
 # --- API ROUTES ---
-# ✅ PASTE THIS OVER YOUR OLD /api/scan ROUTE
+
 @app.route('/api/scan', methods=['POST'])
 def run_quick_scan_api():
     data = request.json
     target_url = data.get('url')
+    user_id = data.get('user_id')
     
     if not target_url:
         return jsonify({"error": "No target URL provided."}), 400
         
     try:
         print(f"[*] API received Quick Scan request for: {target_url}")
-        
-        # Pass the URL directly into the new Quick Scan Orchestrator
         report = scanner_logic.run_quick_scan(target_url)
         
+        # Save to database
+        if user_id:
+            try:
+                vulns = len(report.get("vulnerabilities", []))
+                high_sev = sum(1 for v in report.get("vulnerabilities", []) if v.get("severity") in ["High", "Critical"])
+                risk_score = min(100, high_sev * 25 + vulns * 5)
+                save_scan_result(user_id, target_url, "Quick Scan", risk_score, vulns, report)
+            except Exception as e: print(f"[!] DB Sync Error (Quick Scan): {e}")
+            
         return jsonify(report)
     except Exception as e:
         print(f"[!] Server Error during Quick Scan: {e}")
@@ -123,6 +124,16 @@ def handle_deep_scan():
 
     try:
         report = run_deep_scan(target_url, user_id=user_id, auth_config=auth_config) 
+        
+        # Save to database
+        if user_id:
+            try:
+                vulns = len(report.get("vulnerabilities", []))
+                high_sev = sum(1 for v in report.get("vulnerabilities", []) if v.get("severity") in ["High", "Critical"])
+                risk_score = min(100, high_sev * 25 + vulns * 5)
+                save_scan_result(user_id, target_url, "Deep Scan", risk_score, vulns, report)
+            except Exception as e: print(f"[!] DB Sync Error (Deep Scan): {e}")
+
         return jsonify(report)
     except Exception as e:
         return jsonify({"error": "Deep scan engine failed"}), 500
@@ -157,7 +168,7 @@ def handle_recon():
                     user_id=user_id, target_url=domain, mode="OSINT Recon",
                     risk_score=0, vulns_found=0, report_json=report
                 )
-            except Exception as e: print(f"[!] History Sync Error (Recon): {e}")
+            except Exception as e: print(f"[!] DB Sync Error (Recon): {e}")
 
         return jsonify(report)
     except Exception as e:
@@ -184,7 +195,7 @@ def handle_api_fuzz():
                     user_id=user_id, target_url=swagger_url, mode="API Fuzzer",
                     risk_score=risk_score, vulns_found=vulns, report_json=report
                 )
-            except Exception as e: print(f"[!] History Sync Error (Fuzzer): {e}")
+            except Exception as e: print(f"[!] DB Sync Error (Fuzzer): {e}")
 
         return jsonify(report)
     except Exception as e:
@@ -194,7 +205,7 @@ def handle_api_fuzz():
 def port_scan_api():
     data = request.json
     target = data.get('target')
-    
+    user_id = data.get('user_id')
     is_aggressive = data.get('aggressive', False) 
     
     if not target: return jsonify({"error": "Target is required"}), 400
@@ -202,6 +213,18 @@ def port_scan_api():
     try:
         results = run_infrastructure_scan(target, aggressive=is_aggressive) 
         if "error" in results: return jsonify(results), 400
+        
+        # Save to database
+        if user_id:
+            try:
+                open_ports = len(results.get("open_ports", []))
+                risk_score = min(100, open_ports * 10)
+                save_scan_result(
+                    user_id=user_id, target_url=target, mode="Port Scan",
+                    risk_score=risk_score, vulns_found=open_ports, report_json=results
+                )
+            except Exception as e: print(f"[!] DB Sync Error (Port Scan): {e}")
+
         return jsonify(results)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -230,7 +253,7 @@ def handle_quarantine():
                     user_id=user_id, target_url=artifact, mode="Quarantine",
                     risk_score=risk, vulns_found=1 if is_malicious else 0, report_json=report
                 )
-            except Exception as e: print(f"[!] History Sync Error (Quarantine): {e}")
+            except Exception as e: print(f"[!] DB Sync Error (Quarantine): {e}")
 
         return jsonify(report)
     except Exception as e:
@@ -267,7 +290,7 @@ def handle_ssl_scan():
                     user_id=user_id, target_url=target, mode="SSL Analyzer",
                     risk_score=risk_score, vulns_found=vulns, report_json=report
                 )
-            except Exception as e: print(f"[!] History Sync Error (SSL): {e}")
+            except Exception as e: print(f"[!] DB Sync Error (SSL): {e}")
 
         return jsonify(report)
     except Exception as e:
