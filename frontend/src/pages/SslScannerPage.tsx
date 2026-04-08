@@ -6,13 +6,6 @@ import { Lock, Search, ShieldCheck, ShieldAlert, Terminal as TerminalIcon, Calen
 import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
 
-// --- NEW IMPORTS FOR DIRECT DATABASE SAVING ---
-import { databases } from '../lib/appwrite';
-import { ID } from 'appwrite';
-
-const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID;
-const COLLECTION_ID = import.meta.env.VITE_APPWRITE_COLLECTION_ID;
-
 export default function SslScannerPage() {
   const { user } = useAuth();
 
@@ -58,7 +51,7 @@ export default function SslScannerPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
             target: target,
-            user_id: user?.$id 
+            user_id: user?.$id // This is all you need for the backend to save the scan
         }),
       });
 
@@ -67,24 +60,6 @@ export default function SslScannerPage() {
       
       setTimeout(() => {
           setResults(data);
-          
-          // --- NEW DIRECT FRONTEND SAVE LOGIC ---
-          if (user?.$id && DATABASE_ID && COLLECTION_ID) {
-              const grade = data.grade || "F";
-              const riskMap: any = {"A": 0, "B": 25, "C": 50, "F": 100};
-              const vulns = data.vulnerabilities?.length || 0;
-              
-              databases.createDocument(DATABASE_ID, COLLECTION_ID, ID.unique(), {
-                  user_id: user.$id,
-                  target_url: target,
-                  scan_mode: "SSL Analyzer",
-                  risk_score: riskMap[grade] || 50,
-                  vulnerabilities_found: vulns,
-                  report_json: JSON.stringify(data)
-              })
-              .then(() => console.log("[+] SSL Scan successfully saved to dashboard via frontend."))
-              .catch(e => console.error("Failed to save history:", e));
-          }
       }, 1000);
 
     } catch (err: any) {

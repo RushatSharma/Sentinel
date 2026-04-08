@@ -6,13 +6,6 @@ import { Network, Search, AlertTriangle, ShieldCheck, Terminal as TerminalIcon, 
 import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
 
-// --- NEW IMPORTS FOR DIRECT DATABASE SAVING ---
-import { databases } from '../lib/appwrite';
-import { ID } from 'appwrite';
-
-const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID;
-const COLLECTION_ID = import.meta.env.VITE_APPWRITE_COLLECTION_ID;
-
 export default function ApiFuzzerPage() {
   const { user } = useAuth();
   
@@ -67,7 +60,7 @@ export default function ApiFuzzerPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
             swagger_url: swaggerUrl,
-            user_id: user?.$id
+            user_id: user?.$id // We keep the user_id here so the Python backend handles the save
         }),
       });
 
@@ -77,21 +70,6 @@ export default function ApiFuzzerPage() {
       setResults(data);
       if (data.vulnerabilities && data.vulnerabilities.length > 0) {
           setTimeout(() => setActiveTab('findings'), 1500); 
-      }
-
-      // --- NEW SAVE LOGIC ---
-      if (user?.$id && DATABASE_ID && COLLECTION_ID) {
-          const vulns = data.vulnerabilities?.length || 0;
-          databases.createDocument(DATABASE_ID, COLLECTION_ID, ID.unique(), {
-              user_id: user.$id,
-              target_url: swaggerUrl,
-              scan_mode: "API Fuzzer",
-              risk_score: Math.min(100, vulns * 15),
-              vulnerabilities_found: vulns,
-              report_json: JSON.stringify(data)
-          })
-          .then(() => console.log("[+] API Scan successfully saved to dashboard via frontend."))
-          .catch(e => console.error("Failed to save history:", e));
       }
 
     } catch (err: any) {
@@ -415,7 +393,7 @@ export default function ApiFuzzerPage() {
                                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1 }} className="bg-card border border-emerald-500/30 rounded-xl p-10 flex flex-col items-center justify-center text-center shadow-sm">
                                         <ShieldCheck className="w-16 h-16 text-emerald-600 dark:text-emerald-400 mb-4" />
                                         <h3 className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mb-2">Zero Anomalies Detected</h3>
-                                        <p className="text-muted-foreground text-sm">The targeted API schema withstood all fuzzing payloads without exposing unauthorized data.</p>
+                                        <p className="text-muted-foreground text-sm">The targeted API schema withstands all fuzzing payloads without exposing unauthorized data.</p>
                                     </motion.div>
                                 ) : (
                                     results.vulnerabilities.map((vuln: any, idx: number) => (

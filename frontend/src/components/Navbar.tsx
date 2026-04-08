@@ -2,54 +2,31 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { 
-  Menu, 
-  X, 
-  Sun, 
-  Moon, 
-  LogIn, 
-  User, 
-  LogOut, 
-  ShieldCheck, 
-  ScanSearch, 
-  Info, 
-  Lock,
-  Home,
-  Server,
-  ShieldBan,
-  LayoutDashboard // Added LayoutDashboard icon
+  Menu, X, Sun, Moon, LogIn, User, LogOut, ShieldCheck, 
+  ScanSearch, Lock, Home, ShieldBan
 } from 'lucide-react'; 
 import { cn } from '@/lib/utils';
-// --- APPWRITE IMPORT ---
-import { account } from '@/lib/appwrite';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+// --- NEW IMPORT FOR CENTRALIZED AUTH ---
+import { useAuth } from '@/context/AuthContext';
 
 export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [user, setUser] = useState<any>(null);
   const navigate = useNavigate();
   const location = useLocation(); 
   const profileRef = useRef<HTMLDivElement>(null);
+  
+  // --- CONSUME GLOBAL CONTEXT ---
+  const { user, logout } = useAuth();
   
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const savedTheme = localStorage.getItem('theme');
     return savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches);
   });
 
-  // --- AUTH LOGIC ---
   useEffect(() => {
-    // Check initial session
-    const checkSession = async () => {
-      try {
-        const session = await account.get();
-        setUser(session);
-      } catch (error) {
-        setUser(null);
-      }
-    };
-
-    checkSession();
-
     // Close dropdown when clicking outside
     const handleClickOutside = (event: MouseEvent) => {
       if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
@@ -64,15 +41,9 @@ export function Navbar() {
   }, []);
 
   const handleLogout = async () => {
-    try {
-      // Appwrite logout
-      await account.deleteSession('current');
-      setUser(null);
-      setIsProfileOpen(false);
-      navigate('/auth');
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
+    await logout(); // Calls the global logout inside AuthContext
+    setIsProfileOpen(false);
+    navigate('/auth');
   };
 
   // --- THEME LOGIC ---
@@ -88,7 +59,7 @@ export function Navbar() {
 
   const toggleTheme = () => setIsDarkMode(prev => !prev);
 
-  // UPDATED NAVIGATION LINKS
+  // NAVIGATION LINKS
   const navLinks = [
     ...(location.pathname !== '/' ? [{ 
       name: 'Home', 
@@ -106,13 +77,11 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-md transition-all duration-300">
       
-      {/* Static "Bridge" Gradient */}
       <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-sentinel-red via-transparent to-sentinel-blue opacity-100 z-50" />
 
       <div className="container mx-auto px-4 md:px-6">
         <div className="relative flex items-center justify-between h-16 lg:h-20">
 
-          {/* --- LOGO SECTION --- */}
           <div className="flex-1 flex justify-start">
             <Link to="/" className="flex items-center gap-3 group">
               <span className="text-2xl font-bold font-display tracking-tight text-foreground">
@@ -121,7 +90,6 @@ export function Navbar() {
             </Link>
           </div>
 
-          {/* --- DESKTOP NAVIGATION --- */}
           <nav className="hidden lg:flex absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 items-center space-x-6">
             {navLinks.map((item) => (
               <Link
@@ -137,7 +105,6 @@ export function Navbar() {
             ))}
           </nav>
 
-          {/* --- DESKTOP RIGHT ACTIONS --- */}
           <div className="hidden lg:flex flex-1 justify-end items-center space-x-4">
             <button
               onClick={toggleTheme}
@@ -149,7 +116,6 @@ export function Navbar() {
 
             {user ? (
                <div className="relative" ref={profileRef}>
-                 {/* PROFILE TRIGGER BUTTON */}
                  <button 
                    onClick={() => setIsProfileOpen(!isProfileOpen)}
                    className="flex items-center gap-2 p-1 pr-3 rounded-full border border-white/10 bg-secondary/30 hover:bg-secondary/50 transition-colors"
@@ -163,7 +129,6 @@ export function Navbar() {
                     </span>
                  </button>
 
-                 {/* --- PROFILE DROPDOWN CARD --- */}
                  {isProfileOpen && (
                     <div className="absolute right-0 mt-2 w-56 rounded-xl border border-white/10 bg-background/95 backdrop-blur-xl shadow-2xl animate-in fade-in zoom-in-95 z-50 overflow-hidden">
                         <div className="p-3 border-b border-white/10">
@@ -201,7 +166,6 @@ export function Navbar() {
             )}
           </div>
 
-          {/* --- MOBILE MENU TOGGLE --- */}
           <div className="lg:hidden">
             <button
               className="p-2 rounded-md text-foreground hover:bg-secondary/50"
@@ -212,7 +176,6 @@ export function Navbar() {
           </div>
         </div>
 
-        {/* --- MOBILE MENU PANEL --- */}
         {isMenuOpen && (
           <div className="absolute left-0 w-full lg:hidden bg-background/95 backdrop-blur-xl border-b border-white/10 shadow-2xl animate-in slide-in-from-top-5">
             <nav className="flex flex-col p-4 space-y-2">
