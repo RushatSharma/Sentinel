@@ -1,9 +1,10 @@
 import os
 import requests
 import base64
+from dotenv import load_dotenv
 
-# Best practice: Load your API key from your .env file
-VT_API_KEY = os.environ.get("VIRUSTOTAL_API_KEY", "")
+# Explicitly load .env so we guarantee the API key is found
+load_dotenv()
 
 def get_threat_explanation(engine_results):
     """Generates a simple, human-readable explanation of the threat based on engine signatures."""
@@ -51,7 +52,7 @@ def generate_mock_data(artifact, scan_type):
         "status": "Mock Analysis Complete",
         "message": "Add VIRUSTOTAL_API_KEY to your .env to get real intelligence.",
         "engine_results": engines,
-        "threat_explanation": get_threat_explanation(engines) # Added explanation
+        "threat_explanation": get_threat_explanation(engines) 
     }
 
 def encode_url_identifier(url):
@@ -59,10 +60,18 @@ def encode_url_identifier(url):
     return url_id
 
 def analyze_artifact(artifact, scan_type):
+    # Dynamically fetch and strip() to remove any hidden spaces from the .env file
+    VT_API_KEY = os.environ.get("VIRUSTOTAL_API_KEY", "").strip()
+
     if not VT_API_KEY:
         return generate_mock_data(artifact, scan_type)
 
-    headers = {"x-apikey": VT_API_KEY}
+    # ADDED: Standard headers to bypass WAF blocks and properly request JSON
+    headers = {
+        "x-apikey": VT_API_KEY,
+        "accept": "application/json",
+        "User-Agent": "Sentinel-Security-Engine/1.0"
+    }
 
     if scan_type == "hash":
         url = f"https://www.virustotal.com/api/v3/files/{artifact}"
@@ -86,11 +95,18 @@ def analyze_artifact(artifact, scan_type):
                 "status": "Clean",
                 "message": "Artifact not found in VT database (likely clean or never seen).",
                 "engine_results": [],
-                "threat_explanation": get_threat_explanation([]) # Safe explanation
+                "threat_explanation": get_threat_explanation([]) 
             }
             
         if response.status_code != 200:
-            return {"error": f"VirusTotal API Error: {response.status_code} - {response.text}"}
+            # Better error parsing so we know exactly why it failed
+            error_msg = f"VirusTotal API Error: {response.status_code}"
+            try:
+                error_json = response.json()
+                error_msg += f" - {error_json.get('error', {}).get('message', '')}"
+            except:
+                error_msg += " - (HTML Response Received. Ensure API key is valid.)"
+            return {"error": error_msg}
 
         data = response.json()
         attributes = data.get("data", {}).get("attributes", {})
@@ -115,7 +131,7 @@ def analyze_artifact(artifact, scan_type):
             "status": "Malicious" if malicious_hits > 0 else "Clean",
             "message": "Live VT intelligence successfully retrieved.",
             "engine_results": engine_details,
-            "threat_explanation": get_threat_explanation(engine_details) # dynamic explanation
+            "threat_explanation": get_threat_explanation(engine_details)
         }
 
     except Exception as e:
