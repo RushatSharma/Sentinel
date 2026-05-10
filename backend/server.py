@@ -4,6 +4,7 @@ import os
 import requests
 import re
 import math
+import threading
 
 # --- LOGIC IMPORTS ---
 import scanner_logic 
@@ -83,22 +84,15 @@ def scan_page_content(url):
     return findings
 
 
-# --- API ROUTES ---
+# ==========================================
+# --- BACKGROUND WORKERS (THREAD LOGIC) ---
+# ==========================================
 
-@app.route('/api/scan', methods=['POST'])
-def run_quick_scan_api():
-    data = request.json
-    target_url = data.get('url')
-    user_id = data.get('user_id')
-    
-    if not target_url:
-        return jsonify({"error": "No target URL provided."}), 400
-        
+def bg_quick_scan(target_url, user_id, scan_id):
     try:
-        print(f"[*] API received Quick Scan request for: {target_url}")
+        print(f"[*] Background Quick Scan started for: {target_url}")
         report = scanner_logic.run_quick_scan(target_url)
         
-        # Save to database
         if user_id:
             try:
                 vulns = len(report.get("vulnerabilities", []))
@@ -106,26 +100,14 @@ def run_quick_scan_api():
                 risk_score = min(100, high_sev * 25 + vulns * 5)
                 save_scan_result(user_id, target_url, "Quick Scan", risk_score, vulns, report)
             except Exception as e: print(f"[!] DB Sync Error (Quick Scan): {e}")
-            
-        return jsonify(report)
     except Exception as e:
-        print(f"[!] Server Error during Quick Scan: {e}")
-        return jsonify({"error": "An internal error occurred during the scan."}), 500
+        print(f"[!] Background Error during Quick Scan: {e}")
 
-@app.route('/api/deep-scan', methods=['POST'])
-def handle_deep_scan():
-    data = request.json
-    target_url = data.get('url')
-    user_id = data.get('user_id')
-    auth_config = data.get('auth_config') 
-
-    if not target_url: return jsonify({"error": "No URL provided"}), 400
-    if not target_url.startswith('http'): target_url = 'https://' + target_url
-
+def bg_deep_scan(target_url, user_id, auth_config, scan_id):
     try:
+        print(f"[*] Background Deep Scan started for: {target_url}")
         report = run_deep_scan(target_url, user_id=user_id, auth_config=auth_config) 
         
-        # Save to database
         if user_id:
             try:
                 vulns = len(report.get("vulnerabilities", []))
@@ -133,35 +115,14 @@ def handle_deep_scan():
                 risk_score = min(100, high_sev * 25 + vulns * 5)
                 save_scan_result(user_id, target_url, "Deep Scan", risk_score, vulns, report)
             except Exception as e: print(f"[!] DB Sync Error (Deep Scan): {e}")
-
-        return jsonify(report)
     except Exception as e:
-        return jsonify({"error": "Deep scan engine failed"}), 500
+        print(f"[!] Background Deep scan engine failed: {e}")
 
-@app.route('/api/download-report', methods=['POST'])
-def download_report():
-    data = request.json
-    report_type = data.get('report_type', 'technical')
-    report_data = {k:v for k,v in data.items() if k != 'report_type'}
-    
+def bg_recon(domain, user_id, scan_id):
     try:
-        pdf_path = generate_report(report_data, report_type)
-        return send_file(pdf_path, as_attachment=True)
-    except Exception as e:
-        return jsonify({"error": "PDF generation failed"}), 500
-
-@app.route('/api/recon', methods=['POST'])
-def handle_recon():
-    data = request.json
-    domain = data.get('domain')
-    user_id = data.get('user_id') 
-    
-    if not domain: return jsonify({"error": "No domain provided"}), 400
-        
-    try:
+        print(f"[*] Background OSINT Recon started for: {domain}")
         report = recon_engine.run_recon(domain)
         
-        # Save to database
         if user_id:
             try:
                 save_scan_result(
@@ -169,24 +130,17 @@ def handle_recon():
                     risk_score=0, vulns_found=0, report_json=report
                 )
             except Exception as e: print(f"[!] DB Sync Error (Recon): {e}")
-
-        return jsonify(report)
     except Exception as e:
-        return jsonify({"error": "OSINT mapping failed"}), 500
+        print(f"[!] Background OSINT mapping failed: {e}")
 
-@app.route('/api/fuzz-api', methods=['POST'])
-def handle_api_fuzz():
-    data = request.json
-    swagger_url = data.get('swagger_url')
-    user_id = data.get('user_id') 
-    
-    if not swagger_url: return jsonify({"error": "No Swagger URL provided"}), 400
-        
+def bg_api_fuzz(swagger_url, user_id, scan_id):
     try:
+        print(f"[*] Background API Fuzzer started for: {swagger_url}")
         report = api_fuzzer.fuzz_api(swagger_url)
-        if "error" in report: return jsonify({"error": report["error"]}), 400
-        
-        # Save to database
+        if "error" in report: 
+            print(f"[!] Fuzzer internal error: {report['error']}")
+            return
+            
         if user_id:
             try:
                 vulns = len(report.get("vulnerabilities", []))
@@ -196,25 +150,17 @@ def handle_api_fuzz():
                     risk_score=risk_score, vulns_found=vulns, report_json=report
                 )
             except Exception as e: print(f"[!] DB Sync Error (Fuzzer): {e}")
-
-        return jsonify(report)
     except Exception as e:
-        return jsonify({"error": "API Fuzzing engine failed"}), 500
+        print(f"[!] Background API Fuzzing engine failed: {e}")
 
-@app.route('/api/port-scan', methods=['POST'])
-def port_scan_api():
-    data = request.json
-    target = data.get('target')
-    user_id = data.get('user_id')
-    is_aggressive = data.get('aggressive', False) 
-    
-    if not target: return jsonify({"error": "Target is required"}), 400
-        
+def bg_port_scan(target, user_id, is_aggressive, scan_id):
     try:
+        print(f"[*] Background Port Scan started for: {target}")
         results = run_infrastructure_scan(target, aggressive=is_aggressive) 
-        if "error" in results: return jsonify(results), 400
-        
-        # Save to database
+        if "error" in results: 
+            print(f"[!] Port scan internal error: {results['error']}")
+            return
+            
         if user_id:
             try:
                 open_ports = len(results.get("open_ports", []))
@@ -224,27 +170,17 @@ def port_scan_api():
                     risk_score=risk_score, vulns_found=open_ports, report_json=results
                 )
             except Exception as e: print(f"[!] DB Sync Error (Port Scan): {e}")
-
-        return jsonify(results)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"[!] Background Port Scan failed: {e}")
 
-@app.route('/api/quarantine', methods=['POST'])
-def handle_quarantine():
-    data = request.json
-    artifact = data.get('artifact')
-    scan_type = data.get('type')
-    user_id = data.get('user_id') 
-
-    if not artifact or not scan_type:
-        return jsonify({"error": "Artifact and scan type are required"}), 400
-
+def bg_quarantine(artifact, scan_type, user_id, scan_id):
     try:
+        print(f"[*] Background Quarantine Analysis started for: {artifact}")
         report = quarantine.analyze_artifact(artifact, scan_type)
-        if "error" in report:
-            return jsonify(report), 400
-        
-        # Save to database
+        if "error" in report: 
+            print(f"[!] Quarantine internal error: {report['error']}")
+            return
+            
         if user_id:
             try:
                 is_malicious = report.get("status") == "Malicious"
@@ -254,31 +190,17 @@ def handle_quarantine():
                     risk_score=risk, vulns_found=1 if is_malicious else 0, report_json=report
                 )
             except Exception as e: print(f"[!] DB Sync Error (Quarantine): {e}")
-
-        return jsonify(report)
     except Exception as e:
-        return jsonify({"error": f"Quarantine engine failed: {str(e)}"}), 500
+        print(f"[!] Background Quarantine engine failed: {str(e)}")
 
-@app.route('/', methods=['GET'])
-@app.route('/health', methods=['GET'])
-def health_check():
-    return jsonify({"status": "active", "message": "Sentinel Backend is Running"}), 200
-
-@app.route('/api/ssl-scan', methods=['POST'])
-def handle_ssl_scan():
-    data = request.json
-    target = data.get('target')
-    user_id = data.get('user_id')
-    
-    if not target: 
-        return jsonify({"error": "Target domain is required"}), 400
-        
+def bg_ssl_scan(target, user_id, scan_id):
     try:
+        print(f"[*] Background SSL Scan started for: {target}")
         report = ssl_scanner.analyze_ssl(target)
-        if "error" in report:
-            return jsonify(report), 400
-        
-        # Save to database
+        if "error" in report: 
+            print(f"[!] SSL scan internal error: {report['error']}")
+            return
+            
         if user_id:
             try:
                 grade = report.get("grade", "F")
@@ -291,10 +213,139 @@ def handle_ssl_scan():
                     risk_score=risk_score, vulns_found=vulns, report_json=report
                 )
             except Exception as e: print(f"[!] DB Sync Error (SSL): {e}")
-
-        return jsonify(report)
     except Exception as e:
-        return jsonify({"error": f"Crypto Engine Failed: {str(e)}"}), 500
+        print(f"[!] Background Crypto Engine Failed: {str(e)}")
+
+
+# ==========================
+# --- API ROUTES ---
+# ==========================
+
+@app.route('/api/scan', methods=['POST'])
+def run_quick_scan_api():
+    data = request.json
+    target_url = data.get('url')
+    user_id = data.get('user_id')
+    scan_id = data.get('scan_id') # Optional: For frontend listeners
+    
+    if not target_url:
+        return jsonify({"error": "No target URL provided."}), 400
+        
+    thread = threading.Thread(target=bg_quick_scan, args=(target_url, user_id, scan_id))
+    thread.start()
+    
+    return jsonify({"status": "Scan Initiated", "scan_id": scan_id}), 200
+
+@app.route('/api/deep-scan', methods=['POST'])
+def handle_deep_scan():
+    data = request.json
+    target_url = data.get('url')
+    user_id = data.get('user_id')
+    auth_config = data.get('auth_config') 
+    scan_id = data.get('scan_id')
+
+    if not target_url: return jsonify({"error": "No URL provided"}), 400
+    if not target_url.startswith('http'): target_url = 'https://' + target_url
+
+    thread = threading.Thread(target=bg_deep_scan, args=(target_url, user_id, auth_config, scan_id))
+    thread.start()
+
+    return jsonify({"status": "Scan Initiated", "scan_id": scan_id}), 200
+
+@app.route('/api/download-report', methods=['POST'])
+def download_report():
+    data = request.json
+    report_type = data.get('report_type', 'technical')
+    report_data = {k:v for k,v in data.items() if k != 'report_type'}
+    
+    try:
+        pdf_path = generate_report(report_data, report_type)
+        return send_file(pdf_path, as_attachment=True)
+    except Exception as e:
+        # THIS WILL NOW PRINT THE EXACT CAUSE OF THE CRASH
+        print("\n[!] CRITICAL PDF GENERATION ERROR:")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"PDF engine failed: {str(e)}"}), 500
+
+@app.route('/api/recon', methods=['POST'])
+def handle_recon():
+    data = request.json
+    domain = data.get('domain')
+    user_id = data.get('user_id') 
+    scan_id = data.get('scan_id')
+    
+    if not domain: return jsonify({"error": "No domain provided"}), 400
+        
+    thread = threading.Thread(target=bg_recon, args=(domain, user_id, scan_id))
+    thread.start()
+
+    return jsonify({"status": "Scan Initiated", "scan_id": scan_id}), 200
+
+@app.route('/api/fuzz-api', methods=['POST'])
+def handle_api_fuzz():
+    data = request.json
+    swagger_url = data.get('swagger_url')
+    user_id = data.get('user_id') 
+    scan_id = data.get('scan_id')
+    
+    if not swagger_url: return jsonify({"error": "No Swagger URL provided"}), 400
+        
+    thread = threading.Thread(target=bg_api_fuzz, args=(swagger_url, user_id, scan_id))
+    thread.start()
+
+    return jsonify({"status": "Scan Initiated", "scan_id": scan_id}), 200
+
+@app.route('/api/port-scan', methods=['POST'])
+def port_scan_api():
+    data = request.json
+    target = data.get('target')
+    user_id = data.get('user_id')
+    is_aggressive = data.get('aggressive', False) 
+    scan_id = data.get('scan_id')
+    
+    if not target: return jsonify({"error": "Target is required"}), 400
+        
+    thread = threading.Thread(target=bg_port_scan, args=(target, user_id, is_aggressive, scan_id))
+    thread.start()
+
+    return jsonify({"status": "Scan Initiated", "scan_id": scan_id}), 200
+
+@app.route('/api/quarantine', methods=['POST'])
+def handle_quarantine():
+    data = request.json
+    artifact = data.get('artifact')
+    scan_type = data.get('type')
+    user_id = data.get('user_id') 
+    scan_id = data.get('scan_id')
+
+    if not artifact or not scan_type:
+        return jsonify({"error": "Artifact and scan type are required"}), 400
+
+    thread = threading.Thread(target=bg_quarantine, args=(artifact, scan_type, user_id, scan_id))
+    thread.start()
+
+    return jsonify({"status": "Scan Initiated", "scan_id": scan_id}), 200
+
+@app.route('/api/ssl-scan', methods=['POST'])
+def handle_ssl_scan():
+    data = request.json
+    target = data.get('target')
+    user_id = data.get('user_id')
+    scan_id = data.get('scan_id')
+    
+    if not target: 
+        return jsonify({"error": "Target domain is required"}), 400
+        
+    thread = threading.Thread(target=bg_ssl_scan, args=(target, user_id, scan_id))
+    thread.start()
+
+    return jsonify({"status": "Scan Initiated", "scan_id": scan_id}), 200
+
+@app.route('/', methods=['GET'])
+@app.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({"status": "active", "message": "Sentinel Backend is Running"}), 200
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
